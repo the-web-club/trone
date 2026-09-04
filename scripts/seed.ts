@@ -75,7 +75,7 @@ async function main() {
     { code: "air_suspension", name: "Luchtvering (los, alleen ECS)", input: "SELECT", sort: 5,
       values: [{ value: "Geen" }, { value: "TS95", priceDelta: 950 }, { value: "TS97", priceDelta: 1540 }, { value: "TS120", priceDelta: 840 }, { value: "TS21", priceDelta: 620 }] },
     { code: "fabric", name: "Stoftype / kleur", input: "SELECT", required: true, sort: 6,
-      values: [{ value: "100% leder" }, { value: "Stof" }, { value: "PVC" }] },
+      values: [{ value: "100% leder", priceDelta: 450 }, { value: "Stof", priceDelta: 0 }, { value: "PVC", priceDelta: 0 }] },
     { code: "headrest", name: "Hoofdsteun", input: "SELECT", sort: 7,
       values: [{ value: "Met hoofdsteun" }, { value: "Zonder hoofdsteun" }] },
     { code: "stitching", name: "Stiksel", input: "SELECT", sort: 8, values: [{ value: "Standaard" }] },
