@@ -17,18 +17,18 @@ export async function nextNumber(
   return prisma.$transaction(async (tx) => {
     // Lock de rij. Raw omdat Prisma geen SELECT ... FOR UPDATE kent.
     const rows = await tx.$queryRawUnsafe<
-      { id: string; prefix: string; last_number: number; padding: number }[]
+      { id: string; prefix: string; lastNumber: number; padding: number }[]
     >(
-      "SELECT id, prefix, last_number, padding FROM number_sequence WHERE seq_key = ? FOR UPDATE",
+      "SELECT id, prefix, lastNumber, padding FROM number_sequence WHERE seqKey = ? FOR UPDATE",
       seqKey
     );
     if (rows.length === 0) {
       throw new Error(`Nummerreeks '${seqKey}' bestaat niet.`);
     }
     const row = rows[0];
-    const next = row.last_number + 1;
+    const next = row.lastNumber + 1;
     await tx.$executeRawUnsafe(
-      "UPDATE number_sequence SET last_number = ? WHERE id = ?",
+      "UPDATE number_sequence SET lastNumber = ? WHERE id = ?",
       next,
       row.id
     );
