@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import {
   isNavItemActive,
   sidebarNavItemClassName,
@@ -43,8 +44,12 @@ export function AppTopbar({
         >
           {open ? <X /> : <Menu />}
         </Button>
-        <Link href="/overzicht" className="text-sm font-medium text-fg">
-          TRÔNE
+        <Link
+          href="/overzicht"
+          className="flex w-28 text-fg"
+          aria-label="TRÔNE Seating"
+        >
+          <BrandLogo />
         </Link>
       </div>
       <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg lg:text-base">

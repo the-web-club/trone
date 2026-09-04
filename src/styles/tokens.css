@@ -150,7 +150,7 @@
   --fg-invert: #1a1a1c;
 
   --accent: var(--brand-accent);
-  --accent-fg: #1a1a1c;
+  --accent-fg: var(--gray-0);
   --accent-hover: color-mix(in srgb, var(--brand-accent) 78%, #1a1a1c);
 
   --danger: #f0b4b0;

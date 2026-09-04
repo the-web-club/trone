@@ -251,3 +251,12 @@
   box-shadow: 0 0 0 3px var(--ring);
   outline: none;
 }
+
+html:has([data-theme="login"]),
+html:has([data-theme="login"]) body {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--brand-bg);
+}

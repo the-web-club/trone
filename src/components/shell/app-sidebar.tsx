@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { controlMotion } from "@/components/motion/styles";
 import { appNavItems } from "@/components/shell/nav-config";
 import { authClient } from "@/lib/auth-client";
@@ -47,9 +48,10 @@ export function AppSidebar({
       <div className="flex h-[var(--topbar-h)] items-center px-4">
         <Link
           href="/overzicht"
-          className="truncate text-sm font-medium tracking-tight text-fg"
+          className="flex w-[9.5rem] text-fg"
+          aria-label="TRÔNE Seating"
         >
-          TRÔNE Seating
+          <BrandLogo />
         </Link>
       </div>
       <nav

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Panel } from "@/components/ui/panel";
 import { SetPasswordForm } from "@/app/wachtwoord-instellen/set-password-form";
 
@@ -19,10 +20,8 @@ export default async function WachtwoordInstellenPage({
     <main className="flex h-full flex-1 items-center justify-center overflow-y-auto bg-bg px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <p className="text-sm font-medium tracking-tight text-fg">
-            TRÔNE Seating
-          </p>
-          <h1 className="mt-4 text-2xl font-medium tracking-tight text-fg">
+          <BrandLogo className="mb-6 w-44 text-fg" />
+          <h1 className="text-2xl font-medium tracking-tight text-fg">
             Wachtwoord instellen
           </h1>
           <p className="mt-1 text-sm text-fg-muted">

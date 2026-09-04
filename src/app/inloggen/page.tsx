@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/app/inloggen/login-form";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Panel } from "@/components/ui/panel";
 import { getSession } from "@/lib/auth-session";
 
@@ -15,17 +16,10 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 items-center justify-center overflow-y-auto px-4 py-12">
+    <main className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/trone-seating-logo.png"
-            alt="TRÔNE Seating"
-            width={300}
-            height={102}
-            className="h-auto w-[13.5rem]"
-          />
+          <BrandLogo className="w-56 text-fg" />
           <h1 className="mt-8 text-2xl font-medium tracking-tight text-fg">
             Inloggen
           </h1>
