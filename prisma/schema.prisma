@@ -40,6 +40,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  workLogs      WorkLog[]
 
   @@map("user")
 }
@@ -118,6 +119,7 @@ model Company {
   invoices      Invoice[]
   pricing       CompanyPricing[]
   customerUsers CustomerUser[]
+  workLogs      WorkLog[]
 
   @@map("company")
 }
@@ -526,6 +528,7 @@ model Order {
   contact  Contact?    @relation(fields: [contactId], references: [id])
   items    OrderItem[]
   invoices Invoice[]
+  workLogs WorkLog[]
 
   @@index([companyId])
   @@map("order")
@@ -619,4 +622,37 @@ model NumberSequence {
   padding    Int    @default(5) @db.TinyInt
 
   @@map("number_sequence")
+}
+
+// ---------------------------------------------------------------------
+// Werkzaamhedenlogboek
+// ---------------------------------------------------------------------
+enum WorkLogCategory {
+  MONTAGE
+  BELRONDE
+  BEZOEK
+  ADMINISTRATIE
+  OVERIG
+}
+
+model WorkLog {
+  id              String          @id
+  userId          String
+  description     String          @db.Text
+  occurredAt      DateTime        @default(now())
+  category        WorkLogCategory @default(OVERIG)
+  durationMinutes Int?
+  companyId       String?
+  orderId         String?
+  createdAt       DateTime        @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([orderId])
+  @@index([occurredAt])
+  @@map("work_log")
 }

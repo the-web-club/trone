@@ -17,8 +17,11 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { WorkLogSection } from "@/components/worklog/work-log-section";
+import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
+import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
 export async function generateMetadata({
   params,
@@ -40,10 +43,15 @@ export default async function BedrijfDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requireSession();
   const company = await getCompany(id).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  const [logs, orders] = await Promise.all([
+    listWorkLogs({ companyId: id }),
+    listOrdersForWorkLog(undefined, id),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -152,6 +160,22 @@ export default async function BedrijfDetailPage({
           </Table>
         </TableContainer>
       </section>
+
+      <WorkLogSection
+        title="Werkzaamheden"
+        currentUserId={session.user.id}
+        isAdmin={isAdminSession(session)}
+        defaultCompanyId={company.id}
+        lockCompany
+        companies={[{ id: company.id, name: company.name }]}
+        orders={orders.map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          companyId: order.companyId,
+          companyName: company.name,
+        }))}
+        logs={logs}
+      />
     </div>
   );
 }
