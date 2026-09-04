@@ -1,0 +1,540 @@
+// =====================================================================
+// TRÔNE Seating — Prisma schema
+// Conventies overgenomen van crm.thewebclub.nl:
+//   - provider "prisma-client" (nieuw), output naar src/generated/prisma
+//   - datasource provider "mysql" (runtime = MariaDB via adapter)
+//   - modelnaam PascalCase, @@map snake_case enkelvoud
+//   - velden camelCase, enums SCREAMING_SNAKE
+//   - String @id, app vult UUID via createId()
+//   - createdAt @default(now()) + updatedAt @updatedAt
+// Single-tenant: TRÔNE is één bedrijf. `Company` = klant, niet tenant.
+// Klantisolatie in het portaal loopt via companyId-gates, niet via een
+// tenant-framework.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------
+// Auth (Better Auth) — interne gebruikers. Better Auth beheert deze tabellen.
+// Klantportaal-logins staan apart in CustomerUser (zie onder).
+// ---------------------------------------------------------------------
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String    @default("user") // 'admin' | 'user' | 'viewer'
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  token          String   @unique
+  userId         String
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  password              String?
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------
+// CRM — companies & contacts (B2B)
+// ---------------------------------------------------------------------
+model Company {
+  id           String    @id
+  name         String
+  vatNumber    String?
+  cocNumber    String?
+  website      String?
+  phone        String?
+  email        String?
+  addressLine  String?
+  postalCode   String?
+  city         String?
+  country      String    @default("NL")
+  vatRate      Decimal   @default(21.00) @db.Decimal(5, 2)
+  notes        String?   @db.Text
+  ownerUserId  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  contacts      Contact[]
+  deals         Deal[]
+  quotes        Quote[]
+  orders        Order[]
+  invoices      Invoice[]
+  pricing       CompanyPricing[]
+  customerUsers CustomerUser[]
+
+  @@map("company")
+}
+
+model Contact {
+  id        String   @id
+  companyId String?
+  firstName String
+  lastName  String?
+  jobTitle  String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+  deals   Deal[]
+  quotes  Quote[]
+  orders  Order[]
+
+  @@index([companyId])
+  @@map("contact")
+}
+
+// ---------------------------------------------------------------------
+// CRM — leads & pipeline
+// ---------------------------------------------------------------------
+model LeadSource {
+  id    String @id
+  name  String @unique
+  deals Deal[]
+
+  @@map("lead_source")
+}
+
+model DealStage {
+  id        String  @id
+  name      String  @unique
+  sortOrder Int     @default(0)
+  isWon     Boolean @default(false)
+  isLost    Boolean @default(false)
+  deals     Deal[]
+
+  @@map("deal_stage")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model Deal {
+  id            String     @id
+  title         String
+  companyId     String?
+  contactId     String?
+  stageId       String
+  sourceId      String?
+  ownerUserId   String?
+  valueEstimate Decimal?   @db.Decimal(12, 2)
+  status        DealStatus @default(OPEN)
+  lostReason    String?
+  expectedClose DateTime?  @db.Date
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  company    Company?        @relation(fields: [companyId], references: [id])
+  contact    Contact?        @relation(fields: [contactId], references: [id])
+  stage      DealStage       @relation(fields: [stageId], references: [id])
+  source     LeadSource?     @relation(fields: [sourceId], references: [id])
+  activities DealActivity[]
+  quotes     Quote[]
+  orders     Order[]
+
+  @@index([companyId])
+  @@index([stageId])
+  @@map("deal")
+}
+
+enum ActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  DEMO
+  STAGE_CHANGE
+}
+
+model DealActivity {
+  id         String       @id
+  dealId     String
+  userId     String?
+  type       ActivityType @default(NOTE)
+  body       String?      @db.Text
+  occurredAt DateTime     @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("deal_activity")
+}
+
+// ---------------------------------------------------------------------
+// Catalogus — 2 basisproducten (ECS, LAS4.1)
+// ---------------------------------------------------------------------
+model Product {
+  id          String   @id
+  sku         String   @unique
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  basePrice   Decimal  @default(0.00) @db.Decimal(12, 2)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  availability   ProductOptionAvailability[]
+  configurations Configuration[]
+  companyPricing CompanyPricing[]
+
+  @@map("product")
+}
+
+enum OptionInputType {
+  SELECT
+  BOOLEAN
+}
+
+model ProductOption {
+  id         String          @id
+  code       String          @unique
+  name       String
+  inputType  OptionInputType @default(SELECT)
+  isRequired Boolean         @default(false)
+  sortOrder  Int             @default(0)
+
+  values       OptionValue[]
+  availability ProductOptionAvailability[]
+  configItems  ConfigurationItem[]
+
+  @@map("product_option")
+}
+
+model OptionValue {
+  id             String   @id
+  optionId       String
+  value          String
+  priceDelta     Decimal  @default(0.00) @db.Decimal(12, 2)
+  priceOnRequest Boolean  @default(false)
+  internalRef    String?
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+
+  option       ProductOption               @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  availability ProductOptionAvailability[]
+  configItems  ConfigurationItem[]
+
+  @@index([optionId])
+  @@map("option_value")
+}
+
+model ProductOptionAvailability {
+  id            String  @id
+  productId     String
+  optionId      String
+  optionValueId String?
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  option  ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  value   OptionValue?  @relation(fields: [optionValueId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, optionId, optionValueId])
+  @@index([productId])
+  @@map("product_option_availability")
+}
+
+// ---------------------------------------------------------------------
+// Klantspecifieke prijsafspraken
+// ---------------------------------------------------------------------
+model CompanyPricing {
+  id              String    @id
+  companyId       String
+  productId       String?
+  discountPercent Decimal   @default(0.00) @db.Decimal(5, 2)
+  validFrom       DateTime? @db.Date
+  validUntil      DateTime? @db.Date
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("company_pricing")
+}
+
+// ---------------------------------------------------------------------
+// Configuraties (bevroren snapshot van keuzes + prijs)
+// ---------------------------------------------------------------------
+model Configuration {
+  id             String   @id
+  productId      String
+  label          String?
+  basePrice      Decimal  @default(0.00) @db.Decimal(12, 2)
+  optionsTotal   Decimal  @default(0.00) @db.Decimal(12, 2)
+  computedPrice  Decimal  @default(0.00) @db.Decimal(12, 2)
+  configSnapshot Json?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  product    Product             @relation(fields: [productId], references: [id])
+  items      ConfigurationItem[]
+  quoteItems QuoteItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("configuration")
+}
+
+model ConfigurationItem {
+  id              String  @id
+  configurationId String
+  optionId        String
+  optionValueId   String?
+  priceDelta      Decimal @default(0.00) @db.Decimal(12, 2)
+
+  configuration Configuration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  option        ProductOption @relation(fields: [optionId], references: [id])
+  value         OptionValue?  @relation(fields: [optionValueId], references: [id])
+
+  @@index([configurationId])
+  @@map("configuration_item")
+}
+
+// ---------------------------------------------------------------------
+// Offertes (multi-regel)
+// ---------------------------------------------------------------------
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quote {
+  id            String      @id
+  quoteNumber   String      @unique
+  dealId        String?
+  companyId     String
+  contactId     String?
+  status        QuoteStatus @default(DRAFT)
+  subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
+  discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
+  total         Decimal     @default(0.00) @db.Decimal(12, 2)
+  validUntil    DateTime?   @db.Date
+  notes         String?     @db.Text
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  deal    Deal?       @relation(fields: [dealId], references: [id])
+  company Company     @relation(fields: [companyId], references: [id])
+  contact Contact?    @relation(fields: [contactId], references: [id])
+  items   QuoteItem[]
+  orders  Order[]
+
+  @@index([companyId])
+  @@map("quote")
+}
+
+model QuoteItem {
+  id              String   @id
+  quoteId         String
+  productId       String
+  configurationId String?
+  description     String?
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @default(0.00) @db.Decimal(12, 2)
+  lineDiscountPct Decimal  @default(0.00) @db.Decimal(5, 2)
+  lineTotal       Decimal  @default(0.00) @db.Decimal(12, 2)
+  configSnapshot  Json?
+  sortOrder       Int      @default(0)
+
+  quote         Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  configuration Configuration? @relation(fields: [configurationId], references: [id])
+
+  @@index([quoteId])
+  @@map("quote_item")
+}
+
+// ---------------------------------------------------------------------
+// Orders (multi-regel) + productiestatus (made-to-order)
+// ---------------------------------------------------------------------
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  IN_PRODUCTION
+  READY
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id            String      @id
+  orderNumber   String      @unique
+  quoteId       String?
+  dealId        String?
+  companyId     String
+  contactId     String?
+  status        OrderStatus @default(NEW)
+  subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
+  discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
+  total         Decimal     @default(0.00) @db.Decimal(12, 2)
+  orderedAt     DateTime    @default(now())
+  expectedReady DateTime?   @db.Date
+  notes         String?     @db.Text
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  quote    Quote?      @relation(fields: [quoteId], references: [id])
+  deal     Deal?       @relation(fields: [dealId], references: [id])
+  company  Company     @relation(fields: [companyId], references: [id])
+  contact  Contact?    @relation(fields: [contactId], references: [id])
+  items    OrderItem[]
+  invoices Invoice[]
+
+  @@index([companyId])
+  @@map("order")
+}
+
+model OrderItem {
+  id              String   @id
+  orderId         String
+  productId       String
+  configurationId String?
+  description     String?
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @default(0.00) @db.Decimal(12, 2)
+  lineDiscountPct Decimal  @default(0.00) @db.Decimal(5, 2)
+  lineTotal       Decimal  @default(0.00) @db.Decimal(12, 2)
+  configSnapshot  Json?
+  sortOrder       Int      @default(0)
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  configuration Configuration? @relation(fields: [configurationId], references: [id])
+
+  @@index([orderId])
+  @@map("order_item")
+}
+
+// ---------------------------------------------------------------------
+// Facturen (Mollie Invoicing spiegel)
+// ---------------------------------------------------------------------
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id              String        @id
+  orderId         String
+  companyId       String
+  mollieInvoiceId String?
+  invoiceNumber   String?
+  status          InvoiceStatus @default(DRAFT)
+  amount          Decimal       @default(0.00) @db.Decimal(12, 2)
+  currency        String        @default("EUR")
+  pdfUrl          String?       @db.VarChar(500)
+  issuedAt        DateTime?     @db.Date
+  dueAt           DateTime?     @db.Date
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([orderId])
+  @@index([mollieInvoiceId])
+  @@map("invoice")
+}
+
+// ---------------------------------------------------------------------
+// Klantportaal — logins (meerdere per bedrijf). Los van interne User.
+// ---------------------------------------------------------------------
+model CustomerUser {
+  id           String    @id
+  companyId    String
+  contactId    String?
+  name         String
+  email        String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("customer_user")
+}
+
+// ---------------------------------------------------------------------
+// Nummerreeksen (orders 2026-00001, offertes OFF202600001)
+// ---------------------------------------------------------------------
+model NumberSequence {
+  id         String @id
+  seqKey     String @unique
+  prefix     String @default("")
+  year       Int    @db.SmallInt
+  lastNumber Int    @default(0)
+  padding    Int    @default(5) @db.TinyInt
+
+  @@map("number_sequence")
+}
