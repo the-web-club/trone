@@ -9,6 +9,7 @@ import { QuoteLineEditor } from "@/components/quote/quote-line-editor";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { formatPersonName } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { ensurePreferredSelections } from "@/components/configurator/option-groups";
 import {
   defaultSelections,
   resolveDiscountPercent,
@@ -39,10 +40,13 @@ export type QuoteFormDeal = {
 
 function emptyLine(catalog: QuoteCatalog): QuoteItemInput {
   const productId = catalog.products[0]?.id ?? "";
+  const selections = productId ? defaultSelections(catalog, productId) : [];
   return {
     productId,
     quantity: 1,
-    selections: productId ? defaultSelections(catalog, productId) : [],
+    selections: productId
+      ? ensurePreferredSelections(catalog, productId, selections)
+      : selections,
   };
 }
 
@@ -145,6 +149,7 @@ export function QuoteForm({
     <form action={formAction} className="flex flex-col" data-configurator-page="">
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
 
+      <div className="flex flex-col pb-[var(--configurator-bar-space)]">
       <section className="mb-8 grid gap-4 md:grid-cols-3">
         <FormField id="companyId" label="Klant">
           <Select
@@ -226,7 +231,20 @@ export function QuoteForm({
             )}
             canRemove={items.length > 1}
             onChange={(next) =>
-              setItems((list) => list.map((row, rowIndex) => (rowIndex === index ? next : row)))
+              setItems((list) =>
+                list.map((row, rowIndex) =>
+                  rowIndex === index
+                    ? {
+                        ...next,
+                        selections: ensurePreferredSelections(
+                          catalog,
+                          next.productId,
+                          next.selections,
+                        ),
+                      }
+                    : row,
+                ),
+              )
             }
             onRemove={() => {
               setItems((list) => list.filter((_, rowIndex) => rowIndex !== index));
@@ -244,6 +262,7 @@ export function QuoteForm({
           {state.error}
         </p>
       ) : null}
+      </div>
 
       <PriceBar
         price={active?.price ?? null}

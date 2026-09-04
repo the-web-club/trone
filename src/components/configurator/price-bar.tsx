@@ -37,12 +37,11 @@ export function PriceBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-[var(--z-sticky)] -mx-1 mt-8 border-t border-border bg-bg/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-        "backdrop-blur-[2px]",
+        "sticky bottom-0 z-[var(--z-sticky)] isolate border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)]",
       )}
     >
       {detailsOpen && price ? (
-        <div className="mb-4 flex flex-col gap-1.5 px-1">
+        <div className="mb-4 flex flex-col gap-1.5">
           <p className="text-label font-medium tracking-wide text-fg-muted uppercase">
             Prijsdetails
           </p>
@@ -89,7 +88,7 @@ export function PriceBar({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-label text-fg-muted">Totaal excl. btw</p>
           <p className="text-2xl font-medium tracking-tight text-fg">
@@ -108,7 +107,7 @@ export function PriceBar({
           </button>
         </div>
 
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        <div className="flex min-w-0 flex-col items-stretch gap-1.5 sm:max-w-sm sm:items-end">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
@@ -122,14 +121,11 @@ export function PriceBar({
               Toevoegen aan offerte
             </Button>
           </div>
-          {!canSubmit && submitDisabledReason ? (
-            <p className="text-label text-fg-subtle">{submitDisabledReason}</p>
-          ) : (
-            <p className="text-label text-fg-subtle">
-              Live prijs ter indicatie. Bij opslaan herberekent de server het
-              bindende bedrag.
-            </p>
-          )}
+          <p className="text-label text-fg-subtle sm:text-right">
+            {!canSubmit && submitDisabledReason
+              ? submitDisabledReason
+              : "Live prijs ter indicatie. Bij opslaan herberekent de server het bindende bedrag."}
+          </p>
         </div>
       </div>
     </div>

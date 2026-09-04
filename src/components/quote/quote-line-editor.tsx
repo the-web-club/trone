@@ -6,7 +6,12 @@ import {
 } from "@/components/configurator/choice-tile";
 import { OptionSection } from "@/components/configurator/option-section";
 import { OptionToggle } from "@/components/configurator/option-toggle";
-import { groupOptions } from "@/components/configurator/option-groups";
+import {
+  displayOptionValues,
+  ensurePreferredSelections,
+  groupOptions,
+  showNoneChoice,
+} from "@/components/configurator/option-groups";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { ProductStage } from "@/components/configurator/product-stage";
 import { SwatchDots } from "@/components/configurator/swatch-dots";
@@ -75,7 +80,11 @@ export function QuoteLineEditor({
         selections.push({ optionId: option.id, optionValueId: first.id });
       }
     }
-    onChange({ ...item, productId, selections });
+    onChange({
+      ...item,
+      productId,
+      selections: ensurePreferredSelections(catalog, productId, selections),
+    });
   }
 
   function setSelection(optionId: string, optionValueId: string) {
@@ -109,7 +118,7 @@ export function QuoteLineEditor({
         className="lg:sticky lg:top-4"
       />
 
-      <div className="flex flex-col gap-8 pb-4">
+      <div className="flex flex-col gap-8">
         <OptionSection title="Model">
           <ChoiceTileGroup label="Product">
             {catalog.products.map((row) => (
@@ -117,7 +126,6 @@ export function QuoteLineEditor({
                 key={row.id}
                 selected={row.id === item.productId}
                 label={row.name}
-                description={row.sku}
                 priceLabel={formatEuroExact(row.basePrice)}
                 onSelect={() => setProduct(row.id)}
               />
@@ -168,10 +176,9 @@ export function QuoteLineEditor({
             >
               <div className="flex flex-col gap-5">
                 {section.options.map((option) => {
-                  const values = valuesForProductOption(
-                    catalog,
-                    item.productId,
+                  const values = displayOptionValues(
                     option,
+                    valuesForProductOption(catalog, item.productId, option),
                   );
                   const current = selectedValue(option.id);
 
@@ -212,13 +219,13 @@ export function QuoteLineEditor({
                     <div key={option.id} className="flex flex-col gap-2">
                       <p className="text-sm font-medium text-fg">{option.name}</p>
                       <ChoiceTileGroup label={option.name}>
-                        {option.isRequired ? null : (
+                        {showNoneChoice(option) ? (
                           <ChoiceTile
                             selected={!current}
                             label="Geen"
                             onSelect={() => setSelection(option.id, "")}
                           />
-                        )}
+                        ) : null}
                         {values.map((value) => (
                           <ChoiceTile
                             key={value.id}

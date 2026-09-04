@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
+import { Check } from "lucide-react";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
@@ -21,33 +22,52 @@ export function ChoiceTile({
   onSelect: () => void;
   className?: string;
 }) {
+  const aria = [
+    label,
+    description,
+    priceLabel,
+    selected ? "geselecteerd" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-label={aria}
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "flex min-h-12 w-full items-start justify-between gap-3 rounded-md px-3.5 py-3 text-left",
+        "flex h-full min-h-12 w-full items-center gap-2.5 rounded-md border px-3 py-2.5 text-left",
         controlMotion,
         focusRingOutline,
         selected
-          ? "bg-selected-bg shadow-[inset_0_0_0_1px_var(--accent)]"
-          : "bg-transparent shadow-[inset_0_0_0_1px_transparent] hover:bg-hover-subtle",
+          ? "border-accent bg-selected-bg shadow-[inset_0_0_0_1px_var(--accent)]"
+          : "border-border bg-surface hover:border-border-strong hover:bg-hover-subtle",
         "disabled:pointer-events-none disabled:opacity-45",
         className,
       )}
     >
-      <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-sm font-medium text-fg">{label}</span>
         {description ? (
           <span className="text-label text-fg-muted">{description}</span>
         ) : null}
       </span>
       {priceLabel ? (
-        <span className="shrink-0 pt-0.5 text-label text-fg-muted">{priceLabel}</span>
+        <span className="shrink-0 text-label text-fg-muted">{priceLabel}</span>
       ) : null}
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-4 shrink-0 items-center justify-center text-fg",
+          !selected && "opacity-0",
+        )}
+      >
+        <Check className="size-3.5" strokeWidth={2.4} />
+      </span>
     </button>
   );
 }
@@ -61,13 +81,23 @@ export function ChoiceTileGroup({
   children: ReactNode;
   className?: string;
 }) {
+  const count = Children.count(children);
+  const cols =
+    count <= 1
+      ? "grid-cols-1"
+      : count === 3
+        ? "grid-cols-3"
+        : "grid-cols-2";
+
   return (
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("grid grid-cols-1 gap-1.5 sm:grid-cols-2", className)}
+      className={cn("grid gap-2", cols, className)}
     >
-      {children}
+      {Children.map(children, (child) => (
+        <div className="min-w-0">{child}</div>
+      ))}
     </div>
   );
 }

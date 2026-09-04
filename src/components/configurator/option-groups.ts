@@ -1,4 +1,9 @@
-import type { CatalogOption } from "@/lib/quote-catalog";
+import {
+  valuesForProductOption,
+  type CatalogOption,
+  type CatalogValue,
+  type QuoteCatalog,
+} from "@/lib/quote-catalog";
 
 export type OptionSection = {
   id: string;
@@ -30,16 +35,21 @@ const SECTION_DEFS: { id: string; title: string; codes: string[] }[] = [
     ],
   },
   {
-    id: "veiligheid",
-    title: "Veiligheid",
-    codes: ["belt", "seat_switch"],
-  },
-  {
-    id: "extra",
-    title: "Montage en extra’s",
-    codes: ["air_suspension", "turntable", "converter", "mount_bracket"],
+    id: "techniek",
+    title: "Veiligheid & techniek",
+    codes: [
+      "belt",
+      "seat_switch",
+      "air_suspension",
+      "turntable",
+      "converter",
+      "mount_bracket",
+    ],
   },
 ];
+
+/** Opties waar de UI geen synthetische of catalogus-"Geen" toont. */
+export const HIDE_NONE_OPTION_CODES = ["width"] as const;
 
 export function groupOptions(options: CatalogOption[]): OptionSection[] {
   const used = new Set<string>();
@@ -58,4 +68,42 @@ export function groupOptions(options: CatalogOption[]): OptionSection[] {
   }
 
   return sections;
+}
+
+export function displayOptionValues(
+  option: CatalogOption,
+  values: CatalogValue[],
+): CatalogValue[] {
+  if (!(HIDE_NONE_OPTION_CODES as readonly string[]).includes(option.code)) {
+    return values;
+  }
+  return values.filter((value) => value.value !== "Geen");
+}
+
+export function showNoneChoice(option: CatalogOption): boolean {
+  return (
+    !option.isRequired &&
+    !(HIDE_NONE_OPTION_CODES as readonly string[]).includes(option.code)
+  );
+}
+
+/** Zet Breedte op Standaard als er nog geen keuze is. */
+export function ensurePreferredSelections(
+  catalog: QuoteCatalog,
+  productId: string,
+  selections: { optionId: string; optionValueId: string }[],
+): { optionId: string; optionValueId: string }[] {
+  const width = catalog.options.find((option) => option.code === "width");
+  if (!width) return selections;
+  if (selections.some((selection) => selection.optionId === width.id)) {
+    return selections;
+  }
+  const values = displayOptionValues(
+    width,
+    valuesForProductOption(catalog, productId, width),
+  );
+  const standaard =
+    values.find((value) => value.value === "Standaard") ?? values[0];
+  if (!standaard) return selections;
+  return [...selections, { optionId: width.id, optionValueId: standaard.id }];
 }

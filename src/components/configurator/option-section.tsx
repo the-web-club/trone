@@ -15,7 +15,7 @@ export function OptionSection({
   return (
     <section
       className={cn(
-        "flex flex-col gap-3 rounded-md px-1 py-1",
+        "flex flex-col gap-4 px-0 py-0",
         incomplete && "bg-warning-bg",
       )}
     >
