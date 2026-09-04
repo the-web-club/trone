@@ -15,20 +15,25 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex h-full flex-1 items-center justify-center overflow-y-auto bg-bg px-4 py-16">
+    <main className="flex min-h-full flex-1 items-center justify-center overflow-y-auto px-4 py-12">
       <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <p className="text-sm font-medium tracking-tight text-fg">
-            TRÔNE Seating
-          </p>
-          <h1 className="mt-4 text-2xl font-medium tracking-tight text-fg">
+        <div className="mb-8 flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/trone-seating-logo.png"
+            alt="TRÔNE Seating"
+            width={300}
+            height={102}
+            className="h-auto w-[13.5rem]"
+          />
+          <h1 className="mt-8 text-2xl font-medium tracking-tight text-fg">
             Inloggen
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
             Alleen voor het interne team.
           </p>
         </div>
-        <Panel className="p-5">
+        <Panel className="border-border bg-surface-raised p-6 shadow-sm">
           <LoginForm />
         </Panel>
       </div>

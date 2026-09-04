@@ -61,6 +61,7 @@ export function LoginForm() {
           onChange={(event) => setEmail(event.target.value)}
           disabled={isLoading}
           aria-invalid={status === "error" || undefined}
+          className="bg-bg focus:border-accent focus-visible:border-accent"
         />
       </FormField>
 
@@ -76,11 +77,15 @@ export function LoginForm() {
           onChange={(event) => setPassword(event.target.value)}
           disabled={isLoading}
           aria-invalid={status === "error" || undefined}
+          className="bg-bg focus:border-accent focus-visible:border-accent"
         />
       </FormField>
 
       {errorMessage ? (
-        <p className="text-sm text-danger" role="alert">
+        <p
+          className="rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger"
+          role="alert"
+        >
           {errorMessage}
         </p>
       ) : null}

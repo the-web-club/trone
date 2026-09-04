@@ -1,4 +1,5 @@
-/* TRÔNE design tokens — light-only, overgenomen van crm.thewebclub.nl */
+/* TRÔNE design tokens — light default, overgenomen van crm.thewebclub.nl.
+   Merkkleuren en [data-theme="login"] zijn extra; light-schermen blijven gelijk. */
 
 :root {
   --gray-0: #ffffff;
@@ -14,8 +15,13 @@
   --gray-900: #171717;
   --gray-1000: #0a0a0a;
 
+  --brand-accent: #ed7845;
+  --brand-bg: #35353c;
+  --brand-surface-raised: #505059;
+
   --bg: var(--gray-50);
   --surface: var(--gray-0);
+  --surface-raised: var(--gray-0);
   --surface-sunk: var(--gray-100);
   --hover: var(--gray-100);
   --hover-subtle: var(--gray-50);
@@ -110,6 +116,43 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Dark theme — alleen scoped toepassen (nu: inlogpagina). Light-schermen blijven ongewijzigd. */
+[data-theme="login"] {
+  --bg: var(--brand-bg);
+  --surface: var(--brand-bg);
+  --surface-raised: var(--brand-surface-raised);
+  --surface-sunk: color-mix(in srgb, var(--brand-bg) 78%, black);
+  --hover: color-mix(in srgb, white 7%, var(--surface-raised));
+  --hover-subtle: color-mix(in srgb, white 4%, var(--surface-raised));
+  --selected: color-mix(in srgb, white 9%, var(--surface-raised));
+  --selected-bg: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+  --selected-ring: color-mix(in srgb, var(--accent) 42%, transparent);
+
+  --border: color-mix(in srgb, white 14%, transparent);
+  --border-strong: color-mix(in srgb, white 24%, transparent);
+
+  --fg: #f4f4f5;
+  --fg-muted: #d0d0d4;
+  --fg-subtle: #b4b4ba;
+  --fg-invert: #1a1a1c;
+
+  --accent: var(--brand-accent);
+  --accent-fg: #1a1a1c;
+  --accent-hover: color-mix(in srgb, var(--brand-accent) 78%, #1a1a1c);
+
+  --danger: #f0b4b0;
+  --danger-dot: #f0b4b0;
+  --danger-bg: color-mix(in srgb, #f0b4b0 16%, var(--surface-raised));
+  --danger-border: color-mix(in srgb, #f0b4b0 32%, var(--surface-raised));
+
+  --ring: color-mix(in srgb, var(--brand-accent) 45%, transparent);
+  --ring-danger: color-mix(in srgb, var(--danger) 28%, transparent);
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.28);
+  --shadow-sm: 0 10px 28px -8px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

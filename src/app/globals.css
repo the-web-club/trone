@@ -4,6 +4,7 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
   --color-surface-sunk: var(--surface-sunk);
   --color-hover: var(--hover);
   --color-hover-subtle: var(--hover-subtle);
@@ -104,6 +105,7 @@
       outline-offset: 2px;
     }
   }
+
 }
 
 @layer components {
@@ -266,4 +268,11 @@
     justify-content: space-between;
     gap: 0.75rem;
   }
+}
+
+[data-theme="login"] [data-field-control]:focus,
+[data-theme="login"] [data-field-control]:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+  outline: none;
 }
