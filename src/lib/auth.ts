@@ -12,6 +12,38 @@ function requireEnv(name: string): string {
   return value;
 }
 
+function originFromHost(host: string | undefined): string | null {
+  if (!host) return null;
+  const normalized = host.startsWith("http://") || host.startsWith("https://")
+    ? host
+    : `https://${host}`;
+  try {
+    return new URL(normalized).origin;
+  } catch {
+    return null;
+  }
+}
+
+function authTrustedOrigins(): string[] {
+  const origins = new Set<string>([
+    "http://localhost:3000",
+    "https://troneseating.app",
+    "https://www.troneseating.app",
+    "https://troneseating.vercel.app",
+  ]);
+
+  for (const value of [
+    process.env.BETTER_AUTH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ]) {
+    const origin = originFromHost(value);
+    if (origin) origins.add(origin);
+  }
+
+  return [...origins];
+}
+
 const viewerAc = defaultAc.newRole({
   user: [],
   session: [],
@@ -55,7 +87,7 @@ function createAuth() {
         });
       },
     },
-    trustedOrigins: ["http://localhost:3000"],
+    trustedOrigins: authTrustedOrigins(),
     plugins: [
       admin({
         defaultRole: "user",
