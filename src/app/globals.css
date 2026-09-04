@@ -202,6 +202,16 @@
     }
   }
 
+  .page-header-meta {
+    margin-top: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+  }
+
   .page-header-description {
     margin-top: 0.25rem;
     max-width: 42rem;

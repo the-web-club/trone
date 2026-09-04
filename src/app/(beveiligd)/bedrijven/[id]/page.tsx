@@ -17,6 +17,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/shell/page-header";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
@@ -55,16 +56,14 @@ export default async function BedrijfDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">{company.name}</h1>
-          <p className="page-header-description">
-            <Link href="/bedrijven" className="hover:underline">
-              Terug naar bedrijven
-            </Link>
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title={company.name}
+        description={
+          <Link href="/bedrijven" className="hover:underline">
+            Terug naar bedrijven
+          </Link>
+        }
+      />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-md font-medium text-fg">Gegevens</h2>

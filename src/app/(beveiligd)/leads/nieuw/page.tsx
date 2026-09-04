@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
+import { PageHeader } from "@/components/shell/page-header";
 import { listCompanies } from "@/lib/company-service";
 import { listContacts } from "@/lib/contact-service";
 import { listDealStages, listLeadSources } from "@/lib/deal-service";
@@ -18,16 +19,14 @@ export default async function NieuweLeadPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Nieuwe lead</h1>
-          <p className="page-header-description">
-            <Link href="/leads" className="hover:underline">
-              Terug naar de pijplijn
-            </Link>
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Nieuwe lead"
+        description={
+          <Link href="/leads" className="hover:underline">
+            Terug naar de pijplijn
+          </Link>
+        }
+      />
       <DealForm
         action={createDealAction}
         submitLabel="Lead opslaan"

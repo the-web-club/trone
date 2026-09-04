@@ -1,9 +1,11 @@
 import "server-only";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
+import { paginateArgs, type PagedList } from "@/lib/list-query";
 
 export async function listCompanies(query?: string) {
   const prisma = getPrismaClient();
@@ -16,6 +18,72 @@ export async function listCompanies(query?: string) {
       _count: { select: { contacts: true } },
     },
   });
+}
+
+export type CompanyListFilters = {
+  query?: string;
+  city?: string;
+  country?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+function buildCompanyListWhere(
+  filters: CompanyListFilters,
+): Prisma.CompanyWhereInput {
+  const and: Prisma.CompanyWhereInput[] = [];
+  const query = filters.query?.trim();
+  if (query) and.push({ name: { contains: query } });
+  if (filters.city?.trim()) and.push({ city: filters.city.trim() });
+  if (filters.country?.trim()) and.push({ country: filters.country.trim() });
+  return and.length ? { AND: and } : {};
+}
+
+export async function listCompanyRows(
+  filters: CompanyListFilters = {},
+): Promise<PagedList<Awaited<ReturnType<typeof listCompanies>>[number]>> {
+  const prisma = getPrismaClient();
+  const where = buildCompanyListWhere(filters);
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+
+  const [total, items] = await Promise.all([
+    prisma.company.count({ where }),
+    prisma.company.findMany({
+      where,
+      orderBy: { name: "asc" },
+      include: { _count: { select: { contacts: true } } },
+      skip,
+      take,
+    }),
+  ]);
+
+  return { items, total, page, pageSize };
+}
+
+export async function listCompanyCities() {
+  const prisma = getPrismaClient();
+  const rows = await prisma.company.findMany({
+    where: { city: { not: null } },
+    select: { city: true },
+    distinct: ["city"],
+    orderBy: { city: "asc" },
+  });
+  return rows
+    .map((row) => row.city)
+    .filter((city): city is string => Boolean(city?.trim()));
+}
+
+export async function listCompanyCountries() {
+  const prisma = getPrismaClient();
+  const rows = await prisma.company.findMany({
+    select: { country: true },
+    distinct: ["country"],
+    orderBy: { country: "asc" },
+  });
+  return rows.map((row) => row.country).filter(Boolean);
 }
 
 export async function getCompany(id: string) {

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LeadsBrowser } from "@/components/deal/leads-browser";
 import { LeadsKanban } from "@/components/deal/leads-kanban";
 import {
   formatListContactName,
   LeadsListTable,
 } from "@/components/deal/leads-list-table";
+import { ListPagination } from "@/components/list/list-pagination";
 import { requireSession } from "@/lib/auth-session";
 import {
   getDealFilterFacets,
@@ -167,31 +167,11 @@ export default async function LeadsPage({
             }))}
             emptyMessage={emptyMessage}
           />
-          {result.total > 0 ? (
-            <nav className="page-pagination" aria-label="Paginering">
-              <p className="text-sm text-fg-muted">
-                Pagina {parsed.pagina} van {totalPages}
-              </p>
-              <div className="flex gap-2">
-                {parsed.pagina > 1 ? (
-                  <Link
-                    href={pageHref(parsed.pagina - 1)}
-                    className="inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm text-fg hover:bg-hover"
-                  >
-                    Vorige
-                  </Link>
-                ) : null}
-                {parsed.pagina < totalPages ? (
-                  <Link
-                    href={pageHref(parsed.pagina + 1)}
-                    className="inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm text-fg hover:bg-hover"
-                  >
-                    Volgende
-                  </Link>
-                ) : null}
-              </div>
-            </nav>
-          ) : null}
+          <ListPagination
+            page={parsed.pagina}
+            totalPages={totalPages}
+            hrefForPage={pageHref}
+          />
         </>
       )}
     </LeadsBrowser>

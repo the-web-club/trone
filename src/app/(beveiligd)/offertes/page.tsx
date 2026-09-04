@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { QuoteStatus } from "@/generated/prisma/client";
+import { ListBody, ListBrowser } from "@/components/list/list-browser";
+import { ListPagination } from "@/components/list/list-pagination";
+import { QuotesFilters } from "@/components/quote/quotes-filters";
+import {
+  PageHeader,
+  pageActionPrimaryClassName,
+} from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -15,138 +19,140 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { listQuotes } from "@/lib/quote-service";
-import {
-  quoteStatusLabels,
-  quoteStatuses,
-  quoteStatusTones,
-} from "@/lib/quote-validation";
-import { formatQuoteVersionNumber } from "@/lib/quote-version";
+import { listCompanies } from "@/lib/company-service";
 import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
+import { listSummary } from "@/lib/list-copy";
+import { listQuoteRows } from "@/lib/quote-service";
+import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
+import { formatQuoteVersionNumber } from "@/lib/quote-version";
+import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
 
 export const metadata: Metadata = { title: "Offertes" };
 
 export default async function OffertesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q, status } = await searchParams;
-  const query = q?.trim() ?? "";
-  const statusFilter = quoteStatuses.includes(
-    status as (typeof quoteStatuses)[number],
-  )
-    ? (status as QuoteStatus)
-    : undefined;
+  const parsed = parseQuotesSearchParams(await searchParams);
+  const hasFilters = Boolean(
+    parsed.zoeken || parsed.status || parsed.klant || parsed.van || parsed.tot,
+  );
 
-  const quotes = await listQuotes({
-    query: query || undefined,
-    status: statusFilter,
-  });
+  const [result, companies] = await Promise.all([
+    listQuoteRows({
+      query: parsed.zoeken || undefined,
+      status: (parsed.status || undefined) as QuoteStatus | undefined,
+      companyId: parsed.klant || undefined,
+      van: parsed.van || undefined,
+      tot: parsed.tot || undefined,
+      page: parsed.pagina,
+    }),
+    listCompanies(),
+  ]);
+
+  const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
+  const emptyMessage = hasFilters
+    ? "Geen offertes gevonden voor deze filters."
+    : "Nog geen offertes. Stel de eerste samen.";
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Offertes</h1>
-          <p className="page-header-description">
-            Samenstellen met live prijs. De server herberekent het bindende
-            bedrag bij opslaan.
-          </p>
-        </div>
-        <div className="page-actions">
-          <Link
-            href="/offertes/nieuw"
-            className="inline-flex h-8 items-center rounded-sm bg-accent px-3 text-sm font-medium text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover"
-          >
+    <ListBrowser>
+      <PageHeader
+        title="Offertes"
+        description="Samenstellen met live prijs. De server herberekent het bindende bedrag bij opslaan."
+        meta={[
+          result.total === 0 && hasFilters
+            ? "Geen resultaten"
+            : listSummary(result.total, "offerte", "offertes"),
+        ]}
+        actions={
+          <Link href="/offertes/nieuw" className={pageActionPrimaryClassName()}>
             Nieuwe offerte
           </Link>
-        </div>
-      </header>
-
-      <form method="get" className="flex max-w-2xl flex-wrap gap-2">
-        <Input
-          name="q"
-          type="search"
-          placeholder="Zoek op nummer of klant"
-          defaultValue={query}
-          aria-label="Zoek offertes"
-          className="max-w-xs"
+        }
+      />
+      <QuotesFilters
+        values={parsed}
+        companies={companies.map((company) => ({
+          id: company.id,
+          name: company.name,
+        }))}
+      />
+      <ListBody>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Nummer</TableHeaderCell>
+                <TableHeaderCell>Versie</TableHeaderCell>
+                <TableHeaderCell>Klant</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell align="right">Totaal excl. btw</TableHeaderCell>
+                <TableHeaderCell>Datum</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.items.length === 0 ? (
+                <TableEmptyRow colSpan={6}>
+                  {emptyMessage}
+                  {!hasFilters ? (
+                    <>
+                      {" "}
+                      <Link href="/offertes/nieuw" className="text-fg hover:underline">
+                        Nieuwe offerte
+                      </Link>
+                    </>
+                  ) : null}
+                </TableEmptyRow>
+              ) : (
+                result.items.map((quote) => (
+                  <TableRow key={quote.id} interactive>
+                    <TableCell>
+                      <Link
+                        href={`/offertes/${quote.id}`}
+                        className="font-medium text-fg hover:underline"
+                      >
+                        {quote.quoteNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {quote.currentVersionNumber > 0
+                        ? formatQuoteVersionNumber(
+                            quote.quoteNumber,
+                            quote.currentVersionNumber,
+                          )
+                        : "Concept"}
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {quote.company.name}
+                      {quote.contact
+                        ? ` · ${formatPersonName(quote.contact.firstName, quote.contact.lastName)}`
+                        : ""}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={quoteStatusTones[quote.status]}>
+                        {quoteStatusLabels[quote.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell align="right">
+                      {formatEuroExact(Number(quote.total))}
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {formatDate(quote.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <ListPagination
+          page={parsed.pagina}
+          totalPages={totalPages}
+          hrefForPage={(pagina) => buildQuotesHref({ ...parsed, pagina })}
         />
-        <Select name="status" defaultValue={statusFilter ?? ""} className="max-w-48" aria-label="Filter op status">
-          <option value="">Alle statussen</option>
-          {quoteStatuses.map((value) => (
-            <option key={value} value={value}>
-              {quoteStatusLabels[value]}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" variant="secondary">
-          Filteren
-        </Button>
-      </form>
-
-      <TableContainer>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Nummer</TableHeaderCell>
-              <TableHeaderCell>Versie</TableHeaderCell>
-              <TableHeaderCell>Klant</TableHeaderCell>
-              <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell align="right">Totaal excl. btw</TableHeaderCell>
-              <TableHeaderCell>Datum</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quotes.length === 0 ? (
-              <TableEmptyRow colSpan={6}>
-                {query || statusFilter
-                  ? "Geen offertes gevonden voor deze filters."
-                  : "Nog geen offertes. Stel de eerste samen."}
-              </TableEmptyRow>
-            ) : (
-              quotes.map((quote) => (
-                <TableRow key={quote.id} interactive>
-                  <TableCell>
-                    <Link
-                      href={`/offertes/${quote.id}`}
-                      className="font-medium text-fg hover:underline"
-                    >
-                      {quote.quoteNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-fg-muted">
-                    {quote.currentVersionNumber > 0
-                      ? formatQuoteVersionNumber(
-                          quote.quoteNumber,
-                          quote.currentVersionNumber,
-                        )
-                      : "Concept"}
-                  </TableCell>
-                  <TableCell className="text-fg-muted">
-                    {quote.company.name}
-                    {quote.contact
-                      ? ` · ${formatPersonName(quote.contact.firstName, quote.contact.lastName)}`
-                      : ""}
-                  </TableCell>
-                  <TableCell>
-                    <Badge tone={quoteStatusTones[quote.status]}>
-                      {quoteStatusLabels[quote.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatEuroExact(Number(quote.total))}
-                  </TableCell>
-                  <TableCell className="text-fg-muted">
-                    {formatDate(quote.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </div>
+      </ListBody>
+    </ListBrowser>
   );
 }

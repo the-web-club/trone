@@ -1,9 +1,15 @@
 import "server-only";
 
 import type { Prisma, QuoteStatus } from "@/generated/prisma/client";
+import {
+  endExclusiveOfCalendarDate,
+  normalizeDateOnlyInput,
+  startOfCalendarDate,
+} from "@/lib/date-input";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
+import { paginateArgs } from "@/lib/list-query";
 import { loadPricingContext } from "@/lib/pricing-context";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { nextNumber, SEQ_QUOTE_2026 } from "@/lib/number-sequence-service";
@@ -123,7 +129,6 @@ export async function getQuoteComposerData() {
 export async function listQuotes(filters?: { query?: string; status?: QuoteStatus }) {
   const prisma = getPrismaClient();
   const query = filters?.query?.trim();
-
   return prisma.quote.findMany({
     where: {
       ...(filters?.status ? { status: filters.status } : {}),
@@ -142,6 +147,64 @@ export async function listQuotes(filters?: { query?: string; status?: QuoteStatu
       contact: { select: { id: true, firstName: true, lastName: true } },
     },
   });
+}
+
+export type QuoteListFilters = {
+  query?: string;
+  status?: QuoteStatus;
+  companyId?: string;
+  van?: string;
+  tot?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function listQuoteRows(filters: QuoteListFilters = {}) {
+  const prisma = getPrismaClient();
+  const query = filters.query?.trim();
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+
+  const and: Prisma.QuoteWhereInput[] = [];
+  if (filters.status) and.push({ status: filters.status });
+  if (filters.companyId) and.push({ companyId: filters.companyId });
+  if (query) {
+    and.push({
+      OR: [
+        { quoteNumber: { contains: query } },
+        { company: { name: { contains: query } } },
+      ],
+    });
+  }
+  const van = normalizeDateOnlyInput(filters.van);
+  const tot = normalizeDateOnlyInput(filters.tot);
+  if (van || tot) {
+    const createdAt: Prisma.DateTimeFilter = {};
+    if (van) createdAt.gte = startOfCalendarDate(van);
+    if (tot) createdAt.lt = endExclusiveOfCalendarDate(tot);
+    and.push({ createdAt });
+  }
+
+  const where = and.length ? { AND: and } : {};
+  const include = {
+    company: { select: { id: true, name: true } },
+    contact: { select: { id: true, firstName: true, lastName: true } },
+  } as const;
+
+  const [total, items] = await Promise.all([
+    prisma.quote.count({ where }),
+    prisma.quote.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include,
+      skip,
+      take,
+    }),
+  ]);
+
+  return { items, total, page, pageSize };
 }
 
 const quoteHeaderInclude = {

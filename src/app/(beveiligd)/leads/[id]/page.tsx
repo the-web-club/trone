@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { updateDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealActivityForm } from "@/components/deal/deal-activity-form";
 import { DealForm } from "@/components/deal/deal-form";
+import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { listCompanies } from "@/lib/company-service";
 import { listContacts } from "@/lib/contact-service";
@@ -49,10 +50,10 @@ export default async function LeadDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">{deal.title}</h1>
-          <p className="page-header-description">
+      <PageHeader
+        title={deal.title}
+        description={
+          <>
             <Link href="/leads" className="hover:underline">
               Terug naar de pijplijn
             </Link>
@@ -68,16 +69,18 @@ export default async function LeadDetailPage({
               </>
             ) : null}
             {contactName ? <>{" · "}{contactName}</> : null}
-          </p>
-        </div>
-        <Badge
-          tone={
-            deal.stage.isWon ? "success" : deal.stage.isLost ? "danger" : "info"
-          }
-        >
-          {deal.stage.name}
-        </Badge>
-      </header>
+          </>
+        }
+        actions={
+          <Badge
+            tone={
+              deal.stage.isWon ? "success" : deal.stage.isLost ? "danger" : "info"
+            }
+          >
+            {deal.stage.name}
+          </Badge>
+        }
+      />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-md font-medium text-fg">Gegevens</h2>

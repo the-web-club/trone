@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -46,15 +47,10 @@ export default async function LogboekPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Logboek</h1>
-          <p className="page-header-description">
-            Snel vastleggen wat je hebt gedaan. Alleen de omschrijving is
-            verplicht.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Logboek"
+        description="Snel vastleggen wat je hebt gedaan. Alleen de omschrijving is verplicht."
+      />
 
       <div className="rounded-md border border-border bg-surface p-3">
         <WorkLogForm

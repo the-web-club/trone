@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Users } from "lucide-react";
+import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/ui/panel";
 import { getSessionRole, requireSession } from "@/lib/auth-session";
 
@@ -12,14 +13,10 @@ export default async function InstellingenPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Instellingen</h1>
-          <p className="page-header-description">
-            Beheer van de interne workspace.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Instellingen"
+        description="Beheer van de interne workspace."
+      />
 
       <Link href="/instellingen/medewerkers" className="block max-w-lg">
         <Panel className="transition-colors duration-[var(--motion-fast)] hover:bg-hover-subtle">

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { paginateArgs } from "@/lib/list-query";
 import type { InviteUserInput, StaffStatus, UserRole } from "@/lib/user-validation";
 
 function hasCredentialPassword(accounts: { providerId: string; password: string | null }[]) {
@@ -32,6 +33,36 @@ export async function listUsers() {
       },
     },
   });
+}
+
+export async function listStaffRows(filters?: {
+  query?: string;
+  role?: string;
+  status?: StaffStatus;
+  page?: number;
+  pageSize?: number;
+}) {
+  const users = await listUsers();
+  const query = filters?.query?.trim().toLowerCase() ?? "";
+  const filtered = users.filter((user) => {
+    if (query) {
+      const haystack = `${user.name} ${user.email}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    if (filters?.role && user.role !== filters.role) return false;
+    if (filters?.status && staffStatus(user) !== filters.status) return false;
+    return true;
+  });
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters?.page,
+    filters?.pageSize,
+  );
+  return {
+    items: filtered.slice(skip, skip + take),
+    total: filtered.length,
+    page,
+    pageSize,
+  };
 }
 
 export async function getUser(id: string) {

@@ -1,10 +1,12 @@
 import "server-only";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import { getCompany } from "@/lib/company-service";
 import type { ContactInput } from "@/lib/contact-validation";
+import { paginateArgs } from "@/lib/list-query";
 
 export async function listContacts() {
   const prisma = getPrismaClient();
@@ -12,6 +14,49 @@ export async function listContacts() {
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     include: { company: { select: { id: true, name: true } } },
   });
+}
+
+export type ContactListFilters = {
+  query?: string;
+  companyId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function listContactRows(filters: ContactListFilters = {}) {
+  const prisma = getPrismaClient();
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+  const query = filters.query?.trim();
+  const and: Prisma.ContactWhereInput[] = [];
+  if (query) {
+    and.push({
+      OR: [
+        { firstName: { contains: query } },
+        { lastName: { contains: query } },
+        { email: { contains: query } },
+      ],
+    });
+  }
+  if (filters.companyId) {
+    and.push({ companyId: filters.companyId });
+  }
+  const where = and.length ? { AND: and } : {};
+
+  const [total, items] = await Promise.all([
+    prisma.contact.count({ where }),
+    prisma.contact.findMany({
+      where,
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      include: { company: { select: { id: true, name: true } } },
+      skip,
+      take,
+    }),
+  ]);
+
+  return { items, total, page, pageSize };
 }
 
 export async function getContact(id: string) {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { QuoteLines } from "@/components/quote/quote-lines";
 import { QuoteVersionActions } from "@/components/quote/quote-version-actions";
@@ -96,10 +97,10 @@ export default async function OfferteDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">{versionLabel}</h1>
-          <p className="page-header-description">
+      <PageHeader
+        title={versionLabel}
+        description={
+          <>
             <Link href="/offertes" className="hover:underline">
               Terug naar offertes
             </Link>
@@ -122,12 +123,14 @@ export default async function OfferteDetailPage({
               </>
             ) : null}
             {` · ${formatDate(quote.createdAt)}`}
-          </p>
-        </div>
-        <Badge tone={quoteStatusTones[displayStatus]}>
-          {quoteStatusLabels[displayStatus]}
-        </Badge>
-      </header>
+          </>
+        }
+        actions={
+          <Badge tone={quoteStatusTones[displayStatus]}>
+            {quoteStatusLabels[displayStatus]}
+          </Badge>
+        }
+      />
 
       <QuoteVersionActions
         quoteId={quote.id}

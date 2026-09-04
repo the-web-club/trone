@@ -1,4 +1,9 @@
 import { normalizeDateOnlyInput, parseAmountInput } from "@/lib/date-input";
+import {
+  firstSearchParam,
+  parsePageParam,
+  toListHref,
+} from "@/lib/list-query";
 
 export type DealsView = "lijst" | "kanban";
 
@@ -79,32 +84,23 @@ export function parseDealDateField(
   return value?.trim().toLowerCase() === "verwacht" ? "verwacht" : "aangemaakt";
 }
 
-function firstParam(
-  params: Record<string, string | string[] | undefined>,
-  key: string,
-): string {
-  const value = params[key];
-  if (Array.isArray(value)) return value[0] ?? "";
-  return value ?? "";
-}
-
 export function parseDealsSearchParams(
   params: Record<string, string | string[] | undefined>,
 ): DealsFilterValues & { pagina: number; view: DealsView } {
-  const view = parseDealsView(firstParam(params, "view"));
+  const view = parseDealsView(firstSearchParam(params, "view"));
   return {
-    zoeken: firstParam(params, "zoeken").trim(),
-    fase: view === "kanban" ? "" : firstParam(params, "fase").trim(),
-    bron: firstParam(params, "bron").trim(),
-    eigenaar: parseDealOwnerFilter(firstParam(params, "eigenaar")),
-    status: parseDealStatusFilter(firstParam(params, "status")),
-    waardeMin: parseAmountInput(firstParam(params, "waarde-min"))?.toString() ?? "",
-    waardeMax: parseAmountInput(firstParam(params, "waarde-max"))?.toString() ?? "",
-    van: normalizeDateOnlyInput(firstParam(params, "van")) ?? "",
-    tot: normalizeDateOnlyInput(firstParam(params, "tot")) ?? "",
-    datumveld: parseDealDateField(firstParam(params, "datumveld")),
-    sortering: parseDealSort(firstParam(params, "sortering")),
-    pagina: Math.max(Number(firstParam(params, "pagina") || "1") || 1, 1),
+    zoeken: firstSearchParam(params, "zoeken").trim(),
+    fase: view === "kanban" ? "" : firstSearchParam(params, "fase").trim(),
+    bron: firstSearchParam(params, "bron").trim(),
+    eigenaar: parseDealOwnerFilter(firstSearchParam(params, "eigenaar")),
+    status: parseDealStatusFilter(firstSearchParam(params, "status")),
+    waardeMin: parseAmountInput(firstSearchParam(params, "waarde-min"))?.toString() ?? "",
+    waardeMax: parseAmountInput(firstSearchParam(params, "waarde-max"))?.toString() ?? "",
+    van: normalizeDateOnlyInput(firstSearchParam(params, "van")) ?? "",
+    tot: normalizeDateOnlyInput(firstSearchParam(params, "tot")) ?? "",
+    datumveld: parseDealDateField(firstSearchParam(params, "datumveld")),
+    sortering: parseDealSort(firstSearchParam(params, "sortering")),
+    pagina: parsePageParam(firstSearchParam(params, "pagina")),
     view,
   };
 }
@@ -148,14 +144,11 @@ export function buildDealsHref(values: DealsQueryValues): string {
   if (pagina > 1) query.set("pagina", String(pagina));
   if (view !== "lijst") query.set("view", view);
 
-  const qs = query.toString();
-  return qs ? `/leads?${qs}` : "/leads";
+  return toListHref("/leads", query);
 }
 
 export function buildDealsExportHref(
   values: Omit<DealsQueryValues, "pagina" | "view">,
 ): string {
-  const query = buildDealsFilterQuery(values);
-  const qs = query.toString();
-  return qs ? `/leads/exporteren?${qs}` : "/leads/exporteren";
+  return toListHref("/leads/exporteren", buildDealsFilterQuery(values));
 }

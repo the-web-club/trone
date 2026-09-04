@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { isAppError } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
+import { orderStatusLabels, orderStatusTones } from "@/lib/orders-query";
 import { getOrderForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
 export async function generateMetadata({
@@ -22,16 +24,6 @@ export async function generateMetadata({
   }
 }
 
-const orderStatusLabels: Record<string, string> = {
-  NEW: "Nieuw",
-  CONFIRMED: "Bevestigd",
-  IN_PRODUCTION: "In productie",
-  READY: "Gereed",
-  SHIPPED: "Verzonden",
-  DELIVERED: "Geleverd",
-  CANCELLED: "Geannuleerd",
-};
-
 export default async function OrderDetailPage({
   params,
 }: {
@@ -47,10 +39,10 @@ export default async function OrderDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">{order.orderNumber}</h1>
-          <p className="page-header-description">
+      <PageHeader
+        title={order.orderNumber}
+        description={
+          <>
             <Link href="/orders" className="hover:underline">
               Terug naar orders
             </Link>
@@ -63,10 +55,14 @@ export default async function OrderDetailPage({
             </Link>
             {" · "}
             {formatDate(order.createdAt)}
-          </p>
-        </div>
-        <Badge>{orderStatusLabels[order.status] ?? order.status}</Badge>
-      </header>
+          </>
+        }
+        actions={
+          <Badge tone={orderStatusTones[order.status]}>
+            {orderStatusLabels[order.status]}
+          </Badge>
+        }
+      />
 
       <WorkLogSection
         title="Werkzaamheden"

@@ -48,10 +48,12 @@ export function StaffTable({
   users,
   currentUserId,
   canManage,
+  emptyMessage = "Nog geen medewerkers.",
 }: {
   users: StaffRow[];
   currentUserId: string;
   canManage: boolean;
+  emptyMessage?: string;
 }) {
   return (
     <TableContainer>
@@ -68,7 +70,7 @@ export function StaffTable({
         <TableBody>
           {users.length === 0 ? (
             <TableEmptyRow colSpan={canManage ? 5 : 4}>
-              Nog geen medewerkers.
+              {emptyMessage}
             </TableEmptyRow>
           ) : (
             users.map((user) => (
@@ -150,9 +152,9 @@ function StaffRowActions({
             </Select>
           </form>
         ) : (
-          <span className="text-fg-muted">
+          <Badge tone={user.role === "admin" ? "warning" : "default"}>
             {isUserRole(user.role) ? userRoleLabels[user.role] : user.role}
-          </span>
+          </Badge>
         )}
       </TableCell>
       <TableCell>

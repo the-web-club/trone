@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QuoteForm } from "@/components/quote/quote-form";
+import { PageHeader } from "@/components/shell/page-header";
 import { isAppError } from "@/lib/errors";
 import { getQuote, getQuoteComposerData } from "@/lib/quote-service";
 import { toQuoteItemInput } from "@/lib/quote-version";
@@ -56,21 +57,18 @@ export default async function OfferteBewerkenPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">
-            {formatQuoteVersionNumber(quote.quoteNumber, quote.currentVersionNumber)}{" "}
-            bewerken
-          </h1>
-          <p className="page-header-description">
+      <PageHeader
+        title={`${formatQuoteVersionNumber(quote.quoteNumber, quote.currentVersionNumber)} bewerken`}
+        description={
+          <>
             <Link href={`/offertes/${quote.id}`} className="hover:underline">
               Terug naar offerte
             </Link>
             {" · "}
             Concept. Bij versturen wordt de huidige staat vastgelegd.
-          </p>
-        </div>
-      </header>
+          </>
+        }
+      />
       <QuoteForm
         catalog={data.catalog}
         companies={data.companies}

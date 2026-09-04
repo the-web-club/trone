@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { CatalogPrices } from "@/components/catalog/catalog-prices";
 import { ProductImagesAdmin } from "@/components/catalog/product-images-admin";
 import { SwatchEditor } from "@/components/catalog/swatch-editor";
+import { PageHeader } from "@/components/shell/page-header";
+import { Panel } from "@/components/ui/panel";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { listProductsWithOptions } from "@/lib/catalog-service";
 import { isSwatchOption } from "@/lib/product-visuals";
@@ -17,15 +19,11 @@ export default async function ProductenPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Producten</h1>
-          <p className="page-header-description">
-            Catalogusprijzen. Wijzigingen gelden alleen voor nieuwe offertes;
-            bestaande offertes blijven bevroren.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Producten"
+        description="Catalogusprijzen. Wijzigingen gelden alleen voor nieuwe offertes; bestaande offertes blijven bevroren."
+        meta={[canEdit ? "Bewerkbaar" : "Alleen-lezen"]}
+      />
 
       {!canEdit ? (
         <p className="text-sm text-fg-muted">
@@ -49,13 +47,13 @@ export default async function ProductenPage() {
         {catalog.options
           .filter((option) => isSwatchOption(option.code))
           .map((option) => (
-            <div key={option.id} className="flex flex-col gap-3">
+            <Panel key={option.id} className="flex flex-col gap-3">
               <h3 className="text-sm font-medium text-fg">{option.name}</h3>
               <ul className="flex flex-col gap-3">
                 {option.values.map((value) => (
                   <li
                     key={value.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border px-3 py-2"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border bg-surface-sunk/40 px-3 py-2"
                   >
                     <span className="text-sm text-fg">{value.value}</span>
                     <SwatchEditor
@@ -68,7 +66,7 @@ export default async function ProductenPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Panel>
           ))}
       </section>
 

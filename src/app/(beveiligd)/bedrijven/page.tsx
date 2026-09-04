@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CompaniesFilters } from "@/components/company/companies-filters";
+import { ListBody, ListBrowser } from "@/components/list/list-browser";
+import { ListPagination } from "@/components/list/list-pagination";
+import {
+  PageHeader,
+  pageActionPrimaryClassName,
+} from "@/components/shell/page-header";
 import {
   Table,
   TableBody,
@@ -12,90 +17,120 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { listCompanies } from "@/lib/company-service";
+import {
+  listCompanyCities,
+  listCompanyCountries,
+  listCompanyRows,
+} from "@/lib/company-service";
+import {
+  buildCompaniesHref,
+  parseCompaniesSearchParams,
+} from "@/lib/companies-query";
+import { countryLabel, listSummary } from "@/lib/list-copy";
 
 export const metadata: Metadata = { title: "Bedrijven" };
 
 export default async function BedrijvenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q } = await searchParams;
-  const query = q?.trim() ?? "";
-  const companies = await listCompanies(query || undefined);
+  const parsed = parseCompaniesSearchParams(await searchParams);
+  const hasFilters = Boolean(parsed.zoeken || parsed.plaats || parsed.land);
+
+  const [result, cities, countries] = await Promise.all([
+    listCompanyRows({
+      query: parsed.zoeken || undefined,
+      city: parsed.plaats || undefined,
+      country: parsed.land || undefined,
+      page: parsed.pagina,
+    }),
+    listCompanyCities(),
+    listCompanyCountries(),
+  ]);
+
+  const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
+  const emptyMessage = hasFilters
+    ? "Geen bedrijven gevonden voor deze filters."
+    : "Nog geen bedrijven. Voeg het eerste bedrijf toe.";
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Bedrijven</h1>
-          <p className="page-header-description">
-            Klanten en prospects. Contacten, leads en offertes hangen hieraan.
-          </p>
-        </div>
-        <div className="page-actions">
-          <Link
-            href="/bedrijven/nieuw"
-            className="inline-flex h-8 items-center rounded-sm bg-accent px-3 text-sm font-medium text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover"
-          >
+    <ListBrowser>
+      <PageHeader
+        title="Bedrijven"
+        description="Klanten en prospects. Contacten, leads en offertes hangen hieraan."
+        meta={[
+          result.total === 0 && hasFilters
+            ? "Geen resultaten"
+            : listSummary(result.total, "bedrijf", "bedrijven"),
+        ]}
+        actions={
+          <Link href="/bedrijven/nieuw" className={pageActionPrimaryClassName()}>
             Nieuw bedrijf
           </Link>
-        </div>
-      </header>
-
-      <form method="get" className="flex max-w-sm gap-2">
-        <Input
-          name="q"
-          type="search"
-          placeholder="Zoek op naam"
-          defaultValue={query}
-          aria-label="Zoek bedrijven"
+        }
+      />
+      <CompaniesFilters
+        values={parsed}
+        cities={cities}
+        countries={countries}
+      />
+      <ListBody>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Naam</TableHeaderCell>
+                <TableHeaderCell>Plaats</TableHeaderCell>
+                <TableHeaderCell>Land</TableHeaderCell>
+                <TableHeaderCell align="right">Contacten</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.items.length === 0 ? (
+                <TableEmptyRow colSpan={4}>
+                  {emptyMessage}
+                  {!hasFilters ? (
+                    <>
+                      {" "}
+                      <Link href="/bedrijven/nieuw" className="text-fg hover:underline">
+                        Nieuw bedrijf
+                      </Link>
+                    </>
+                  ) : null}
+                </TableEmptyRow>
+              ) : (
+                result.items.map((company) => (
+                  <TableRow key={company.id} interactive>
+                    <TableCell>
+                      <Link
+                        href={`/bedrijven/${company.id}`}
+                        className="font-medium text-fg hover:underline"
+                      >
+                        {company.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {company.city || "—"}
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {countryLabel(company.country)}
+                    </TableCell>
+                    <TableCell align="right" className="text-fg-muted">
+                      {company._count.contacts}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <ListPagination
+          page={parsed.pagina}
+          totalPages={totalPages}
+          hrefForPage={(pagina) => buildCompaniesHref({ ...parsed, pagina })}
         />
-        <Button type="submit" variant="secondary">
-          Zoeken
-        </Button>
-      </form>
-
-      <TableContainer>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Naam</TableHeaderCell>
-              <TableHeaderCell>Plaats</TableHeaderCell>
-              <TableHeaderCell align="right">Contacten</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {companies.length === 0 ? (
-              <TableEmptyRow colSpan={3}>
-                {query
-                  ? "Geen bedrijven gevonden voor deze zoekopdracht."
-                  : "Nog geen bedrijven. Voeg het eerste bedrijf toe."}
-              </TableEmptyRow>
-            ) : (
-              companies.map((company) => (
-                <TableRow key={company.id} interactive>
-                  <TableCell>
-                    <Link
-                      href={`/bedrijven/${company.id}`}
-                      className="font-medium text-fg hover:underline"
-                    >
-                      {company.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-fg-muted">
-                    {company.city || "—"}
-                  </TableCell>
-                  <TableCell align="right" className="text-fg-muted">
-                    {company._count.contacts}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </div>
+      </ListBody>
+    </ListBrowser>
   );
 }
