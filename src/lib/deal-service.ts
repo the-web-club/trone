@@ -584,6 +584,15 @@ export async function moveDealToStage(
   return updated;
 }
 
+export async function setDealHot(id: string, isHot: boolean) {
+  await getDeal(id);
+  const prisma = getPrismaClient();
+  return prisma.deal.update({
+    where: { id },
+    data: { isHot },
+  });
+}
+
 export async function addDealActivity(
   dealId: string,
   input: DealActivityInput,

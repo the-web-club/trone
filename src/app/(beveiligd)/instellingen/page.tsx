@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { SlidersHorizontal, Users } from "lucide-react";
 import { Lift } from "@/components/motion";
 import { controlMotion } from "@/components/motion/styles";
 import { PageHeader } from "@/components/shell/page-header";
@@ -21,7 +21,8 @@ export default async function InstellingenPage() {
         description="Beheer van de interne workspace."
       />
 
-      <Link href="/instellingen/medewerkers" className="block max-w-lg">
+      <div className="flex max-w-lg flex-col gap-3">
+      <Link href="/instellingen/medewerkers" className="block">
         <Lift>
         <Panel className={cn("hover:bg-hover-subtle", controlMotion)}>
           <div className="flex items-start gap-3">
@@ -38,6 +39,24 @@ export default async function InstellingenPage() {
         </Panel>
         </Lift>
       </Link>
+      <Link href="/instellingen/drempels" className="block">
+        <Lift>
+        <Panel className={cn("hover:bg-hover-subtle", controlMotion)}>
+          <div className="flex items-start gap-3">
+            <SlidersHorizontal className="mt-0.5 size-4 text-fg-muted" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-fg">Drempels</p>
+              <p className="mt-0.5 text-sm text-fg-muted">
+                {canManage
+                  ? "Pas stilte, opvolging en hot-waarde aan voor het kansen-overzicht."
+                  : "Bekijk de drempels voor stilte, opvolging en hot leads."}
+              </p>
+            </div>
+          </div>
+        </Panel>
+        </Lift>
+      </Link>
+      </div>
     </div>
   );
 }

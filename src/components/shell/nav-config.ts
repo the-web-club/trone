@@ -3,6 +3,7 @@ import {
   Building2,
   CheckSquare,
   ClipboardList,
+  Flame,
   FileText,
   LayoutDashboard,
   Package,
@@ -20,6 +21,7 @@ export type AppNavItem = {
 
 export const appNavItems: AppNavItem[] = [
   { href: "/overzicht", label: "Overzicht", icon: LayoutDashboard },
+  { href: "/kansen", label: "Kansen", icon: Flame },
   { href: "/leads", label: "Leads", icon: Workflow },
   { href: "/taken", label: "Taken", icon: CheckSquare },
   { href: "/bedrijven", label: "Bedrijven", icon: Building2 },

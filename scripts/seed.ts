@@ -148,6 +148,20 @@ async function main() {
     }
   }
 
+  // --- App settings (defaults only; never overwrite admin edits) ---
+  const settings = [
+    { key: "stil_dagen", value: "14" },
+    { key: "opvolging_maanden", value: "3" },
+    { key: "hot_waarde", value: "2500" },
+  ];
+  for (const setting of settings) {
+    await prisma.appSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: { id: createId(), key: setting.key, value: setting.value },
+    });
+  }
+
   console.log("Seed voltooid.");
 }
 

@@ -7,6 +7,7 @@ import {
   addDealActivity,
   createDeal,
   moveDealToStage,
+  setDealHot,
   updateDeal,
 } from "@/lib/deal-service";
 import { parseDealActivityForm, parseDealForm } from "@/lib/deal-validation";
@@ -68,6 +69,23 @@ export async function moveDealToStageAction(
     const session = await requireSession();
     await moveDealToStage(dealId, stageId, session.user.id);
     revalidateDealPaths(dealId);
+    return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function toggleDealHotAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    await requireSession();
+    const id = String(formData.get("id") ?? "");
+    const isHot = formData.get("isHot") === "true";
+    await setDealHot(id, isHot);
+    revalidateDealPaths(id);
+    revalidatePath("/kansen");
     return {};
   } catch (error) {
     return toActionError(error);

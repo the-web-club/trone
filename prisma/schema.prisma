@@ -193,6 +193,7 @@ model Deal {
   status        DealStatus @default(OPEN)
   lostReason    String?
   expectedClose DateTime?  @db.Date
+  isHot         Boolean    @default(false)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -755,4 +756,13 @@ model WorkLog {
   @@index([orderId])
   @@index([occurredAt])
   @@map("work_log")
+}
+
+model AppSetting {
+  id        String   @id
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_setting")
 }

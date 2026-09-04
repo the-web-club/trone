@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
+import { DealHotToggle } from "@/components/deal/deal-hot-toggle";
 import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
 import {
@@ -110,6 +111,7 @@ export default async function LeadDetailPage({
         }
         actions={
           <>
+            <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
             <Link
               href={
                 deal.companyId
@@ -120,6 +122,7 @@ export default async function LeadDetailPage({
             >
               Nieuwe offerte
             </Link>
+            {deal.isHot ? <Badge tone="warning">Hot</Badge> : null}
             <Badge
               tone={
                 deal.stage.isWon ? "success" : deal.stage.isLost ? "danger" : "info"
