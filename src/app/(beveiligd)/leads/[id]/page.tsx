@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
+import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
 import {
   PageHeader,
@@ -19,10 +20,12 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { requireSession } from "@/lib/auth-session";
 import { listCompanies } from "@/lib/company-service";
 import { listContacts } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
+import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import { listTimelineForDeal } from "@/lib/timeline-service";
 import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
 import { orderStatusLabels } from "@/lib/orders-query";
@@ -48,18 +51,26 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requireSession();
   const deal = await getDeal(id).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
 
-  const [stages, sources, companies, contacts, events] = await Promise.all([
-    listDealStages(),
-    listLeadSources(),
-    listCompanies(),
-    listContacts(),
-    listTimelineForDeal(deal.id),
-  ]);
+  const [stages, sources, companies, contacts, events, tasks, assignees] =
+    await Promise.all([
+      listDealStages(),
+      listLeadSources(),
+      listCompanies(),
+      listContacts(),
+      listTimelineForDeal(deal.id),
+      listOpenTasksForEntity({
+        dealId: deal.id,
+        contactId: deal.contactId ?? undefined,
+        companyId: deal.companyId ?? undefined,
+      }),
+      listActiveAssignees(),
+    ]);
   const contactName = deal.contact
     ? formatPersonName(deal.contact.firstName, deal.contact.lastName)
     : null;
@@ -227,6 +238,15 @@ export default async function LeadDetailPage({
           </Table>
         </TableContainer>
       </section>
+
+      <TaskSection
+        tasks={tasks}
+        currentUserId={session.user.id}
+        assignees={assignees}
+        dealId={deal.id}
+        contactId={deal.contactId}
+        companyId={deal.companyId}
+      />
 
       <Timeline
         events={events}

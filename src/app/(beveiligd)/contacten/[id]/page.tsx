@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateContactAction } from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactForm } from "@/components/contact/contact-form";
+import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +17,11 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { requireSession } from "@/lib/auth-session";
 import { getContact } from "@/lib/contact-service";
 import { isAppError } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
+import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import { listTimelineForContact } from "@/lib/timeline-service";
 
 export async function generateMetadata({
@@ -41,11 +44,19 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await requireSession();
   const contact = await getContact(id).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
-  const events = await listTimelineForContact(contact.id);
+  const [events, tasks, assignees] = await Promise.all([
+    listTimelineForContact(contact.id),
+    listOpenTasksForEntity({
+      contactId: contact.id,
+      companyId: contact.companyId ?? undefined,
+    }),
+    listActiveAssignees(),
+  ]);
   const name = formatPersonName(contact.firstName, contact.lastName);
 
   return (
@@ -132,6 +143,14 @@ export default async function ContactDetailPage({
           </Table>
         </TableContainer>
       </section>
+
+      <TaskSection
+        tasks={tasks}
+        currentUserId={session.user.id}
+        assignees={assignees}
+        contactId={contact.id}
+        companyId={contact.companyId}
+      />
 
       <Timeline
         events={events}

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
+  CheckSquare,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -20,6 +21,7 @@ export type AppNavItem = {
 export const appNavItems: AppNavItem[] = [
   { href: "/overzicht", label: "Overzicht", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Workflow },
+  { href: "/taken", label: "Taken", icon: CheckSquare },
   { href: "/bedrijven", label: "Bedrijven", icon: Building2 },
   { href: "/contacten", label: "Contacten", icon: Users },
   { href: "/offertes", label: "Offertes", icon: FileText },

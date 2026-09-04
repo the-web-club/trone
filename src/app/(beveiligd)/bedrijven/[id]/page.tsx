@@ -18,11 +18,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
+import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import { listTimelineForCompany } from "@/lib/timeline-service";
 import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
@@ -51,10 +53,12 @@ export default async function BedrijfDetailPage({
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
-  const [logs, orders, events] = await Promise.all([
+  const [logs, orders, events, tasks, assignees] = await Promise.all([
     listWorkLogs({ companyId: id }),
     listOrdersForWorkLog(undefined, id),
     listTimelineForCompany(id),
+    listOpenTasksForEntity({ companyId: id }),
+    listActiveAssignees(),
   ]);
 
   return (
@@ -167,6 +171,13 @@ export default async function BedrijfDetailPage({
           </Table>
         </TableContainer>
       </section>
+
+      <TaskSection
+        tasks={tasks}
+        currentUserId={session.user.id}
+        assignees={assignees}
+        companyId={company.id}
+      />
 
       <Timeline events={events} companyId={company.id} />
 
