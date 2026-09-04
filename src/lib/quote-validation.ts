@@ -66,6 +66,43 @@ export function parseQuoteStatusForm(formData: FormData): QuoteStatusInput {
   return parsed.data;
 }
 
+export const quoteOutcomeStatuses = ["ACCEPTED", "REJECTED", "EXPIRED"] as const;
+
+export const quoteOutcomeSchema = z.enum(quoteOutcomeStatuses);
+
+export type QuoteOutcomeInput = z.infer<typeof quoteOutcomeSchema>;
+
+export function parseQuoteId(formData: FormData): string {
+  const parsed = z.string().trim().min(1, "Offerte ontbreekt").safeParse(
+    formData.get("id"),
+  );
+  if (!parsed.success) {
+    throw new AppError("Offerte ontbreekt.", "VALIDATION");
+  }
+  return parsed.data;
+}
+
+export function parseQuoteOutcomeForm(formData: FormData): QuoteOutcomeInput {
+  const parsed = quoteOutcomeSchema.safeParse(formData.get("status"));
+  if (!parsed.success) {
+    throw new AppError("Ongeldige offertestatus.", "VALIDATION");
+  }
+  return parsed.data;
+}
+
+export const quoteVersionNumberSchema = z.coerce
+  .number()
+  .int()
+  .min(1, "Versienummer ontbreekt");
+
+export function parseQuoteVersionNumber(value: unknown): number {
+  const parsed = quoteVersionNumberSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new AppError("Ongeldig versienummer.", "VALIDATION");
+  }
+  return parsed.data;
+}
+
 export const quoteStatusLabels = {
   DRAFT: "Concept",
   SENT: "Verzonden",

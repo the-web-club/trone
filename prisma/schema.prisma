@@ -364,10 +364,11 @@ model Configuration {
   createdBy      String?
   createdAt      DateTime @default(now())
 
-  product    Product             @relation(fields: [productId], references: [id])
-  items      ConfigurationItem[]
-  quoteItems QuoteItem[]
-  orderItems OrderItem[]
+  product           Product             @relation(fields: [productId], references: [id])
+  items             ConfigurationItem[]
+  quoteItems        QuoteItem[]
+  quoteVersionItems QuoteVersionItem[]
+  orderItems        OrderItem[]
 
   @@index([productId])
   @@map("configuration")
@@ -400,26 +401,29 @@ enum QuoteStatus {
 }
 
 model Quote {
-  id            String      @id
-  quoteNumber   String      @unique
-  dealId        String?
-  companyId     String
-  contactId     String?
-  status        QuoteStatus @default(DRAFT)
-  subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
-  discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
-  total         Decimal     @default(0.00) @db.Decimal(12, 2)
-  validUntil    DateTime?   @db.Date
-  notes         String?     @db.Text
-  createdBy     String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                   String      @id
+  quoteNumber          String      @unique
+  dealId               String?
+  companyId            String
+  contactId            String?
+  status               QuoteStatus @default(DRAFT)
+  subtotal             Decimal     @default(0.00) @db.Decimal(12, 2)
+  discountTotal        Decimal     @default(0.00) @db.Decimal(12, 2)
+  total                Decimal     @default(0.00) @db.Decimal(12, 2)
+  validUntil           DateTime?   @db.Date
+  notes                String?     @db.Text
+  createdBy            String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  currentVersionId     String?
+  currentVersionNumber Int         @default(0)
 
-  deal    Deal?       @relation(fields: [dealId], references: [id])
-  company Company     @relation(fields: [companyId], references: [id])
-  contact Contact?    @relation(fields: [contactId], references: [id])
-  items   QuoteItem[]
-  orders  Order[]
+  deal     Deal?          @relation(fields: [dealId], references: [id])
+  company  Company        @relation(fields: [companyId], references: [id])
+  contact  Contact?       @relation(fields: [contactId], references: [id])
+  items    QuoteItem[]
+  versions QuoteVersion[]
+  orders   Order[]
 
   @@index([companyId])
   @@map("quote")
@@ -443,6 +447,45 @@ model QuoteItem {
 
   @@index([quoteId])
   @@map("quote_item")
+}
+
+model QuoteVersion {
+  id            String      @id
+  quoteId       String
+  versionNumber Int
+  status        QuoteStatus @default(DRAFT)
+  subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
+  discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
+  total         Decimal     @default(0.00) @db.Decimal(12, 2)
+  createdAt     DateTime    @default(now())
+  sentAt        DateTime?
+
+  quote Quote              @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  items QuoteVersionItem[]
+
+  @@unique([quoteId, versionNumber])
+  @@index([quoteId])
+  @@map("quote_version")
+}
+
+model QuoteVersionItem {
+  id              String   @id
+  quoteVersionId  String
+  productId       String
+  configurationId String?
+  description     String?
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @default(0.00) @db.Decimal(12, 2)
+  lineDiscountPct Decimal  @default(0.00) @db.Decimal(5, 2)
+  lineTotal       Decimal  @default(0.00) @db.Decimal(12, 2)
+  configSnapshot  Json?
+  sortOrder       Int      @default(0)
+
+  version       QuoteVersion   @relation(fields: [quoteVersionId], references: [id], onDelete: Cascade)
+  configuration Configuration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
+
+  @@index([quoteVersionId])
+  @@map("quote_version_item")
 }
 
 // ---------------------------------------------------------------------

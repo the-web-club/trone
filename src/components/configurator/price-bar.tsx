@@ -17,6 +17,7 @@ export function PriceBar({
   onAddLine,
   hasMultipleLines,
   quoteNetTotal,
+  submitLabel = "Toevoegen aan offerte",
 }: {
   price: PriceResult | null;
   canSubmit: boolean;
@@ -26,6 +27,7 @@ export function PriceBar({
   onAddLine: () => void;
   hasMultipleLines: boolean;
   quoteNetTotal?: number;
+  submitLabel?: string;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const totalLabel = price
@@ -37,7 +39,7 @@ export function PriceBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-[var(--z-sticky)] isolate border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)]",
+        "isolate w-full border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)] lg:rounded-b-xl",
       )}
     >
       {detailsOpen && price ? (
@@ -118,7 +120,7 @@ export function PriceBar({
               Nog een stoel
             </Button>
             <Button type="submit" loading={pending} disabled={!canSubmit}>
-              Toevoegen aan offerte
+              {submitLabel}
             </Button>
           </div>
           <p className="text-label text-fg-subtle sm:text-right">

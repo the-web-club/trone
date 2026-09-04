@@ -21,6 +21,7 @@ import {
   quoteStatuses,
   quoteStatusTones,
 } from "@/lib/quote-validation";
+import { formatQuoteVersionNumber } from "@/lib/quote-version";
 import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Offertes" };
@@ -90,6 +91,7 @@ export default async function OffertesPage({
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Nummer</TableHeaderCell>
+              <TableHeaderCell>Versie</TableHeaderCell>
               <TableHeaderCell>Klant</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
               <TableHeaderCell align="right">Totaal excl. btw</TableHeaderCell>
@@ -98,7 +100,7 @@ export default async function OffertesPage({
           </TableHeader>
           <TableBody>
             {quotes.length === 0 ? (
-              <TableEmptyRow colSpan={5}>
+              <TableEmptyRow colSpan={6}>
                 {query || statusFilter
                   ? "Geen offertes gevonden voor deze filters."
                   : "Nog geen offertes. Stel de eerste samen."}
@@ -113,6 +115,14 @@ export default async function OffertesPage({
                     >
                       {quote.quoteNumber}
                     </Link>
+                  </TableCell>
+                  <TableCell className="text-fg-muted">
+                    {quote.currentVersionNumber > 0
+                      ? formatQuoteVersionNumber(
+                          quote.quoteNumber,
+                          quote.currentVersionNumber,
+                        )
+                      : "Concept"}
                   </TableCell>
                   <TableCell className="text-fg-muted">
                     {quote.company.name}

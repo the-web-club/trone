@@ -9,7 +9,17 @@ import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { nextNumber, SEQ_QUOTE_2026 } from "@/lib/number-sequence-service";
 import type { QuoteCatalog } from "@/lib/quote-catalog";
 import { resolveDiscountPercent, type QuoteConfigSnapshot } from "@/lib/quote-catalog";
-import type { QuoteInput, QuoteItemInput, QuoteStatusInput } from "@/lib/quote-validation";
+import type {
+  QuoteInput,
+  QuoteItemInput,
+  QuoteOutcomeInput,
+  QuoteStatusInput,
+} from "@/lib/quote-validation";
+import {
+  compareVersionLines,
+  toQuoteItemInput,
+  toQuoteVersionLine,
+} from "@/lib/quote-version";
 
 export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
   const prisma = getPrismaClient();
@@ -134,15 +144,41 @@ export async function listQuotes(filters?: { query?: string; status?: QuoteStatu
   });
 }
 
+const quoteHeaderInclude = {
+  company: { select: { id: true, name: true, vatRate: true } },
+  contact: { select: { id: true, firstName: true, lastName: true } },
+  deal: { select: { id: true, title: true } },
+  items: { orderBy: { sortOrder: "asc" as const } },
+};
+
+const quoteVersionInclude = {
+  items: { orderBy: { sortOrder: "asc" as const } },
+};
+
 export async function getQuote(id: string) {
   const prisma = getPrismaClient();
   const quote = await prisma.quote.findUnique({
     where: { id },
+    include: quoteHeaderInclude,
+  });
+
+  if (!quote) {
+    throw new AppError("Offerte niet gevonden.", "NOT_FOUND", 404);
+  }
+
+  return quote;
+}
+
+export async function getQuoteWithVersions(id: string) {
+  const prisma = getPrismaClient();
+  const quote = await prisma.quote.findUnique({
+    where: { id },
     include: {
-      company: { select: { id: true, name: true, vatRate: true } },
-      contact: { select: { id: true, firstName: true, lastName: true } },
-      deal: { select: { id: true, title: true } },
-      items: { orderBy: { sortOrder: "asc" } },
+      ...quoteHeaderInclude,
+      versions: {
+        orderBy: { versionNumber: "asc" },
+        include: quoteVersionInclude,
+      },
     },
   });
 
@@ -151,6 +187,47 @@ export async function getQuote(id: string) {
   }
 
   return quote;
+}
+
+export async function getVersion(quoteId: string, versionNumber: number) {
+  const prisma = getPrismaClient();
+  const version = await prisma.quoteVersion.findUnique({
+    where: { quoteId_versionNumber: { quoteId, versionNumber } },
+    include: {
+      ...quoteVersionInclude,
+      quote: { select: { id: true, quoteNumber: true } },
+    },
+  });
+
+  if (!version) {
+    throw new AppError("Versie niet gevonden.", "NOT_FOUND", 404);
+  }
+
+  return version;
+}
+
+export async function compareVersions(
+  quoteId: string,
+  versionA: number,
+  versionB: number,
+) {
+  if (versionA === versionB) {
+    throw new AppError("Kies twee verschillende versies om te vergelijken.", "VALIDATION");
+  }
+
+  const [first, second] = await Promise.all([
+    getVersion(quoteId, versionA),
+    getVersion(quoteId, versionB),
+  ]);
+
+  return compareVersionLines(
+    first.versionNumber,
+    second.versionNumber,
+    Number(first.total),
+    Number(second.total),
+    first.items.map(toQuoteVersionLine),
+    second.items.map(toQuoteVersionLine),
+  );
 }
 
 function isPricingActive(row: {
@@ -312,6 +389,75 @@ async function persistQuoteItems(
   return { subtotal, discountTotal, total };
 }
 
+type CopiedQuoteLine = {
+  productId: string;
+  configurationId: string | null;
+  description: string | null;
+  quantity: number;
+  unitPrice: Prisma.Decimal | number;
+  lineDiscountPct: Prisma.Decimal | number;
+  lineTotal: Prisma.Decimal | number;
+  configSnapshot: Prisma.JsonValue;
+  sortOrder: number;
+};
+
+async function replaceVersionItems(
+  tx: Prisma.TransactionClient,
+  versionId: string,
+  items: CopiedQuoteLine[],
+) {
+  await tx.quoteVersionItem.deleteMany({ where: { quoteVersionId: versionId } });
+  for (const item of items) {
+    await tx.quoteVersionItem.create({
+      data: {
+        id: createId(),
+        quoteVersionId: versionId,
+        productId: item.productId,
+        configurationId: item.configurationId,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineDiscountPct: item.lineDiscountPct,
+        lineTotal: item.lineTotal,
+        configSnapshot: item.configSnapshot as Prisma.InputJsonValue,
+        sortOrder: item.sortOrder,
+      },
+    });
+  }
+}
+
+async function replaceQuoteItemsFromCopy(
+  tx: Prisma.TransactionClient,
+  quoteId: string,
+  items: CopiedQuoteLine[],
+) {
+  await tx.quoteItem.deleteMany({ where: { quoteId } });
+  for (const item of items) {
+    await tx.quoteItem.create({
+      data: {
+        id: createId(),
+        quoteId,
+        productId: item.productId,
+        configurationId: item.configurationId,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineDiscountPct: item.lineDiscountPct,
+        lineTotal: item.lineTotal,
+        configSnapshot: item.configSnapshot as Prisma.InputJsonValue,
+        sortOrder: item.sortOrder,
+      },
+    });
+  }
+}
+
+async function storedQuoteItems(tx: Prisma.TransactionClient, quoteId: string) {
+  return tx.quoteItem.findMany({
+    where: { quoteId },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
 export async function createQuote(input: QuoteInput, userId?: string) {
   const company = await assertQuoteRelations(input);
   const prisma = getPrismaClient();
@@ -368,7 +514,7 @@ export async function createQuote(input: QuoteInput, userId?: string) {
   return getQuote(quoteId);
 }
 
-export async function updateQuote(id: string, input: QuoteInput, userId?: string) {
+export async function editDraft(id: string, input: QuoteInput, userId?: string) {
   const current = await getQuote(id);
   if (current.status !== "DRAFT") {
     throw new AppError("Alleen een conceptofferte kan worden gewijzigd.", "VALIDATION");
@@ -414,16 +560,234 @@ export async function updateQuote(id: string, input: QuoteInput, userId?: string
         ...totals,
       },
     });
+
+    const draftVersion = await tx.quoteVersion.findFirst({
+      where: { quoteId: id, status: "DRAFT" },
+    });
+    if (draftVersion) {
+      const items = await storedQuoteItems(tx, id);
+      await replaceVersionItems(tx, draftVersion.id, items);
+      await tx.quoteVersion.update({
+        where: { id: draftVersion.id },
+        data: totals,
+      });
+    }
+  });
+
+  return getQuote(id);
+}
+
+export async function updateQuote(id: string, input: QuoteInput, userId?: string) {
+  return editDraft(id, input, userId);
+}
+
+export async function sendQuote(id: string, userId?: string) {
+  const current = await getQuote(id);
+  if (current.status !== "DRAFT") {
+    throw new AppError("Alleen een conceptofferte kan worden verstuurd.", "VALIDATION");
+  }
+  if (current.items.length === 0) {
+    throw new AppError("Voeg minstens één regel toe voor versturen.", "VALIDATION");
+  }
+
+  const items = current.items.map((item) => {
+    const input = toQuoteItemInput({
+      productId: item.productId,
+      quantity: item.quantity,
+      configSnapshot: item.configSnapshot,
+    });
+    if (!input) {
+      throw new AppError(
+        "Offerteregel heeft geen geldige configuratie.",
+        "VALIDATION",
+      );
+    }
+    return input;
+  });
+
+  const company = await assertQuoteRelations({
+    companyId: current.companyId,
+    contactId: current.contactId ?? undefined,
+    dealId: current.dealId ?? undefined,
+    items,
+  });
+  const prisma = getPrismaClient();
+  const ctx = await loadPricingContext(prisma);
+  const vatRate = Number(company.vatRate);
+  const discounts = company.pricing
+    .filter(isPricingActive)
+    .map((row) => ({
+      productId: row.productId,
+      discountPercent: Number(row.discountPercent),
+    }));
+
+  for (const item of items) {
+    pricedLine(
+      item,
+      ctx,
+      vatRate,
+      resolveDiscountPercent(discounts, item.productId),
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.quoteItem.deleteMany({ where: { quoteId: id } });
+    const totals = await persistQuoteItems(
+      tx,
+      id,
+      items,
+      ctx,
+      vatRate,
+      discounts,
+      userId,
+    );
+    const stored = await storedQuoteItems(tx, id);
+    const versions = await tx.quoteVersion.findMany({
+      where: { quoteId: id },
+      select: { id: true, versionNumber: true, status: true },
+    });
+    const draftVersion = versions.find((version) => version.status === "DRAFT");
+    const versionNumber =
+      draftVersion?.versionNumber ??
+      Math.max(0, ...versions.map((version) => version.versionNumber)) + 1;
+    const versionId = draftVersion?.id ?? createId();
+    const sentAt = new Date();
+
+    if (draftVersion) {
+      await replaceVersionItems(tx, versionId, stored);
+      await tx.quoteVersion.update({
+        where: { id: versionId },
+        data: { status: "SENT", sentAt, ...totals },
+      });
+    } else {
+      await tx.quoteVersion.create({
+        data: {
+          id: versionId,
+          quoteId: id,
+          versionNumber,
+          status: "SENT",
+          sentAt,
+          ...totals,
+        },
+      });
+      await replaceVersionItems(tx, versionId, stored);
+    }
+
+    await tx.quote.update({
+      where: { id },
+      data: {
+        status: "SENT",
+        currentVersionId: versionId,
+        currentVersionNumber: versionNumber,
+        ...totals,
+      },
+    });
+  });
+
+  return getQuote(id);
+}
+
+export async function createRevision(id: string) {
+  const quote = await getQuoteWithVersions(id);
+  if (
+    quote.status !== "SENT" &&
+    quote.status !== "REJECTED" &&
+    quote.status !== "EXPIRED"
+  ) {
+    throw new AppError(
+      "Een nieuwe versie kan alleen van een verstuurde of afgewezen offerte.",
+      "VALIDATION",
+    );
+  }
+  if (quote.versions.some((version) => version.status === "DRAFT")) {
+    throw new AppError("Er is al een conceptversie in bewerking.", "VALIDATION");
+  }
+  if (quote.versions.length === 0) {
+    throw new AppError("Deze offerte heeft nog geen vastgelegde versie.", "VALIDATION");
+  }
+
+  const last = quote.versions.reduce((latest, version) =>
+    version.versionNumber > latest.versionNumber ? version : latest,
+  );
+  const nextNumber = last.versionNumber + 1;
+  const versionId = createId();
+  const prisma = getPrismaClient();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.quoteVersion.create({
+      data: {
+        id: versionId,
+        quoteId: id,
+        versionNumber: nextNumber,
+        status: "DRAFT",
+        subtotal: last.subtotal,
+        discountTotal: last.discountTotal,
+        total: last.total,
+      },
+    });
+    await replaceVersionItems(tx, versionId, last.items);
+    await replaceQuoteItemsFromCopy(tx, id, last.items);
+    await tx.quote.update({
+      where: { id },
+      data: {
+        status: "DRAFT",
+        subtotal: last.subtotal,
+        discountTotal: last.discountTotal,
+        total: last.total,
+        currentVersionId: versionId,
+        currentVersionNumber: nextNumber,
+      },
+    });
   });
 
   return getQuote(id);
 }
 
 export async function updateQuoteStatus(id: string, status: QuoteStatusInput) {
-  await getQuote(id);
+  if (status === "DRAFT") {
+    throw new AppError(
+      "Gebruik een nieuwe versie om opnieuw te bewerken.",
+      "VALIDATION",
+    );
+  }
+  if (status === "SENT") {
+    throw new AppError(
+      "Gebruik versturen om een concept vast te leggen.",
+      "VALIDATION",
+    );
+  }
+
+  const quote = await getQuoteWithVersions(id);
+  if (quote.status !== "SENT") {
+    throw new AppError(
+      "Alleen een verzonden offerte kan worden afgerond.",
+      "VALIDATION",
+    );
+  }
+
   const prisma = getPrismaClient();
-  return prisma.quote.update({
-    where: { id },
-    data: { status },
+  await prisma.$transaction(async (tx) => {
+    await tx.quote.update({
+      where: { id },
+      data: { status: status as QuoteOutcomeInput },
+    });
+    if (quote.currentVersionId) {
+      await tx.quoteVersion.update({
+        where: { id: quote.currentVersionId },
+        data: { status: status as QuoteOutcomeInput },
+      });
+    } else if (quote.currentVersionNumber > 0) {
+      await tx.quoteVersion.update({
+        where: {
+          quoteId_versionNumber: {
+            quoteId: id,
+            versionNumber: quote.currentVersionNumber,
+          },
+        },
+        data: { status: status as QuoteOutcomeInput },
+      });
+    }
   });
+
+  return getQuote(id);
 }

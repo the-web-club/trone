@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { createQuoteAction } from "@/app/(beveiligd)/actions/quote-actions";
+import {
+  createQuoteAction,
+  updateQuoteAction,
+} from "@/app/(beveiligd)/actions/quote-actions";
 import { PriceBar } from "@/components/configurator/price-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
@@ -56,20 +59,32 @@ export function QuoteForm({
   contacts,
   deals,
   initialCompanyId,
+  initialContactId,
   initialDealId,
+  initialItems,
+  quoteId,
 }: {
   catalog: QuoteCatalog;
   companies: QuoteFormCompany[];
   contacts: QuoteFormContact[];
   deals: QuoteFormDeal[];
   initialCompanyId?: string;
+  initialContactId?: string;
   initialDealId?: string;
+  initialItems?: QuoteItemInput[];
+  quoteId?: string;
 }) {
-  const [state, formAction, pending] = useActionState(createQuoteAction, null);
+  const isEdit = Boolean(quoteId);
+  const [state, formAction, pending] = useActionState(
+    isEdit ? updateQuoteAction : createQuoteAction,
+    null,
+  );
   const [companyId, setCompanyId] = useState(initialCompanyId ?? "");
-  const [contactId, setContactId] = useState("");
+  const [contactId, setContactId] = useState(initialContactId ?? "");
   const [dealId, setDealId] = useState(initialDealId ?? "");
-  const [items, setItems] = useState<QuoteItemInput[]>([emptyLine(catalog)]);
+  const [items, setItems] = useState<QuoteItemInput[]>(
+    initialItems && initialItems.length > 0 ? initialItems : [emptyLine(catalog)],
+  );
   const [activeIndex, setActiveIndex] = useState(0);
 
   const company = companies.find((row) => row.id === companyId);
@@ -147,9 +162,10 @@ export function QuoteForm({
 
   return (
     <form action={formAction} className="flex flex-col" data-configurator-page="">
+      {quoteId ? <input type="hidden" name="id" value={quoteId} /> : null}
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
 
-      <div className="flex flex-col pb-[var(--configurator-bar-space)]">
+      <div className="flex flex-col max-lg:pb-[var(--configurator-bar-space)]">
       <section className="mb-8 grid gap-4 md:grid-cols-3">
         <FormField id="companyId" label="Klant">
           <Select
@@ -253,6 +269,23 @@ export function QuoteForm({
                 return Math.min(current, items.length - 2);
               });
             }}
+            priceBar={
+              index === activeIndex ? (
+                <PriceBar
+                  price={active?.price ?? null}
+                  canSubmit={canSubmit}
+                  canAddLine={activeValid}
+                  submitDisabledReason={submitDisabledReason}
+                  pending={pending}
+                  onAddLine={addLine}
+                  hasMultipleLines={items.length > 1}
+                  quoteNetTotal={netTotal}
+                  submitLabel={
+                    isEdit ? "Wijzigingen opslaan" : "Toevoegen aan offerte"
+                  }
+                />
+              ) : null
+            }
           />
         </div>
       ))}
@@ -263,17 +296,6 @@ export function QuoteForm({
         </p>
       ) : null}
       </div>
-
-      <PriceBar
-        price={active?.price ?? null}
-        canSubmit={canSubmit}
-        canAddLine={activeValid}
-        submitDisabledReason={submitDisabledReason}
-        pending={pending}
-        onAddLine={addLine}
-        hasMultipleLines={items.length > 1}
-        quoteNetTotal={netTotal}
-      />
     </form>
   );
 }
