@@ -26,6 +26,7 @@ import {
   toQuoteItemInput,
   toQuoteVersionLine,
 } from "@/lib/quote-version";
+import { logEvent } from "@/lib/timeline-service";
 
 export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
   const prisma = getPrismaClient();
@@ -747,6 +748,16 @@ export async function sendQuote(id: string, userId?: string) {
     });
   });
 
+  await logEvent({
+    type: "QUOTE_SENT",
+    body: `Offerte ${current.quoteNumber} verstuurd`,
+    userId: userId ?? null,
+    quoteId: id,
+    dealId: current.dealId,
+    contactId: current.contactId,
+    companyId: current.companyId,
+  });
+
   return getQuote(id);
 }
 
@@ -806,7 +817,11 @@ export async function createRevision(id: string) {
   return getQuote(id);
 }
 
-export async function updateQuoteStatus(id: string, status: QuoteStatusInput) {
+export async function updateQuoteStatus(
+  id: string,
+  status: QuoteStatusInput,
+  userId?: string,
+) {
   if (status === "DRAFT") {
     throw new AppError(
       "Gebruik een nieuwe versie om opnieuw te bewerken.",
@@ -851,6 +866,18 @@ export async function updateQuoteStatus(id: string, status: QuoteStatusInput) {
       });
     }
   });
+
+  if (status === "ACCEPTED") {
+    await logEvent({
+      type: "QUOTE_ACCEPTED",
+      body: `Offerte ${quote.quoteNumber} geaccepteerd`,
+      userId: userId ?? null,
+      quoteId: id,
+      dealId: quote.dealId,
+      contactId: quote.contactId,
+      companyId: quote.companyId,
+    });
+  }
 
   return getQuote(id);
 }

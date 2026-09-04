@@ -18,10 +18,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
+import { Timeline } from "@/components/timeline/timeline";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
+import { listTimelineForCompany } from "@/lib/timeline-service";
 import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
 export async function generateMetadata({
@@ -49,9 +51,10 @@ export default async function BedrijfDetailPage({
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
-  const [logs, orders] = await Promise.all([
+  const [logs, orders, events] = await Promise.all([
     listWorkLogs({ companyId: id }),
     listOrdersForWorkLog(undefined, id),
+    listTimelineForCompany(id),
   ]);
 
   return (
@@ -120,7 +123,12 @@ export default async function BedrijfDetailPage({
                   return (
                     <TableRow key={contact.id}>
                       <TableCell>
-                        <span className="font-medium">{fullName}</span>
+                        <Link
+                          href={`/contacten/${contact.id}`}
+                          className="font-medium text-fg hover:underline"
+                        >
+                          {fullName}
+                        </Link>
                         {contact.isPrimary ? (
                           <span className="ml-2 text-xs text-fg-muted">
                             Primair
@@ -159,6 +167,8 @@ export default async function BedrijfDetailPage({
           </Table>
         </TableContainer>
       </section>
+
+      <Timeline events={events} companyId={company.id} />
 
       <WorkLogSection
         title="Werkzaamheden"

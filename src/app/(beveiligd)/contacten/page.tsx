@@ -100,24 +100,27 @@ export default async function ContactenPage({
                 result.items.map((contact) => (
                   <TableRow key={contact.id} interactive>
                     <TableCell>
-                      {contact.companyId ? (
-                        <Link
-                          href={`/bedrijven/${contact.companyId}`}
-                          className="font-medium text-fg hover:underline"
-                        >
-                          {formatPersonName(contact.firstName, contact.lastName)}
-                        </Link>
-                      ) : (
-                        <span className="font-medium text-fg">
-                          {formatPersonName(contact.firstName, contact.lastName)}
-                        </span>
-                      )}
+                      <Link
+                        href={`/contacten/${contact.id}`}
+                        className="font-medium text-fg hover:underline"
+                      >
+                        {formatPersonName(contact.firstName, contact.lastName)}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-fg-muted">
                       {contact.email || "—"}
                     </TableCell>
                     <TableCell className="text-fg-muted">
-                      {contact.company?.name ?? "—"}
+                      {contact.company ? (
+                        <Link
+                          href={`/bedrijven/${contact.company.id}`}
+                          className="hover:underline"
+                        >
+                          {contact.company.name}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

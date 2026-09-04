@@ -38,9 +38,10 @@ model User {
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  workLogs      WorkLog[]
+  sessions       Session[]
+  accounts       Account[]
+  workLogs       WorkLog[]
+  timelineEvents TimelineEvent[]
 
   @@map("user")
 }
@@ -118,8 +119,9 @@ model Company {
   orders        Order[]
   invoices      Invoice[]
   pricing       CompanyPricing[]
-  customerUsers CustomerUser[]
-  workLogs      WorkLog[]
+  customerUsers  CustomerUser[]
+  workLogs       WorkLog[]
+  timelineEvents TimelineEvent[]
 
   @@map("company")
 }
@@ -137,10 +139,11 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company? @relation(fields: [companyId], references: [id])
-  deals   Deal[]
-  quotes  Quote[]
-  orders  Order[]
+  company        Company?        @relation(fields: [companyId], references: [id])
+  deals          Deal[]
+  quotes         Quote[]
+  orders         Order[]
+  timelineEvents TimelineEvent[]
 
   @@index([companyId])
   @@map("contact")
@@ -193,9 +196,10 @@ model Deal {
   contact    Contact?        @relation(fields: [contactId], references: [id])
   stage      DealStage       @relation(fields: [stageId], references: [id])
   source     LeadSource?     @relation(fields: [sourceId], references: [id])
-  activities DealActivity[]
-  quotes     Quote[]
-  orders     Order[]
+  activities     DealActivity[]
+  quotes         Quote[]
+  orders         Order[]
+  timelineEvents TimelineEvent[]
 
   @@index([companyId])
   @@index([stageId])
@@ -223,6 +227,52 @@ model DealActivity {
 
   @@index([dealId])
   @@map("deal_activity")
+}
+
+enum TimelineEventType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  DEMO
+  STAGE_CHANGE
+  QUOTE_SENT
+  QUOTE_ACCEPTED
+  ORDER_CREATED
+  ORDER_STATUS
+  TASK_DUE
+  TASK_DONE
+  SYSTEM
+}
+
+model TimelineEvent {
+  id         String             @id
+  type       TimelineEventType
+  body       String?            @db.Text
+  occurredAt DateTime           @default(now())
+  createdAt  DateTime           @default(now())
+  userId     String?
+  dealId     String?
+  contactId  String?
+  companyId  String?
+  quoteId    String?
+  orderId    String?
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([dealId])
+  @@index([contactId])
+  @@index([companyId])
+  @@index([quoteId])
+  @@index([orderId])
+  @@index([occurredAt])
+  @@map("timeline_event")
 }
 
 // ---------------------------------------------------------------------
@@ -424,9 +474,10 @@ model Quote {
   deal     Deal?          @relation(fields: [dealId], references: [id])
   company  Company        @relation(fields: [companyId], references: [id])
   contact  Contact?       @relation(fields: [contactId], references: [id])
-  items    QuoteItem[]
-  versions QuoteVersion[]
-  orders   Order[]
+  items          QuoteItem[]
+  versions       QuoteVersion[]
+  orders         Order[]
+  timelineEvents TimelineEvent[]
 
   @@index([companyId])
   @@map("quote")
@@ -526,9 +577,10 @@ model Order {
   deal     Deal?       @relation(fields: [dealId], references: [id])
   company  Company     @relation(fields: [companyId], references: [id])
   contact  Contact?    @relation(fields: [contactId], references: [id])
-  items    OrderItem[]
-  invoices Invoice[]
-  workLogs WorkLog[]
+  items          OrderItem[]
+  invoices       Invoice[]
+  workLogs       WorkLog[]
+  timelineEvents TimelineEvent[]
 
   @@index([companyId])
   @@map("order")

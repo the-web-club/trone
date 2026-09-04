@@ -76,8 +76,11 @@ export async function sendQuoteAction(
   try {
     const session = await requireSession();
     const id = parseQuoteId(formData);
-    await sendQuote(id, session.user.id);
+    const quote = await sendQuote(id, session.user.id);
     revalidateQuotePaths(id);
+    if (quote.dealId) revalidatePath(`/leads/${quote.dealId}`);
+    if (quote.contactId) revalidatePath(`/contacten/${quote.contactId}`);
+    revalidatePath(`/bedrijven/${quote.companyId}`);
     return {};
   } catch (error) {
     return toActionError(error);
@@ -105,11 +108,14 @@ export async function updateQuoteStatusAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   try {
-    await requireSession();
+    const session = await requireSession();
     const id = parseQuoteId(formData);
     const status = parseQuoteOutcomeForm(formData);
-    await updateQuoteStatus(id, status);
+    const quote = await updateQuoteStatus(id, status, session.user.id);
     revalidateQuotePaths(id);
+    if (quote.dealId) revalidatePath(`/leads/${quote.dealId}`);
+    if (quote.contactId) revalidatePath(`/contacten/${quote.contactId}`);
+    revalidatePath(`/bedrijven/${quote.companyId}`);
     return {};
   } catch (error) {
     return toActionError(error);

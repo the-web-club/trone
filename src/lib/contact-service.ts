@@ -61,7 +61,21 @@ export async function listContactRows(filters: ContactListFilters = {}) {
 
 export async function getContact(id: string) {
   const prisma = getPrismaClient();
-  const contact = await prisma.contact.findUnique({ where: { id } });
+  const contact = await prisma.contact.findUnique({
+    where: { id },
+    include: {
+      company: { select: { id: true, name: true } },
+      deals: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          stage: { select: { name: true } },
+        },
+      },
+    },
+  });
   if (!contact) {
     throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
   }

@@ -14,9 +14,11 @@ export async function createContactAction(
     await requireSession();
     const companyId = String(formData.get("companyId") ?? "");
     const input = parseContactForm(formData);
-    await createContact(companyId, input);
+    const contact = await createContact(companyId, input);
     revalidatePath(`/bedrijven/${companyId}`);
     revalidatePath("/bedrijven");
+    revalidatePath("/contacten");
+    revalidatePath(`/contacten/${contact.id}`);
     return {};
   } catch (error) {
     return toActionError(error);
@@ -35,6 +37,8 @@ export async function updateContactAction(
     await updateContact(id, companyId, input);
     revalidatePath(`/bedrijven/${companyId}`);
     revalidatePath("/bedrijven");
+    revalidatePath("/contacten");
+    revalidatePath(`/contacten/${id}`);
     return {};
   } catch (error) {
     return toActionError(error);

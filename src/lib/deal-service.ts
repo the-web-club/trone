@@ -11,6 +11,7 @@ import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { DealActivityInput, DealInput } from "@/lib/deal-validation";
+import { logEvent } from "@/lib/timeline-service";
 import type {
   DealDateField,
   DealSort,
@@ -432,7 +433,6 @@ export async function getDeal(id: string) {
       },
       stage: true,
       source: { select: { id: true, name: true } },
-      activities: { orderBy: { occurredAt: "desc" } },
       quotes: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -537,14 +537,13 @@ export async function updateDeal(id: string, input: DealInput, userId?: string) 
   });
 
   if (current.stageId !== input.stageId) {
-    await prisma.dealActivity.create({
-      data: {
-        id: createId(),
-        dealId: id,
-        userId: userId ?? null,
-        type: "STAGE_CHANGE",
-        body: `Verplaatst van ${current.stage.name} naar ${stage.name}`,
-      },
+    await logEvent({
+      type: "STAGE_CHANGE",
+      body: `Verplaatst van ${current.stage.name} naar ${stage.name}`,
+      userId: userId ?? null,
+      dealId: id,
+      contactId: current.contactId,
+      companyId: current.companyId,
     });
   }
 
@@ -573,14 +572,13 @@ export async function moveDealToStage(
     },
   });
 
-  await prisma.dealActivity.create({
-    data: {
-      id: createId(),
-      dealId: id,
-      userId: userId ?? null,
-      type: "STAGE_CHANGE",
-      body: `Verplaatst van ${deal.stage.name} naar ${stage.name}`,
-    },
+  await logEvent({
+    type: "STAGE_CHANGE",
+    body: `Verplaatst van ${deal.stage.name} naar ${stage.name}`,
+    userId: userId ?? null,
+    dealId: id,
+    contactId: deal.contactId,
+    companyId: deal.companyId,
   });
 
   return updated;
@@ -591,15 +589,13 @@ export async function addDealActivity(
   input: DealActivityInput,
   userId?: string,
 ) {
-  await getDeal(dealId);
-  const prisma = getPrismaClient();
-  return prisma.dealActivity.create({
-    data: {
-      id: createId(),
-      dealId,
-      userId: userId ?? null,
-      type: input.type,
-      body: input.body ?? null,
-    },
+  const deal = await getDeal(dealId);
+  return logEvent({
+    type: input.type,
+    body: input.body ?? null,
+    userId: userId ?? null,
+    dealId,
+    contactId: deal.contactId,
+    companyId: deal.companyId,
   });
 }

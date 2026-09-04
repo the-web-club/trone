@@ -12,7 +12,9 @@ import { createId } from "@/lib/id";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { nextNumber, SEQ_ORDER_2026 } from "@/lib/number-sequence-service";
 import type { CreateOrderFromQuoteInput, OrderStatusInput } from "@/lib/order-validation";
+import { orderStatusLabels } from "@/lib/orders-query";
 import { getQuote } from "@/lib/quote-service";
+import { logEvent } from "@/lib/timeline-service";
 
 export type OrderListFilters = {
   query?: string;
@@ -204,15 +206,45 @@ export async function createOrderFromQuote(
     });
   });
 
+  await logEvent({
+    type: "ORDER_CREATED",
+    body: `Order ${orderNumber} aangemaakt`,
+    userId: userId ?? null,
+    orderId,
+    quoteId: quote.id,
+    dealId: quote.dealId,
+    contactId: quote.contactId,
+    companyId: quote.companyId,
+  });
+
   return getOrder(orderId);
 }
 
-export async function updateOrderStatus(id: string, status: OrderStatusInput) {
-  await getOrder(id);
+export async function updateOrderStatus(
+  id: string,
+  status: OrderStatusInput,
+  userId?: string,
+) {
+  const current = await getOrder(id);
   const prisma = getPrismaClient();
-  return prisma.order.update({
+  const updated = await prisma.order.update({
     where: { id },
     data: { status },
     include: orderDetailInclude,
   });
+
+  if (current.status !== status) {
+    await logEvent({
+      type: "ORDER_STATUS",
+      body: `Order ${current.orderNumber}: status ${orderStatusLabels[current.status]} → ${orderStatusLabels[status]}`,
+      userId: userId ?? null,
+      orderId: id,
+      quoteId: current.quoteId,
+      dealId: current.dealId,
+      contactId: current.contactId,
+      companyId: current.companyId,
+    });
+  }
+
+  return updated;
 }

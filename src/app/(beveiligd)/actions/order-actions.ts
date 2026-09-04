@@ -28,6 +28,8 @@ function revalidateOrderPaths(order?: {
   id?: string;
   quoteId?: string | null;
   dealId?: string | null;
+  contactId?: string | null;
+  companyId?: string | null;
 }) {
   revalidatePath("/orders");
   revalidatePath("/offertes");
@@ -36,6 +38,8 @@ function revalidateOrderPaths(order?: {
   if (order?.id) revalidatePath(`/orders/${order.id}`);
   if (order?.quoteId) revalidatePath(`/offertes/${order.quoteId}`);
   if (order?.dealId) revalidatePath(`/leads/${order.dealId}`);
+  if (order?.contactId) revalidatePath(`/contacten/${order.contactId}`);
+  if (order?.companyId) revalidatePath(`/bedrijven/${order.companyId}`);
 }
 
 export async function createOrderFromQuoteAction(
@@ -50,6 +54,8 @@ export async function createOrderFromQuoteAction(
       id: order.id,
       quoteId: order.quoteId,
       dealId: order.dealId,
+      contactId: order.contactId,
+      companyId: order.companyId,
     });
     redirect(`/orders/${order.id}`);
   } catch (error) {
@@ -63,14 +69,16 @@ export async function updateOrderStatusAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   try {
-    await requireSession();
+    const session = await requireSession();
     const id = parseOrderId(formData);
     const status = parseOrderStatusForm(formData);
-    const order = await updateOrderStatus(id, status);
+    const order = await updateOrderStatus(id, status, session.user.id);
     revalidateOrderPaths({
       id: order.id,
       quoteId: order.quoteId,
       dealId: order.dealId,
+      contactId: order.contactId,
+      companyId: order.companyId,
     });
     return {};
   } catch (error) {
