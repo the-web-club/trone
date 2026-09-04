@@ -48,6 +48,11 @@ const dealListInclude = {
   contact: { select: { id: true, firstName: true, lastName: true } },
   stage: true,
   source: { select: { id: true, name: true } },
+  quotes: {
+    orderBy: { updatedAt: "desc" },
+    take: 1,
+    select: { id: true, status: true },
+  },
 } as const;
 
 export const DEAL_LIST_PAGE_SIZE = 25;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DealStagePill } from "@/components/deal/deal-stage-pill";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -11,6 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatEuro, formatPersonName } from "@/lib/format";
+import {
+  quoteStatusLabels,
+  quoteStatusTones,
+  type QuoteStatusInput,
+} from "@/lib/quote-validation";
 
 export type LeadsListRow = {
   id: string;
@@ -20,6 +26,7 @@ export type LeadsListRow = {
   stageName: string;
   isWon: boolean;
   isLost: boolean;
+  quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
   sourceName: string | null;
   ownerName: string | null;
@@ -41,6 +48,7 @@ export function LeadsListTable({
             <TableHeaderCell>Titel</TableHeaderCell>
             <TableHeaderCell>Bedrijf</TableHeaderCell>
             <TableHeaderCell>Fase</TableHeaderCell>
+            <TableHeaderCell>Offerte</TableHeaderCell>
             <TableHeaderCell align="right">Waarde</TableHeaderCell>
             <TableHeaderCell>Bron</TableHeaderCell>
             <TableHeaderCell>Eigenaar</TableHeaderCell>
@@ -49,7 +57,7 @@ export function LeadsListTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
-            <TableEmptyRow colSpan={7}>{emptyMessage}</TableEmptyRow>
+            <TableEmptyRow colSpan={8}>{emptyMessage}</TableEmptyRow>
           ) : (
             rows.map((row) => (
               <TableRow key={row.id} interactive>
@@ -73,6 +81,15 @@ export function LeadsListTable({
                     isWon={row.isWon}
                     isLost={row.isLost}
                   />
+                </TableCell>
+                <TableCell>
+                  {row.quoteStatus ? (
+                    <Badge tone={quoteStatusTones[row.quoteStatus]}>
+                      {quoteStatusLabels[row.quoteStatus]}
+                    </Badge>
+                  ) : (
+                    <span className="text-fg-muted">—</span>
+                  )}
                 </TableCell>
                 <TableCell align="right" className="tabular-nums">
                   {formatEuro(row.valueEstimate) ?? "—"}

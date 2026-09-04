@@ -21,6 +21,11 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { formatEuro } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import {
+  quoteStatusLabels,
+  quoteStatusTones,
+  type QuoteStatusInput,
+} from "@/lib/quote-validation";
 
 export type KanbanStage = {
   id: string;
@@ -34,6 +39,7 @@ export type KanbanDeal = {
   title: string;
   stageId: string;
   companyName: string | null;
+  quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
 };
 
@@ -80,6 +86,13 @@ function DealCard({
         {deal.companyName ?? "Geen bedrijf"}
       </p>
       {value ? <p className="mt-1 text-xs text-fg">{value}</p> : null}
+      {deal.quoteStatus ? (
+        <div className="mt-1.5">
+          <Badge tone={quoteStatusTones[deal.quoteStatus]}>
+            {quoteStatusLabels[deal.quoteStatus]}
+          </Badge>
+        </div>
+      ) : null}
       <div
         className="mt-2"
         onPointerDown={(event) => event.stopPropagation()}

@@ -142,6 +142,7 @@ export default async function LeadsPage({
             title: deal.title,
             stageId: deal.stageId,
             companyName: deal.company?.name ?? null,
+            quoteStatus: deal.quotes[0]?.status ?? null,
             valueEstimate:
               deal.valueEstimate == null ? null : Number(deal.valueEstimate),
           }))}
@@ -157,6 +158,7 @@ export default async function LeadsPage({
               stageName: deal.stage.name,
               isWon: deal.stage.isWon,
               isLost: deal.stage.isLost,
+              quoteStatus: deal.quotes[0]?.status ?? null,
               valueEstimate:
                 deal.valueEstimate == null ? null : Number(deal.valueEstimate),
               sourceName: deal.source?.name ?? null,
