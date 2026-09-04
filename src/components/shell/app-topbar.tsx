@@ -1,0 +1,96 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import {
+  isNavItemActive,
+  sidebarNavItemClassName,
+} from "@/components/shell/app-sidebar";
+import { appNavItems, navTitleForPath } from "@/components/shell/nav-config";
+import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
+
+export function AppTopbar({
+  userName,
+  userEmail,
+}: {
+  userName: string;
+  userEmail: string;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const title = navTitleForPath(pathname);
+
+  async function onLogout() {
+    setLoggingOut(true);
+    await authClient.signOut();
+    router.replace("/inloggen");
+    router.refresh();
+  }
+
+  return (
+    <header className="sticky top-0 z-[var(--z-sticky)] flex h-[var(--topbar-h)] items-center gap-2 border-b border-border bg-surface px-3 sm:gap-3 sm:px-4 lg:px-6">
+      <div className="flex items-center gap-2 lg:hidden">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={open ? "Navigatie sluiten" : "Navigatie openen"}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? <X /> : <Menu />}
+        </Button>
+        <Link href="/overzicht" className="text-sm font-medium text-fg">
+          TRÔNE
+        </Link>
+      </div>
+      <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg lg:text-base">
+        {title}
+      </p>
+
+      {open ? (
+        <div className="absolute inset-x-0 top-[var(--topbar-h)] z-[var(--z-overlay)] border-b border-border bg-surface p-2 shadow-[var(--shadow-pop)] lg:hidden">
+          <nav className="flex flex-col gap-px" aria-label="Mobiele navigatie">
+            {appNavItems.map((item) => {
+              const active = isNavItemActive(pathname, item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={sidebarNavItemClassName(active)}
+                >
+                  <Icon aria-hidden />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="mt-2 border-t border-border pt-2">
+            <p className="truncate px-2 text-sm text-fg">{userName}</p>
+            <p className="mb-1 truncate px-2 text-xs text-fg-subtle">
+              {userEmail}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              loading={loggingOut}
+              onClick={() => {
+                void onLogout();
+              }}
+            >
+              Uitloggen
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </header>
+  );
+}

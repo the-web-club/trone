@@ -1,0 +1,25 @@
+export const controlSize = {
+  xs: "h-6 px-1.5 text-xs",
+  sm: "h-7 px-2 text-sm",
+  md: "h-8 px-2.5 text-sm",
+} as const;
+
+export type ControlSize = keyof typeof controlSize;
+
+export const controlMotion =
+  "transition-[color,background-color,border-color,box-shadow,opacity] duration-[var(--motion-fast)] ease-[var(--ease-standard)]";
+
+export const focusRingField =
+  "focus-visible:border-fg focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
+
+export const focusRingOutline =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
+
+export const fieldBase =
+  "w-full rounded-sm border border-border bg-surface text-fg " +
+  controlMotion +
+  " placeholder:text-fg-subtle hover:border-border-strong " +
+  focusRingField +
+  " disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunk disabled:text-fg-muted" +
+  " aria-invalid:border-danger aria-invalid:focus-visible:border-danger aria-invalid:focus-visible:ring-ring-danger" +
+  " data-[invalid]:border-danger";

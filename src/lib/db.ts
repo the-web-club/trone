@@ -10,7 +10,6 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 // =====================================================================
 
 declare global {
-  // eslint-disable-next-line no-var
   var __tronePrisma: PrismaClient | undefined;
 }
 

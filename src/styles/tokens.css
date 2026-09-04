@@ -1,0 +1,127 @@
+/* TRÔNE design tokens — light-only, overgenomen van crm.thewebclub.nl */
+
+:root {
+  --gray-0: #ffffff;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e5e5e5;
+  --gray-300: #d4d4d4;
+  --gray-400: #a3a3a3;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-700: #404040;
+  --gray-800: #262626;
+  --gray-900: #171717;
+  --gray-1000: #0a0a0a;
+
+  --bg: var(--gray-50);
+  --surface: var(--gray-0);
+  --surface-sunk: var(--gray-100);
+  --hover: var(--gray-100);
+  --hover-subtle: var(--gray-50);
+  --selected: var(--gray-100);
+
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  --fg: var(--gray-1000);
+  --fg-muted: var(--gray-500);
+  --fg-subtle: var(--gray-400);
+  --fg-invert: var(--gray-0);
+
+  --accent: var(--gray-1000);
+  --accent-fg: var(--gray-0);
+  --accent-hover: var(--gray-800);
+
+  --info: #1d4ed8;
+  --info-dot: #2563eb;
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+  --success: #047857;
+  --success-dot: #10b981;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-dot: #f59e0b;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --danger: #b91c1c;
+  --danger-dot: #ef4444;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+
+  --ring: color-mix(in srgb, var(--fg) 14%, transparent);
+  --ring-danger: color-mix(in srgb, var(--danger) 20%, transparent);
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.05), 0 6px 20px -6px rgb(0 0 0 / 0.12),
+    0 2px 6px -2px rgb(0 0 0 / 0.06);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --text-xs: 11px;
+  --text-label: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --sidebar-w: 200px;
+  --topbar-h: 52px;
+  --content-max: 1200px;
+  --control-h: 32px;
+  --control-h-sm: 28px;
+  --control-h-xs: 24px;
+
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-dropdown: 450;
+  --z-toast: 500;
+
+  --motion-instant: 50ms;
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-overlay: 160ms;
+  --motion-overlay-exit: 120ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0.01ms;
+    --motion-fast: 0.01ms;
+    --motion-normal: 0.01ms;
+    --motion-overlay: 0.01ms;
+    --motion-overlay-exit: 0.01ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

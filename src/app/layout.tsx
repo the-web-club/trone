@@ -1,0 +1,31 @@
+import type { Metadata } from "next";
+import { Inter_Tight } from "next/font/google";
+import "./globals.css";
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: "TRÔNE Seating",
+    template: "%s · TRÔNE Seating",
+  },
+  description: "Interne workspace voor TRÔNE Seating",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="nl" className={`${interTight.variable} h-full antialiased`}>
+      <body className="flex h-full flex-col overflow-hidden bg-bg font-sans text-fg">
+        {children}
+      </body>
+    </html>
+  );
+}
