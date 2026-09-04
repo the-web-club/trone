@@ -6,6 +6,14 @@ import { getPrismaClient } from "@/lib/db";
 import { getCompany } from "@/lib/company-service";
 import type { ContactInput } from "@/lib/contact-validation";
 
+export async function listContacts() {
+  const prisma = getPrismaClient();
+  return prisma.contact.findMany({
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    include: { company: { select: { id: true, name: true } } },
+  });
+}
+
 export async function getContact(id: string) {
   const prisma = getPrismaClient();
   const contact = await prisma.contact.findUnique({ where: { id } });

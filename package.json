@@ -21,6 +21,8 @@
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@better-auth/prisma-adapter": "1.6.25",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@prisma/adapter-mariadb": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@tailwindcss/postcss": "^4.3.3",
