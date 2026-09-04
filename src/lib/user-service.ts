@@ -1,7 +1,7 @@
 import "server-only";
 
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { paginateArgs } from "@/lib/list-query";
@@ -103,7 +103,7 @@ export async function inviteUser(input: InviteUserInput) {
     throw new AppError("Dit e-mailadres is al in gebruik.", "VALIDATION");
   }
 
-  const created = await auth.api.createUser({
+  const created = await getAuth().api.createUser({
     body: {
       name: input.name,
       email: input.email,
@@ -123,7 +123,7 @@ export async function sendInvitation(userId: string) {
     throw new AppError("Een gedeactiveerde medewerker kan geen uitnodiging ontvangen.", "VALIDATION");
   }
 
-  const request = await auth.api.requestPasswordReset({
+  const request = await getAuth().api.requestPasswordReset({
     body: {
       email: user.email,
       redirectTo: "/wachtwoord-instellen",

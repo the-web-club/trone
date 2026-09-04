@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { auth } from "../src/lib/auth";
+import { getAuth } from "../src/lib/auth";
 
 function readRequired(name: string): string {
   const value = process.env[name];
@@ -23,7 +23,7 @@ async function main() {
   }
 
   try {
-    const result = await auth.api.createUser({
+    const result = await getAuth().api.createUser({
       body: {
         name,
         email,

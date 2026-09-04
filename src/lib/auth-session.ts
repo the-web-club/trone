@@ -2,15 +2,15 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getAuth, type Auth } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
 
 export type AppSession = NonNullable<
-  Awaited<ReturnType<typeof auth.api.getSession>>
+  Awaited<ReturnType<Auth["api"]["getSession"]>>
 >;
 
 export async function getSession(): Promise<AppSession | null> {
-  const session = await auth.api.getSession({
+  const session = await getAuth().api.getSession({
     headers: await headers(),
   });
   return session;

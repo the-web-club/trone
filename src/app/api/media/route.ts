@@ -1,6 +1,8 @@
 import { get } from "@vercel/blob";
 import { requireSession } from "@/lib/auth-session";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   await requireSession();
   const raw = new URL(request.url).searchParams.get("url");
