@@ -36,7 +36,7 @@ export function isAdminSession(session: AppSession): boolean {
 export async function requireAdmin(): Promise<AppSession> {
   const session = await requireSession();
   if (!isAdminSession(session)) {
-    throw new AppError("Alleen een beheerder mag prijzen wijzigen.", "FORBIDDEN", 403);
+    throw new AppError("Alleen een beheerder mag dit doen.", "FORBIDDEN", 403);
   }
   return session;
 }
