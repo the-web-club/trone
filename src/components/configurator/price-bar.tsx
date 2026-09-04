@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatedPrice } from "@/components/configurator/animated-price";
 import { OP_AANVRAAG_HINT } from "@/components/configurator/price-copy";
+import { Collapse } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { formatEuroExact } from "@/lib/format";
@@ -30,11 +31,6 @@ export function PriceBar({
   submitLabel?: string;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const totalLabel = price
-    ? price.hasOnRequest
-      ? `${formatEuroExact(price.netTotal)} + n.t.b.`
-      : formatEuroExact(price.netTotal)
-    : "—";
 
   return (
     <div
@@ -42,7 +38,8 @@ export function PriceBar({
         "isolate w-full border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)] lg:rounded-b-xl",
       )}
     >
-      {detailsOpen && price ? (
+      <Collapse open={detailsOpen && Boolean(price)}>
+        {price ? (
         <div className="mb-4 flex flex-col gap-1.5">
           <p className="text-label font-medium tracking-wide text-fg-muted uppercase">
             Prijsdetails
@@ -88,13 +85,17 @@ export function PriceBar({
             <p className="pt-1 text-label text-fg-subtle">{OP_AANVRAAG_HINT}</p>
           ) : null}
         </div>
-      ) : null}
+        ) : null}
+      </Collapse>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-label text-fg-muted">Totaal excl. btw</p>
           <p className="text-2xl font-medium tracking-tight text-fg">
-            <AnimatedPrice value={totalLabel} />
+            <AnimatedPrice
+              value={price?.netTotal ?? null}
+              suffix={price?.hasOnRequest ? " + n.t.b." : undefined}
+            />
           </p>
           <button
             type="button"

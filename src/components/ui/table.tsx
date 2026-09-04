@@ -1,4 +1,8 @@
+"use client";
+
 import * as React from "react";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { controlMotion } from "@/components/motion/styles";
 import { cn } from "@/lib/cn";
 
 export function TableContainer({
@@ -31,10 +35,12 @@ export function TableHeader({
 
 export function TableBody({
   className,
-  ...props
+  children,
 }: React.ComponentProps<"tbody">) {
   return (
-    <tbody className={cn("[&>tr:last-child]:border-0", className)} {...props} />
+    <Stagger as="tbody" className={cn("[&>tr:last-child]:border-0", className)}>
+      {children}
+    </Stagger>
   );
 }
 
@@ -44,9 +50,11 @@ export function TableRow({
   ...props
 }: React.ComponentProps<"tr"> & { interactive?: boolean }) {
   return (
-    <tr
+    <StaggerItem
+      as="tr"
       className={cn(
-        "group/row border-b border-border transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
+        "group/row border-b border-border",
+        controlMotion,
         interactive && "hover:bg-hover-subtle",
         className,
       )}

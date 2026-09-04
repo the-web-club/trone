@@ -4,6 +4,7 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import * as React from "react";
+import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
@@ -18,7 +19,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-accent text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover active:bg-accent",
+          "bg-accent text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover",
         secondary:
           "border border-border bg-surface text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover active:bg-selected",
         ghost:
@@ -59,29 +60,38 @@ export function Button({
   const isDisabled = disabled || loading;
 
   return (
-    <ButtonPrimitive
-      type={type}
-      className={cn(buttonVariants({ variant, size }), className)}
+    <Pressable
       disabled={isDisabled}
-      aria-busy={loading || undefined}
-      data-loading={loading ? "" : undefined}
-      {...props}
+      className={
+        typeof className === "string" && className.includes("w-full")
+          ? "w-full"
+          : undefined
+      }
     >
-      <span
-        className={cn(
-          "inline-flex items-center justify-center gap-1.5",
-          loading && "invisible",
-        )}
+      <ButtonPrimitive
+        type={type}
+        className={cn(buttonVariants({ variant, size }), className)}
+        disabled={isDisabled}
+        aria-busy={loading || undefined}
+        data-loading={loading ? "" : undefined}
+        {...props}
       >
-        {children}
-      </span>
-      {loading ? (
-        <span className="pointer-events-none absolute inset-0 inline-flex items-center justify-center">
-          <Loader2 className="size-3.5 animate-spin" aria-hidden />
-          <span className="sr-only">Bezig…</span>
+        <span
+          className={cn(
+            "inline-flex items-center justify-center gap-1.5",
+            loading && "invisible",
+          )}
+        >
+          {children}
         </span>
-      ) : null}
-    </ButtonPrimitive>
+        {loading ? (
+          <span className="pointer-events-none absolute inset-0 inline-flex items-center justify-center">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            <span className="sr-only">Bezig…</span>
+          </span>
+        ) : null}
+      </ButtonPrimitive>
+    </Pressable>
   );
 }
 

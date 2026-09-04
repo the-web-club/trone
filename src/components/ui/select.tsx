@@ -3,6 +3,7 @@
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { Check, ChevronDown } from "lucide-react";
 import * as React from "react";
+import { iconMotion } from "@/components/motion/styles";
 import {
   controlSize,
   fieldBase,
@@ -109,7 +110,7 @@ export function SelectMenu<Value extends string = string>({
             <span className="text-fg-subtle">{placeholder}</span>
           )}
         </span>
-        <SelectPrimitive.Icon className="shrink-0 text-fg-subtle transition-transform duration-[var(--motion-fast)] ease-[var(--ease-standard)] data-[popup-open]:rotate-180">
+        <SelectPrimitive.Icon className={cn("shrink-0 text-fg-subtle data-[popup-open]:rotate-180", iconMotion)}>
           <ChevronDown className="size-3.5" aria-hidden />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { cn } from "@/lib/cn";
@@ -48,8 +49,8 @@ export function SwatchDots({
             : value.value;
 
           return (
+            <Pressable key={value.id}>
             <button
-              key={value.id}
               ref={(node) => {
                 buttonRefs.current[index] = node;
               }}
@@ -106,6 +107,7 @@ export function SwatchDots({
                 />
               </span>
             </button>
+            </Pressable>
           );
         })}
       </div>

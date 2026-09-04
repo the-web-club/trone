@@ -1,6 +1,8 @@
 "use client";
 
+import { AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { SlideFade } from "@/components/motion";
 import { Input } from "@/components/ui/input";
 import { formatEuroExact } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -78,9 +80,13 @@ export function PriceField({
           }
         }}
       />
-      {status === "saved" ? (
-        <span className="text-xs text-success">Opgeslagen</span>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {status === "saved" ? (
+          <SlideFade>
+            <span className="text-xs text-success">Opgeslagen</span>
+          </SlideFade>
+        ) : null}
+      </AnimatePresence>
       {error ? (
         <span className="text-xs text-danger" role="alert">
           {error}

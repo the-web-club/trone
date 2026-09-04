@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
+import { controlMotion } from "@/components/motion/styles";
 import { appNavItems } from "@/components/shell/nav-config";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 
 export function sidebarNavItemClassName(active: boolean): string {
   return cn(
-    "flex h-7 items-center gap-2 rounded-sm px-2 text-sm transition-[color,background-color] duration-[var(--motion-fast)] ease-[var(--ease-standard)] focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-fg",
+    "flex h-7 items-center gap-2 rounded-sm px-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-fg",
+    controlMotion,
     "[&_svg]:size-4 [&_svg]:shrink-0",
     active
       ? "bg-hover font-medium text-fg [&_svg]:text-fg"

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { pressableLinkMotion } from "@/components/motion/styles";
 import { cn } from "@/lib/cn";
 
 export type PageHeaderProps = {
@@ -46,9 +47,15 @@ export function PageHeader({
 }
 
 export function pageActionPrimaryClassName() {
-  return "inline-flex h-8 items-center rounded-sm bg-accent px-3 text-sm font-medium text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover";
+  return cn(
+    "inline-flex h-8 items-center rounded-sm bg-accent px-3 text-sm font-medium text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover",
+    pressableLinkMotion,
+  );
 }
 
 export function pageActionSecondaryClassName() {
-  return "inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm font-medium text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover";
+  return cn(
+    "inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm font-medium text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover",
+    pressableLinkMotion,
+  );
 }

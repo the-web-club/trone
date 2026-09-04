@@ -1,3 +1,5 @@
+import { controlMotion, overlayMotion } from "@/components/motion/styles";
+
 export const controlSize = {
   xs: "h-6 px-1.5 text-xs",
   sm: "h-7 px-2 text-sm",
@@ -6,8 +8,7 @@ export const controlSize = {
 
 export type ControlSize = keyof typeof controlSize;
 
-export const controlMotion =
-  "transition-[color,background-color,border-color,box-shadow,opacity] duration-[var(--motion-fast)] ease-[var(--ease-standard)]";
+export { controlMotion };
 
 export const focusRingField =
   "focus-visible:border-fg focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
@@ -24,17 +25,11 @@ export const fieldBase =
   " aria-invalid:border-danger aria-invalid:focus-visible:border-danger aria-invalid:focus-visible:ring-ring-danger" +
   " data-[invalid]:border-danger";
 
-/** Popup surface for menus, selects and popovers. */
 export const popupSurface =
   "rounded-md border border-border bg-surface p-1 shadow-[var(--shadow-pop)] outline-none";
 
-export const popupMotion =
-  "origin-[var(--transform-origin)] transition-[opacity,transform] duration-[var(--motion-overlay)] ease-[var(--ease-enter)]" +
-  " data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98]" +
-  " data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98]" +
-  " data-[ending-style]:duration-[var(--motion-overlay-exit)] data-[ending-style]:ease-[var(--ease-exit)]";
+export const popupMotion = overlayMotion;
 
-/** Row inside a popup surface. */
 export const popupItem =
   "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-fg outline-none select-none " +
   controlMotion +

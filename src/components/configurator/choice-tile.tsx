@@ -2,6 +2,7 @@
 
 import { Children, type ReactNode } from "react";
 import { Check } from "lucide-react";
+import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
@@ -34,6 +35,7 @@ export function ChoiceTile({
     .join(", ");
 
   return (
+    <Pressable disabled={disabled} className="flex h-full w-full">
     <button
       type="button"
       role="radio"
@@ -77,6 +79,7 @@ export function ChoiceTile({
         <Check className="size-3.5" strokeWidth={2.4} />
       </span>
     </button>
+    </Pressable>
   );
 }
 

@@ -50,6 +50,7 @@
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
   --shadow-pop: var(--shadow-pop);
+  --shadow-lift: var(--shadow-lift);
 
   --text-xs: var(--text-xs);
   --text-label: var(--text-label);
@@ -149,32 +150,6 @@
     max-width: var(--content-wide);
   }
 
-  @keyframes configurator-fade {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes configurator-price-update {
-    from {
-      opacity: 0.55;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .configurator-image-fade {
-    animation: configurator-fade var(--motion-image) var(--ease-standard);
-  }
-
-  .configurator-price-update {
-    animation: configurator-price-update var(--motion-normal) var(--ease-standard);
-  }
-
   .page-header {
     display: flex;
     min-height: 2rem;
@@ -245,7 +220,7 @@
   .list-body {
     transition-property: opacity;
     transition-duration: var(--motion-fast);
-    transition-timing-function: var(--ease-standard);
+    transition-timing-function: var(--ease-in-out);
   }
 
   .list-body[aria-busy="true"] {

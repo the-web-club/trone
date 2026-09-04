@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Users } from "lucide-react";
+import { Lift } from "@/components/motion";
+import { controlMotion } from "@/components/motion/styles";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/ui/panel";
+import { cn } from "@/lib/cn";
 import { getSessionRole, requireSession } from "@/lib/auth-session";
 
 export const metadata: Metadata = { title: "Instellingen" };
@@ -19,7 +22,8 @@ export default async function InstellingenPage() {
       />
 
       <Link href="/instellingen/medewerkers" className="block max-w-lg">
-        <Panel className="transition-colors duration-[var(--motion-fast)] hover:bg-hover-subtle">
+        <Lift>
+        <Panel className={cn("hover:bg-hover-subtle", controlMotion)}>
           <div className="flex items-start gap-3">
             <Users className="mt-0.5 size-4 text-fg-muted" aria-hidden />
             <div>
@@ -32,6 +36,7 @@ export default async function InstellingenPage() {
             </div>
           </div>
         </Panel>
+        </Lift>
       </Link>
     </div>
   );

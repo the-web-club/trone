@@ -1,3 +1,4 @@
+import { PageTransition } from "@/components/motion";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AppTopbar } from "@/components/shell/app-topbar";
 
@@ -22,7 +23,9 @@ export function AppShell({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <AppTopbar userName={userName} userEmail={userEmail} />
         <main id="hoofdinhoud" className="page-shell">
-          <div className="page-shell-inner">{children}</div>
+          <div className="page-shell-inner">
+            <PageTransition>{children}</PageTransition>
+          </div>
         </main>
       </div>
     </div>

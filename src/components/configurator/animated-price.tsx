@@ -1,15 +1,24 @@
+import { AnimatedNumber } from "@/components/motion";
 import { cn } from "@/lib/cn";
+import { formatEuroExact } from "@/lib/format";
 
 export function AnimatedPrice({
   value,
+  suffix,
   className,
 }: {
-  value: string;
+  value: number | null;
+  suffix?: string;
   className?: string;
 }) {
+  if (value == null) {
+    return <span className={cn(className)}>—</span>;
+  }
+
   return (
-    <span key={value} className={cn("inline-block configurator-price-update", className)}>
-      {value}
+    <span className={cn(className)}>
+      <AnimatedNumber value={value} format={formatEuroExact} />
+      {suffix ? <span>{suffix}</span> : null}
     </span>
   );
 }

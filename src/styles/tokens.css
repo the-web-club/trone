@@ -71,6 +71,8 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06);
   --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.05), 0 6px 20px -6px rgb(0 0 0 / 0.12),
     0 2px 6px -2px rgb(0 0 0 / 0.06);
+  --shadow-lift: 0 0 0 1px rgb(0 0 0 / 0.04), 0 12px 28px -10px rgb(0 0 0 / 0.16),
+    0 4px 10px -4px rgb(0 0 0 / 0.08);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -107,15 +109,24 @@
   --z-dropdown: 450;
   --z-toast: 500;
 
-  --motion-instant: 50ms;
-  --motion-fast: 120ms;
-  --motion-normal: 180ms;
-  --motion-image: 280ms;
-  --motion-overlay: 160ms;
-  --motion-overlay-exit: 120ms;
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-medium: 300ms;
+  --motion-slow: 400ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --lift-y: -2px;
+  --press-scale: 0.97;
+
+  --motion-normal: var(--motion-base);
+  --motion-image: var(--motion-medium);
+  --motion-overlay: var(--motion-base);
+  --motion-overlay-exit: var(--motion-fast);
+  --ease-standard: var(--ease-in-out);
+  --ease-enter: var(--ease-out-expo);
+  --ease-exit: var(--ease-in-quart);
 }
 
 /* Dark theme — alleen scoped toepassen (nu: inlogpagina). Light-schermen blijven ongewijzigd. */
@@ -159,6 +170,9 @@
   :root {
     --motion-instant: 0.01ms;
     --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-medium: 0.01ms;
+    --motion-slow: 0.01ms;
     --motion-normal: 0.01ms;
     --motion-image: 0.01ms;
     --motion-overlay: 0.01ms;

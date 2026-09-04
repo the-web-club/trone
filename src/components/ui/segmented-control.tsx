@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import * as React from "react";
+import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
@@ -53,8 +54,8 @@ export function SegmentedControl<Value extends string>({
         const active = item.value === value;
         const Icon = item.icon;
         return (
+          <Pressable key={item.value} disabled={disabled}>
           <button
-            key={item.value}
             type="button"
             disabled={disabled}
             aria-pressed={active}
@@ -76,6 +77,7 @@ export function SegmentedControl<Value extends string>({
               <span className="sr-only sm:hidden">{item.label}</span>
             ) : null}
           </button>
+          </Pressable>
         );
       })}
     </div>

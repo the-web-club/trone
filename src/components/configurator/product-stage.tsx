@@ -1,3 +1,4 @@
+import { CrossFadeImage } from "@/components/motion";
 import { cn } from "@/lib/cn";
 
 export function ProductStage({
@@ -16,12 +17,11 @@ export function ProductStage({
         className,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        key={src}
+      <CrossFadeImage
         src={src}
         alt={alt}
-        className="max-h-full max-w-full object-contain object-center configurator-image-fade"
+        className="absolute inset-0"
+        imageClassName="p-8 lg:p-10"
       />
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { OP_AANVRAAG_HINT } from "@/components/configurator/price-copy";
 import { cn } from "@/lib/cn";
@@ -25,6 +26,7 @@ export function OptionToggle({
     .join(", ");
 
   return (
+    <Pressable className="w-full">
     <button
       type="button"
       role="switch"
@@ -81,5 +83,6 @@ export function OptionToggle({
         />
       </span>
     </button>
+    </Pressable>
   );
 }

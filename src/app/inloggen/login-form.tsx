@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
+import { SlideFade } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -81,14 +83,18 @@ export function LoginForm() {
         />
       </FormField>
 
-      {errorMessage ? (
-        <p
-          className="rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger"
-          role="alert"
-        >
-          {errorMessage}
-        </p>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {errorMessage ? (
+          <SlideFade>
+            <p
+              className="rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger"
+              role="alert"
+            >
+              {errorMessage}
+            </p>
+          </SlideFade>
+        ) : null}
+      </AnimatePresence>
 
       <Button type="submit" loading={isLoading} className="w-full">
         Inloggen

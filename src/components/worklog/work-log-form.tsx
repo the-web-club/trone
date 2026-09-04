@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { createWorkLogAction } from "@/app/(beveiligd)/actions/worklog-actions";
+import { Pressable } from "@/components/motion";
+import { controlMotion } from "@/components/motion/styles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -98,12 +100,13 @@ function WorkLogFormFields({
 
       <div className="flex flex-wrap items-center gap-1.5">
         {workLogCategories.map((value) => (
+          <Pressable key={value}>
           <button
-            key={value}
             type="button"
             onClick={() => setCategory(value)}
             className={cn(
-              "h-7 rounded-sm border px-2 text-xs font-medium transition-[color,background-color,border-color] duration-[var(--motion-fast)]",
+              "h-7 rounded-sm border px-2 text-xs font-medium",
+              controlMotion,
               category === value
                 ? "border-accent bg-selected-bg text-fg"
                 : "border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-hover",
@@ -111,6 +114,7 @@ function WorkLogFormFields({
           >
             {workLogCategoryLabels[value]}
           </button>
+          </Pressable>
         ))}
         <input type="hidden" name="category" value={category} />
       </div>

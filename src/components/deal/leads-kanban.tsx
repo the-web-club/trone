@@ -14,6 +14,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { moveDealToStageAction } from "@/app/(beveiligd)/actions/deal-actions";
+import { Lift, Stagger, StaggerItem } from "@/components/motion";
+import { controlMotion } from "@/components/motion/styles";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -55,11 +57,13 @@ function DealCard({
   const value = formatEuro(deal.valueEstimate);
 
   return (
+    <Lift disabled={isDragging}>
     <Card
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
         "cursor-grab touch-none p-2.5",
+        controlMotion,
         isDragging && "opacity-60 shadow-[var(--shadow-pop)]",
       )}
       {...listeners}
@@ -94,6 +98,7 @@ function DealCard({
         </Select>
       </div>
     </Card>
+    </Lift>
   );
 }
 
@@ -115,6 +120,7 @@ function StageColumn({
       ref={setNodeRef}
       className={cn(
         "flex min-h-72 w-64 shrink-0 flex-col rounded-md border border-border bg-surface-sunk/60 p-2",
+        controlMotion,
         isOver && "border-border-strong bg-hover",
       )}
     >
@@ -122,11 +128,13 @@ function StageColumn({
         <h2 className="truncate text-sm font-medium text-fg">{stage.name}</h2>
         <Badge tone={stageTone(stage)}>{deals.length}</Badge>
       </header>
-      <div className="flex flex-1 flex-col gap-2">
+      <Stagger className="flex flex-1 flex-col gap-2">
         {deals.map((deal) => (
-          <DealCard key={deal.id} deal={deal} stages={stages} onMove={onMove} />
+          <StaggerItem key={deal.id}>
+            <DealCard deal={deal} stages={stages} onMove={onMove} />
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
     </section>
   );
 }
