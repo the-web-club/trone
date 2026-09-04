@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { formatEuroExact } from "@/lib/format";
+import { vatOnNet } from "@/lib/pricing";
 import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
 
 export type QuoteLineView = {
@@ -24,8 +25,7 @@ export function QuoteLines({
   discountTotal: number;
   total: number;
 }) {
-  const vatAmount = Math.round((total * vatRate + Number.EPSILON) * 100) / 100;
-  const grossTotal = Math.round((total + vatAmount + Number.EPSILON) * 100) / 100;
+  const { vatAmount, grossTotal } = vatOnNet(total, vatRate);
 
   return (
     <>

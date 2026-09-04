@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePrice, validateConfiguration } from "../calculate";
+import { calculatePrice, validateConfiguration, vatOnNet } from "../calculate";
 import type { PricingContext } from "../types";
 
 // Minimale, realistische context o.b.v. het echte TRÔNE-schema.
@@ -114,6 +114,20 @@ describe("calculatePrice", () => {
     );
     expect(r.vatAmount).toBe(0);
     expect(r.grossTotal).toBe(2875);
+  });
+});
+
+describe("vatOnNet", () => {
+  it("neemt vatRate als percentage, niet als vermenigvuldiger", () => {
+    expect(vatOnNet(5115, 21)).toEqual({
+      vatAmount: 1074.15,
+      grossTotal: 6189.15,
+    });
+  });
+
+  it("rondt halve centen commercieel af", () => {
+    // 2587.5 * 21% = 543.375 → 543.38
+    expect(vatOnNet(2587.5, 21).vatAmount).toBe(543.38);
   });
 });
 

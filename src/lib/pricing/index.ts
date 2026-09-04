@@ -1,2 +1,2 @@
 export * from "./types";
-export { calculatePrice, validateConfiguration } from "./calculate";
+export { calculatePrice, round2, validateConfiguration, vatOnNet } from "./calculate";

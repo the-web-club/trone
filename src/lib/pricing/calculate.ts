@@ -21,8 +21,17 @@ import type {
 const DEFAULT_VAT_RATE = 21;
 
 /** Afronden op 2 decimalen zonder floating-point ruis. */
-function round2(n: number): number {
+export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/** BTW over een nettobedrag. `vatRate` is een percentage (0..100). */
+export function vatOnNet(netTotal: number, vatRate: number): {
+  vatAmount: number;
+  grossTotal: number;
+} {
+  const vatAmount = round2((netTotal * vatRate) / 100);
+  return { vatAmount, grossTotal: round2(netTotal + vatAmount) };
 }
 
 function indexBy<T, K extends string>(rows: T[], key: (row: T) => K): Map<K, T> {
@@ -245,8 +254,7 @@ export function calculatePrice(
   const discountAmount = round2((unitSubtotal * discountPercent) / 100);
   const unitNet = round2(unitSubtotal - discountAmount);
   const netTotal = round2(unitNet * quantity);
-  const vatAmount = round2((netTotal * vatRate) / 100);
-  const grossTotal = round2(netTotal + vatAmount);
+  const { vatAmount, grossTotal } = vatOnNet(netTotal, vatRate);
 
   return {
     productName: product.name,
