@@ -74,6 +74,9 @@ Bouw hierop verder; niet opnieuw uitvinden.
    de pure `PricingContext`.
 7. `scripts/seed.ts` — vult stages, leadbronnen, nummerreeksen, de 20
    optie-assen met prijzen, en de 2 basisproducten met availability.
+8. Vercel Blob voor swatches en productbeelden. Token
+   `BLOB_READ_WRITE_TOKEN`: Vercel-dashboard → Storage → Blob → store →
+   tab `.env.local` (of Environment Variables van het project).
 
 ---
 

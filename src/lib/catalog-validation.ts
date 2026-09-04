@@ -13,6 +13,23 @@ export const moneySchema = z.coerce
     "Maximaal 2 decimalen",
   );
 
+export const swatchHexSchema = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}, z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "Gebruik een hex-kleur zoals #1A1A1A").optional());
+
+export function parseSwatchHex(value: unknown): string | undefined {
+  const parsed = swatchHexSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new AppError(
+      parsed.error.issues[0]?.message ?? "Ongeldige swatchkleur.",
+      "VALIDATION",
+    );
+  }
+  return parsed.data;
+}
+
 export function parseMoney(value: unknown, label = "Bedrag"): number {
   const parsed = moneySchema.safeParse(value);
   if (!parsed.success) {

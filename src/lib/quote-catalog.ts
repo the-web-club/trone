@@ -1,4 +1,5 @@
 import type { PriceResult, PricingContext } from "@/lib/pricing";
+import type { ProductImageMatch } from "@/lib/product-visuals";
 
 export type QuoteConfigSnapshot = {
   productId: string;
@@ -36,6 +37,8 @@ export type CatalogValue = {
   value: string;
   priceDelta: number;
   priceOnRequest: boolean;
+  swatchHex?: string | null;
+  swatchImageUrl?: string | null;
 };
 
 export type CatalogOption = {
@@ -64,6 +67,7 @@ export type QuoteCatalog = {
   products: CatalogProduct[];
   options: CatalogOption[];
   availability: CatalogAvailability[];
+  images: ProductImageMatch[];
 };
 
 export function toPricingContext(catalog: QuoteCatalog): PricingContext {

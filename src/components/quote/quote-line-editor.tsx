@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
+import { OptionSwatches } from "@/components/quote/option-swatches";
 import {
   optionsForProduct,
   toPricingContext,
@@ -13,6 +14,7 @@ import {
   type QuoteCatalog,
 } from "@/lib/quote-catalog";
 import { formatEuroExact } from "@/lib/format";
+import { isSwatchOption, resolveImage } from "@/lib/product-visuals";
 import type { QuoteItemInput } from "@/lib/quote-validation";
 
 export function QuoteLineEditor({
@@ -46,6 +48,7 @@ export function QuoteLineEditor({
   const errors = validateConfiguration(input, ctx);
   const price = calculatePrice(input, ctx);
   const canShowPrice = errors.length === 0;
+  const imageUrl = resolveImage(item.productId, item.selections, catalog.images);
 
   function setProduct(productId: string) {
     const nextOptions = optionsForProduct(catalog, productId);
@@ -93,6 +96,11 @@ export function QuoteLineEditor({
         ) : null}
       </div>
 
+      <div className="overflow-hidden rounded-sm border border-border bg-surface-sunk">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt="" className="h-56 w-full object-cover" />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField id={`product-${index}`} label="Product">
           <Select
@@ -126,6 +134,18 @@ export function QuoteLineEditor({
         {options.map((option) => {
           const values = valuesForProductOption(catalog, item.productId, option);
           const current = selectedValue(option.id);
+          if (isSwatchOption(option.code)) {
+            return (
+              <OptionSwatches
+                key={option.id}
+                optionName={option.name}
+                values={values}
+                selectedId={current}
+                onSelect={(optionValueId) => setSelection(option.id, optionValueId)}
+              />
+            );
+          }
+
           if (option.inputType === "boolean") {
             const ja = values[0];
             if (!ja) return null;

@@ -240,6 +240,7 @@ model Product {
   availability   ProductOptionAvailability[]
   configurations Configuration[]
   companyPricing CompanyPricing[]
+  images         ProductImage[]
 
   @@map("product")
 }
@@ -257,9 +258,10 @@ model ProductOption {
   isRequired Boolean         @default(false)
   sortOrder  Int             @default(0)
 
-  values       OptionValue[]
-  availability ProductOptionAvailability[]
-  configItems  ConfigurationItem[]
+  values          OptionValue[]
+  availability    ProductOptionAvailability[]
+  configItems     ConfigurationItem[]
+  imageSelections ProductImageSelection[]
 
   @@map("product_option")
 }
@@ -273,10 +275,13 @@ model OptionValue {
   internalRef    String?
   isActive       Boolean  @default(true)
   sortOrder      Int      @default(0)
+  swatchHex      String?  @db.VarChar(16)
+  swatchImageUrl String?  @db.VarChar(2048)
 
-  option       ProductOption               @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  availability ProductOptionAvailability[]
-  configItems  ConfigurationItem[]
+  option          ProductOption               @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  availability    ProductOptionAvailability[]
+  configItems     ConfigurationItem[]
+  imageSelections ProductImageSelection[]
 
   @@index([optionId])
   @@map("option_value")
@@ -295,6 +300,34 @@ model ProductOptionAvailability {
   @@unique([productId, optionId, optionValueId])
   @@index([productId])
   @@map("product_option_availability")
+}
+
+model ProductImage {
+  id        String  @id
+  productId String
+  imageUrl  String  @db.VarChar(2048)
+  isDefault Boolean @default(false)
+
+  product    Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  selections ProductImageSelection[]
+
+  @@index([productId])
+  @@map("product_image")
+}
+
+model ProductImageSelection {
+  id            String @id
+  imageId       String
+  optionId      String
+  optionValueId String
+
+  image ProductImage  @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  option ProductOption @relation(fields: [optionId], references: [id])
+  value  OptionValue   @relation(fields: [optionValueId], references: [id])
+
+  @@unique([imageId, optionId])
+  @@index([imageId])
+  @@map("product_image_selection")
 }
 
 // ---------------------------------------------------------------------

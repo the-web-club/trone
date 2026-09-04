@@ -13,7 +13,7 @@ import type { QuoteInput, QuoteItemInput, QuoteStatusInput } from "@/lib/quote-v
 
 export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
   const prisma = getPrismaClient();
-  const [products, options, availability] = await Promise.all([
+  const [products, options, availability, images] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
@@ -28,6 +28,9 @@ export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
       },
     }),
     prisma.productOptionAvailability.findMany(),
+    prisma.productImage.findMany({
+      include: { selections: true },
+    }),
   ]);
 
   return {
@@ -49,12 +52,24 @@ export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
         value: value.value,
         priceDelta: Number(value.priceDelta),
         priceOnRequest: value.priceOnRequest,
+        swatchHex: value.swatchHex,
+        swatchImageUrl: value.swatchImageUrl,
       })),
     })),
     availability: availability.map((row) => ({
       productId: row.productId,
       optionId: row.optionId,
       optionValueId: row.optionValueId,
+    })),
+    images: images.map((image) => ({
+      id: image.id,
+      productId: image.productId,
+      imageUrl: image.imageUrl,
+      isDefault: image.isDefault,
+      selections: image.selections.map((row) => ({
+        optionId: row.optionId,
+        optionValueId: row.optionValueId,
+      })),
     })),
   };
 }

@@ -16,7 +16,10 @@ Zod · Vitest · Vercel.
 
 1. `pnpm install`
 2. Kopieer `.env.example` naar `.env.local` en vul de SkySQL-gegevens in
-   (eigen database `trone_seating` binnen de bestaande service).
+   (eigen database `trone_seating` binnen de bestaande service). Voor
+   productafbeeldingen: `BLOB_READ_WRITE_TOKEN` uit het Vercel-dashboard
+   (Storage → Blob → je store → tab `.env.local`). De huidige store is
+   privé; de app serveert beelden via `/api/media` na inloggen.
 3. `pnpm prisma:generate`
 4. `pnpm prisma:migrate`   (eerste migration aanmaken en draaien)
 5. `pnpm seed`             (stages, opties, prijzen, 2 basisproducten)
