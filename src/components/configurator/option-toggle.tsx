@@ -10,12 +10,14 @@ export function OptionToggle({
   checked,
   priceLabel,
   onRequest,
+  imageSrc,
   onChange,
 }: {
   name: string;
   checked: boolean;
   priceLabel?: string | null;
   onRequest?: boolean;
+  imageSrc?: string;
   onChange: (next: boolean) => void;
 }) {
   const aria = [name, priceLabel, checked ? "aan" : "uit"]
@@ -38,6 +40,12 @@ export function OptionToggle({
           : "border-border bg-surface hover:border-border-strong hover:bg-hover-subtle",
       )}
     >
+      {imageSrc ? (
+        <span className="relative size-12 shrink-0 overflow-hidden rounded-sm bg-surface-sunk">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageSrc} alt="" className="size-full object-cover" />
+        </span>
+      ) : null}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-sm font-medium text-fg">{name}</span>
         {priceLabel ? (

@@ -4,16 +4,19 @@ import { useRef } from "react";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { cn } from "@/lib/cn";
+import { placeholderSwatchPath } from "@/lib/placeholder-visuals";
 import { mediaUrl } from "@/lib/product-visuals";
 import type { CatalogValue } from "@/lib/quote-catalog";
 
 export function SwatchDots({
   optionName,
+  optionCode,
   values,
   selectedId,
   onSelect,
 }: {
   optionName: string;
+  optionCode: string;
   values: CatalogValue[];
   selectedId: string;
   onSelect: (optionValueId: string) => void;
@@ -86,19 +89,21 @@ export function SwatchDots({
               <span
                 className="size-8 overflow-hidden rounded-full border border-border"
                 style={
-                  value.swatchHex
+                  !value.swatchImageUrl && value.swatchHex
                     ? { backgroundColor: value.swatchHex }
                     : undefined
                 }
               >
-                {value.swatchImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={mediaUrl(value.swatchImageUrl)}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : null}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={
+                    value.swatchImageUrl
+                      ? mediaUrl(value.swatchImageUrl)
+                      : placeholderSwatchPath(optionCode, value.value)
+                  }
+                  alt=""
+                  className="size-full object-cover"
+                />
               </span>
             </button>
           );

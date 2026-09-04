@@ -1,7 +1,9 @@
+import { isPlaceholderUrl } from "@/lib/placeholder-visuals";
+
 export const SWATCH_OPTION_CODES = ["fabric"] as const;
 export const IMAGE_KEY_OPTION_CODES = ["fabric", "back_height"] as const;
 
-export const PRODUCT_IMAGE_PLACEHOLDER = "/placeholder-product.svg";
+export const PRODUCT_IMAGE_PLACEHOLDER = "/placeholders/placeholder-product.svg";
 
 /** Maakt een Blob-URL toonbaar in de app (private store via /api/media). */
 export function mediaUrl(url: string): string {
@@ -48,7 +50,15 @@ export function resolveImage(
       return { image, allMatch, score: image.selections.length };
     })
     .filter((row) => row.allMatch && row.score > 0)
-    .sort((a, b) => b.score - a.score || Number(b.image.isDefault) - Number(a.image.isDefault));
+    .sort((a, b) => {
+      const score = b.score - a.score;
+      if (score !== 0) return score;
+      const real =
+        Number(!isPlaceholderUrl(b.image.imageUrl)) -
+        Number(!isPlaceholderUrl(a.image.imageUrl));
+      if (real !== 0) return real;
+      return Number(b.image.isDefault) - Number(a.image.isDefault);
+    });
 
   if (matches[0]) return mediaUrl(matches[0].image.imageUrl);
 

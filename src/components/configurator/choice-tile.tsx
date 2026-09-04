@@ -11,6 +11,7 @@ export function ChoiceTile({
   label,
   description,
   priceLabel,
+  imageSrc,
   onSelect,
   className,
 }: {
@@ -19,6 +20,7 @@ export function ChoiceTile({
   label: string;
   description?: string;
   priceLabel?: string | null;
+  imageSrc?: string;
   onSelect: () => void;
   className?: string;
 }) {
@@ -50,6 +52,12 @@ export function ChoiceTile({
         className,
       )}
     >
+      {imageSrc ? (
+        <span className="relative size-12 shrink-0 overflow-hidden rounded-sm bg-surface-sunk">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageSrc} alt="" className="size-full object-cover" />
+        </span>
+      ) : null}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-sm font-medium text-fg">{label}</span>
         {description ? (
