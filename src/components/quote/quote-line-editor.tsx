@@ -1,12 +1,17 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  ChoiceTile,
+  ChoiceTileGroup,
+} from "@/components/configurator/choice-tile";
+import { OptionSection } from "@/components/configurator/option-section";
+import { OptionToggle } from "@/components/configurator/option-toggle";
+import { groupOptions } from "@/components/configurator/option-groups";
+import { meerprijsLabel } from "@/components/configurator/price-copy";
+import { ProductStage } from "@/components/configurator/product-stage";
+import { SwatchDots } from "@/components/configurator/swatch-dots";
 import { Button } from "@/components/ui/button";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
-import { OptionSwatches } from "@/components/quote/option-swatches";
 import {
   optionsForProduct,
   toPricingContext,
@@ -46,9 +51,16 @@ export function QuoteLineEditor({
     discountPercent,
   };
   const errors = validateConfiguration(input, ctx);
+  const incompleteCodes = new Set(
+    errors
+      .filter((error) => error.code === "REQUIRED_OPTION_MISSING")
+      .map((error) => error.optionCode)
+      .filter((code): code is string => Boolean(code)),
+  );
   const price = calculatePrice(input, ctx);
-  const canShowPrice = errors.length === 0;
+  const product = catalog.products.find((row) => row.id === item.productId);
   const imageUrl = resolveImage(item.productId, item.selections, catalog.images);
+  const sections = groupOptions(options);
 
   function setProduct(productId: string) {
     const nextOptions = optionsForProduct(catalog, productId);
@@ -85,148 +97,165 @@ export function QuoteLineEditor({
     );
   }
 
+  function setQuantity(next: number) {
+    onChange({ ...item, quantity: Math.max(1, next) });
+  }
+
   return (
-    <Card className="flex flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h3 className="text-sm font-medium text-fg">Regel {index + 1}</h3>
-        {canRemove ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-            Regel verwijderen
-          </Button>
-        ) : null}
-      </div>
+    <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,28rem)] lg:items-start lg:gap-10">
+      <ProductStage
+        src={imageUrl}
+        alt={product ? `${product.name}, geconfigureerd` : "Productbeeld"}
+        className="lg:sticky lg:top-4"
+      />
 
-      <div className="overflow-hidden rounded-sm border border-border bg-surface-sunk">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt="" className="h-56 w-full object-cover" />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id={`product-${index}`} label="Product">
-          <Select
-            value={item.productId}
-            onChange={(event) => setProduct(event.target.value)}
-          >
-            {catalog.products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField id={`quantity-${index}`} label="Aantal">
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            value={item.quantity}
-            onChange={(event) =>
-              onChange({
-                ...item,
-                quantity: Math.max(1, Number(event.target.value) || 1),
-              })
-            }
-          />
-        </FormField>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {options.map((option) => {
-          const values = valuesForProductOption(catalog, item.productId, option);
-          const current = selectedValue(option.id);
-          if (isSwatchOption(option.code)) {
-            return (
-              <OptionSwatches
-                key={option.id}
-                optionName={option.name}
-                values={values}
-                selectedId={current}
-                onSelect={(optionValueId) => setSelection(option.id, optionValueId)}
+      <div className="flex flex-col gap-8 pb-4">
+        <OptionSection title="Model">
+          <ChoiceTileGroup label="Product">
+            {catalog.products.map((row) => (
+              <ChoiceTile
+                key={row.id}
+                selected={row.id === item.productId}
+                label={row.name}
+                description={row.sku}
+                priceLabel={formatEuroExact(row.basePrice)}
+                onSelect={() => setProduct(row.id)}
               />
-            );
-          }
-
-          if (option.inputType === "boolean") {
-            const ja = values[0];
-            if (!ja) return null;
-            return (
-              <label
-                key={option.id}
-                className="flex h-8 items-center gap-2 text-sm text-fg"
+            ))}
+          </ChoiceTileGroup>
+          <div className="mt-2 flex items-center justify-between gap-3 px-1">
+            <p className="text-sm text-fg-muted">Aantal</p>
+            <div
+              role="group"
+              aria-label="Aantal"
+              className="flex items-center gap-2"
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                aria-label="Aantal verlagen"
+                disabled={item.quantity <= 1}
+                onClick={() => setQuantity(item.quantity - 1)}
               >
-                <input
-                  type="checkbox"
-                  className="size-4 accent-[var(--accent)]"
-                  checked={current === ja.id}
-                  onChange={(event) =>
-                    setSelection(option.id, event.target.checked ? ja.id : "")
-                  }
-                />
-                {option.name}
-                {ja.priceOnRequest
-                  ? " (prijs op aanvraag)"
-                  : ja.priceDelta
-                    ? ` (+${formatEuroExact(ja.priceDelta)})`
-                    : null}
-              </label>
-            );
-          }
+                −
+              </Button>
+              <span className="min-w-8 text-center text-sm font-medium text-fg" aria-live="polite">
+                {item.quantity}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                aria-label="Aantal verhogen"
+                onClick={() => setQuantity(item.quantity + 1)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        </OptionSection>
 
+        {sections.map((section) => {
+          const incomplete = section.options.some((option) =>
+            incompleteCodes.has(option.code),
+          );
           return (
-            <FormField key={option.id} id={`${option.id}-${index}`} label={option.name}>
-              <Select
-                required={option.isRequired}
-                value={current}
-                onChange={(event) => setSelection(option.id, event.target.value)}
-              >
-                {option.isRequired ? null : <option value="">Geen</option>}
-                {values.map((value) => (
-                  <option key={value.id} value={value.id}>
-                    {value.priceOnRequest
-                      ? `${value.value} — prijs op aanvraag`
-                      : value.priceDelta
-                        ? `${value.value} (+${formatEuroExact(value.priceDelta)})`
-                        : value.value}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+            <OptionSection
+              key={section.id}
+              title={section.title}
+              incomplete={incomplete}
+            >
+              <div className="flex flex-col gap-5">
+                {section.options.map((option) => {
+                  const values = valuesForProductOption(
+                    catalog,
+                    item.productId,
+                    option,
+                  );
+                  const current = selectedValue(option.id);
+
+                  if (isSwatchOption(option.code)) {
+                    return (
+                      <div key={option.id} className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-fg">{option.name}</p>
+                        <SwatchDots
+                          optionName={option.name}
+                          values={values}
+                          selectedId={current}
+                          onSelect={(optionValueId) =>
+                            setSelection(option.id, optionValueId)
+                          }
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (option.inputType === "boolean") {
+                    const ja = values[0];
+                    if (!ja) return null;
+                    return (
+                      <OptionToggle
+                        key={option.id}
+                        name={option.name}
+                        checked={current === ja.id}
+                        priceLabel={meerprijsLabel(ja)}
+                        onRequest={ja.priceOnRequest}
+                        onChange={(next) =>
+                          setSelection(option.id, next ? ja.id : "")
+                        }
+                      />
+                    );
+                  }
+
+                  return (
+                    <div key={option.id} className="flex flex-col gap-2">
+                      <p className="text-sm font-medium text-fg">{option.name}</p>
+                      <ChoiceTileGroup label={option.name}>
+                        {option.isRequired ? null : (
+                          <ChoiceTile
+                            selected={!current}
+                            label="Geen"
+                            onSelect={() => setSelection(option.id, "")}
+                          />
+                        )}
+                        {values.map((value) => (
+                          <ChoiceTile
+                            key={value.id}
+                            selected={value.id === current}
+                            label={value.value}
+                            priceLabel={meerprijsLabel(value)}
+                            onSelect={() => setSelection(option.id, value.id)}
+                          />
+                        ))}
+                      </ChoiceTileGroup>
+                      {values.some((value) => value.priceOnRequest && value.id === current) ? (
+                        <p className="px-1 text-label text-fg-subtle">
+                          De productspecialist bepaalt de prijs.
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </OptionSection>
           );
         })}
-      </div>
 
-      <div className="rounded-sm border border-border bg-surface-sunk/60 px-3 py-2">
-        {canShowPrice ? (
-          <div className="flex flex-col gap-1">
-            {price.optionLines.map((line) => (
-              <div
-                key={line.label}
-                className="flex justify-between gap-3 text-xs text-fg-muted"
-              >
-                <span>{line.label}</span>
-                <span>
-                  {line.onRequest ? "Prijs op aanvraag" : formatEuroExact(line.amount)}
-                </span>
-              </div>
-            ))}
-            <div className="mt-1 flex justify-between text-sm font-medium text-fg">
-              <span>Regel totaal excl. btw</span>
-              <span>
-                {price.hasOnRequest ? `${formatEuroExact(price.netTotal)} + n.t.b.` : formatEuroExact(price.netTotal)}
-              </span>
-            </div>
-            {price.hasOnRequest ? (
-              <p className="text-xs text-warning">
-                Bevat opties met prijs op aanvraag (n.t.b. door productspecialist).
-              </p>
-            ) : null}
+        {canRemove ? (
+          <div>
+            <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+              Stoel {index + 1} verwijderen
+            </Button>
           </div>
-        ) : (
-          <p className="text-sm text-danger" role="alert">
-            {errors.map((error) => error.message).join(" ")}
-          </p>
-        )}
+        ) : null}
+
+        <p className="sr-only" aria-live="polite">
+          {errors.length === 0
+            ? `Prijs ${price.hasOnRequest ? `${formatEuroExact(price.netTotal)} plus nader te bepalen` : formatEuroExact(price.netTotal)}`
+            : "Configuratie is nog niet volledig"}
+        </p>
       </div>
-    </Card>
+    </div>
   );
 }

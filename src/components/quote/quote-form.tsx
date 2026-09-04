@@ -2,12 +2,13 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { createQuoteAction } from "@/app/(beveiligd)/actions/quote-actions";
-import { Button } from "@/components/ui/button";
+import { PriceBar } from "@/components/configurator/price-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { QuoteLineEditor } from "@/components/quote/quote-line-editor";
-import { calculatePrice } from "@/lib/pricing";
-import { formatPersonName, formatEuroExact } from "@/lib/format";
+import { calculatePrice, validateConfiguration } from "@/lib/pricing";
+import { formatPersonName } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import {
   defaultSelections,
   resolveDiscountPercent,
@@ -65,6 +66,7 @@ export function QuoteForm({
   const [contactId, setContactId] = useState("");
   const [dealId, setDealId] = useState(initialDealId ?? "");
   const [items, setItems] = useState<QuoteItemInput[]>([emptyLine(catalog)]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const company = companies.find((row) => row.id === companyId);
   const vatRate = company?.vatRate ?? 21;
@@ -102,22 +104,29 @@ export function QuoteForm({
       company?.discounts ?? [],
       item.productId,
     );
-    return calculatePrice(
-      {
-        productId: item.productId,
-        selections: item.selections,
-        quantity: item.quantity,
-        vatRate,
-        discountPercent,
-      },
-      ctx,
-    );
+    const input = {
+      productId: item.productId,
+      selections: item.selections,
+      quantity: item.quantity,
+      vatRate,
+      discountPercent,
+    };
+    return {
+      price: calculatePrice(input, ctx),
+      errors: validateConfiguration(input, ctx),
+    };
   });
 
-  const netTotal = pricedItems.reduce((sum, price) => sum + price.netTotal, 0);
-  const vatAmount = pricedItems.reduce((sum, price) => sum + price.vatAmount, 0);
-  const grossTotal = pricedItems.reduce((sum, price) => sum + price.grossTotal, 0);
-  const hasOnRequest = pricedItems.some((price) => price.hasOnRequest);
+  const netTotal = pricedItems.reduce((sum, row) => sum + row.price.netTotal, 0);
+  const active = pricedItems[activeIndex];
+  const activeValid = (active?.errors.length ?? 1) === 0;
+  const allValid = pricedItems.every((row) => row.errors.length === 0);
+  const canSubmit = Boolean(companyId) && allValid && items.length > 0;
+  const submitDisabledReason = !companyId
+    ? "Kies eerst een klant."
+    : !allValid
+      ? "Maak de configuratie compleet om toe te voegen."
+      : undefined;
 
   const payload = {
     companyId,
@@ -126,11 +135,17 @@ export function QuoteForm({
     items,
   };
 
+  function addLine() {
+    if (!activeValid) return;
+    setItems((list) => [...list, emptyLine(catalog)]);
+    setActiveIndex(items.length);
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="flex flex-col" data-configurator-page="">
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="mb-8 grid gap-4 md:grid-cols-3">
         <FormField id="companyId" label="Klant">
           <Select
             required
@@ -170,10 +185,37 @@ export function QuoteForm({
         </FormField>
       </section>
 
-      <section className="flex flex-col gap-3">
-        {items.map((item, index) => (
+      {items.length > 1 ? (
+        <nav aria-label="Stoelen op deze offerte" className="mb-6 flex flex-wrap gap-1.5">
+          {items.map((item, index) => {
+            const product = catalog.products.find((row) => row.id === item.productId);
+            const selected = index === activeIndex;
+            const valid = pricedItems[index]?.errors.length === 0;
+            return (
+              <button
+                key={`${item.productId}-${index}`}
+                type="button"
+                aria-current={selected ? "true" : undefined}
+                onClick={() => setActiveIndex(index)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+                  selected
+                    ? "bg-selected-bg text-fg shadow-[inset_0_0_0_1px_var(--accent)]"
+                    : "text-fg-muted hover:bg-hover-subtle hover:text-fg",
+                  !valid && "text-warning",
+                )}
+              >
+                {product?.name ?? "Stoel"} {items.length > 1 ? index + 1 : ""}
+              </button>
+            );
+          })}
+        </nav>
+      ) : null}
+
+      {items.map((item, index) => (
+        <div key={`${item.productId}-${index}`} hidden={index !== activeIndex}>
           <QuoteLineEditor
-            key={`${item.productId}-${index}`}
             catalog={catalog}
             item={item}
             index={index}
@@ -186,57 +228,33 @@ export function QuoteForm({
             onChange={(next) =>
               setItems((list) => list.map((row, rowIndex) => (rowIndex === index ? next : row)))
             }
-            onRemove={() =>
-              setItems((list) => list.filter((_, rowIndex) => rowIndex !== index))
-            }
+            onRemove={() => {
+              setItems((list) => list.filter((_, rowIndex) => rowIndex !== index));
+              setActiveIndex((current) => {
+                if (index < current) return current - 1;
+                return Math.min(current, items.length - 2);
+              });
+            }}
           />
-        ))}
-        <div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setItems((list) => [...list, emptyLine(catalog)])}
-          >
-            Regel toevoegen
-          </Button>
         </div>
-      </section>
-
-      <section className="rounded-md border border-border bg-surface px-4 py-3">
-        <div className="flex justify-between text-sm text-fg">
-          <span>Subtotaal excl. btw</span>
-          <span>{formatEuroExact(netTotal)}</span>
-        </div>
-        <div className="mt-1 flex justify-between text-sm text-fg-muted">
-          <span>Btw {vatRate}%</span>
-          <span>{formatEuroExact(vatAmount)}</span>
-        </div>
-        <div className="mt-2 flex justify-between text-md font-medium text-fg">
-          <span>Totaal incl. btw</span>
-          <span>{formatEuroExact(grossTotal)}</span>
-        </div>
-        {hasOnRequest ? (
-          <p className="mt-2 text-xs text-warning">
-            Totaal is excl. opties met prijs op aanvraag.
-          </p>
-        ) : null}
-        <p className="mt-2 text-xs text-fg-muted">
-          Live prijs ter indicatie. Bij opslaan herberekent de server het
-          bindende bedrag.
-        </p>
-      </section>
+      ))}
 
       {state?.error ? (
-        <p className="text-sm text-danger" role="alert">
+        <p className="mt-4 text-sm text-danger" role="alert">
           {state.error}
         </p>
       ) : null}
 
-      <div>
-        <Button type="submit" loading={pending} disabled={!companyId}>
-          Offerte opslaan
-        </Button>
-      </div>
+      <PriceBar
+        price={active?.price ?? null}
+        canSubmit={canSubmit}
+        canAddLine={activeValid}
+        submitDisabledReason={submitDisabledReason}
+        pending={pending}
+        onAddLine={addLine}
+        hasMultipleLines={items.length > 1}
+        quoteNetTotal={netTotal}
+      />
     </form>
   );
 }

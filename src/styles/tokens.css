@@ -20,6 +20,8 @@
   --hover: var(--gray-100);
   --hover-subtle: var(--gray-50);
   --selected: var(--gray-100);
+  --selected-bg: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  --selected-ring: color-mix(in srgb, var(--accent) 28%, transparent);
 
   --border: var(--gray-200);
   --border-strong: var(--gray-300);
@@ -87,6 +89,7 @@
   --sidebar-w: 200px;
   --topbar-h: 52px;
   --content-max: 1200px;
+  --content-wide: 1440px;
   --control-h: 32px;
   --control-h-sm: 28px;
   --control-h-xs: 24px;
@@ -100,6 +103,7 @@
   --motion-instant: 50ms;
   --motion-fast: 120ms;
   --motion-normal: 180ms;
+  --motion-image: 280ms;
   --motion-overlay: 160ms;
   --motion-overlay-exit: 120ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -112,6 +116,7 @@
     --motion-instant: 0.01ms;
     --motion-fast: 0.01ms;
     --motion-normal: 0.01ms;
+    --motion-image: 0.01ms;
     --motion-overlay: 0.01ms;
     --motion-overlay-exit: 0.01ms;
   }
