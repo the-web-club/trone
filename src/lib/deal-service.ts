@@ -428,6 +428,21 @@ export async function getDeal(id: string) {
       stage: true,
       source: { select: { id: true, name: true } },
       activities: { orderBy: { occurredAt: "desc" } },
+      quotes: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          orders: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              createdAt: true,
+              total: true,
+            },
+          },
+        },
+      },
     },
   });
 

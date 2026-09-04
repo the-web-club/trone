@@ -4,14 +4,29 @@ import { notFound } from "next/navigation";
 import { updateDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealActivityForm } from "@/components/deal/deal-activity-form";
 import { DealForm } from "@/components/deal/deal-form";
-import { PageHeader } from "@/components/shell/page-header";
+import {
+  PageHeader,
+  pageActionPrimaryClassName,
+} from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableEmptyRow,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/table";
 import { listCompanies } from "@/lib/company-service";
 import { listContacts } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { activityTypeLabels } from "@/lib/deal-validation";
 import { isAppError } from "@/lib/errors";
-import { formatDateTime, formatPersonName } from "@/lib/format";
+import { formatDate, formatDateTime, formatEuroExact, formatPersonName } from "@/lib/format";
+import { orderStatusLabels } from "@/lib/orders-query";
+import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 
 export async function generateMetadata({
   params,
@@ -72,13 +87,25 @@ export default async function LeadDetailPage({
           </>
         }
         actions={
-          <Badge
-            tone={
-              deal.stage.isWon ? "success" : deal.stage.isLost ? "danger" : "info"
-            }
-          >
-            {deal.stage.name}
-          </Badge>
+          <>
+            <Link
+              href={
+                deal.companyId
+                  ? `/offertes/nieuw?deal=${deal.id}&company=${deal.companyId}`
+                  : `/offertes/nieuw?deal=${deal.id}`
+              }
+              className={pageActionPrimaryClassName()}
+            >
+              Nieuwe offerte
+            </Link>
+            <Badge
+              tone={
+                deal.stage.isWon ? "success" : deal.stage.isLost ? "danger" : "info"
+              }
+            >
+              {deal.stage.name}
+            </Badge>
+          </>
         }
       />
 
@@ -110,6 +137,84 @@ export default async function LeadDetailPage({
               deal.valueEstimate == null ? null : Number(deal.valueEstimate),
           }}
         />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-md font-medium text-fg">Offertes en orders</h2>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Offerte</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Totaal</TableHeaderCell>
+                <TableHeaderCell>Datum</TableHeaderCell>
+                <TableHeaderCell>Order</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {deal.quotes.length === 0 ? (
+                <TableEmptyRow colSpan={5}>
+                  Nog geen offertes bij deze lead.{" "}
+                  <Link
+                    href={
+                      deal.companyId
+                        ? `/offertes/nieuw?deal=${deal.id}&company=${deal.companyId}`
+                        : `/offertes/nieuw?deal=${deal.id}`
+                    }
+                    className="text-fg hover:underline"
+                  >
+                    Nieuwe offerte
+                  </Link>
+                </TableEmptyRow>
+              ) : (
+                deal.quotes.map((quote) => (
+                  <TableRow key={quote.id}>
+                    <TableCell>
+                      <Link
+                        href={`/offertes/${quote.id}`}
+                        className="font-medium text-fg hover:underline"
+                      >
+                        {quote.quoteNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={quoteStatusTones[quote.status]}>
+                        {quoteStatusLabels[quote.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {formatEuroExact(Number(quote.total))}
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      {formatDate(quote.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      {quote.orders.length === 0 ? (
+                        <span className="text-fg-muted">—</span>
+                      ) : (
+                        <span className="flex flex-col gap-1">
+                          {quote.orders.map((order) => (
+                            <Link
+                              key={order.id}
+                              href={`/orders/${order.id}`}
+                              className="text-fg hover:underline"
+                            >
+                              {order.orderNumber}
+                              <span className="ml-2 text-fg-muted">
+                                {orderStatusLabels[order.status]}
+                              </span>
+                            </Link>
+                          ))}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </section>
 
       <section className="flex flex-col gap-4">

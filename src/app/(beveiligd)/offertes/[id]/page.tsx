@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
+import { CreateOrderDialog } from "@/components/order/create-order-dialog";
 import { QuoteLines } from "@/components/quote/quote-lines";
 import { QuoteVersionActions } from "@/components/quote/quote-version-actions";
 import { QuoteVersionCompare } from "@/components/quote/quote-version-compare";
 import { QuoteVersionHistory } from "@/components/quote/quote-version-history";
 import { isAppError } from "@/lib/errors";
 import { formatDate, formatPersonName } from "@/lib/format";
+import { findOrderByQuoteId } from "@/lib/order-service";
 import {
   compareVersions,
   getQuoteWithVersions,
@@ -53,6 +55,7 @@ export default async function OfferteDetailPage({
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  const existingOrder = await findOrderByQuoteId(quote.id);
 
   const requestedVersion = parseVersionParam(query.versie);
   const compareA = parseVersionParam(query.vergelijk);
@@ -137,6 +140,32 @@ export default async function OfferteDetailPage({
         status={quote.status}
         viewingHistorical={viewingHistorical}
       />
+
+      {!viewingHistorical && existingOrder ? (
+        <p className="text-sm text-fg-muted">
+          Order{" "}
+          <Link
+            href={`/orders/${existingOrder.id}`}
+            className="font-medium text-fg hover:underline"
+          >
+            {existingOrder.orderNumber}
+          </Link>
+        </p>
+      ) : null}
+
+      {!viewingHistorical && quote.status === "ACCEPTED" && !existingOrder ? (
+        <CreateOrderDialog
+          quoteId={quote.id}
+          items={quote.items.map((item) => ({
+            id: item.id,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            lineTotal: Number(item.lineTotal),
+            configSnapshot: item.configSnapshot,
+          }))}
+        />
+      ) : null}
 
       {viewingHistorical ? (
         <p className="text-sm text-fg-muted">
