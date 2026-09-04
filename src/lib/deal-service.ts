@@ -1,10 +1,21 @@
 import "server-only";
 
+import type { DealStatus, Prisma } from "@/generated/prisma/client";
+import {
+  endExclusiveOfCalendarDate,
+  normalizeDateOnlyInput,
+  parseAmountInput,
+  startOfCalendarDate,
+} from "@/lib/date-input";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { DealActivityInput, DealInput } from "@/lib/deal-validation";
-import type { DealStatus } from "@/generated/prisma/client";
+import type {
+  DealDateField,
+  DealSort,
+  DealStatusFilter,
+} from "@/lib/deals-query";
 
 export async function listDealStages() {
   const prisma = getPrismaClient();
@@ -16,29 +27,393 @@ export async function listLeadSources() {
   return prisma.leadSource.findMany({ orderBy: { name: "asc" } });
 }
 
-export async function listDeals(filters?: { query?: string; stageId?: string }) {
-  const prisma = getPrismaClient();
-  const query = filters?.query?.trim();
+export type DealListFilters = {
+  zoeken?: string;
+  stageId?: string;
+  sourceId?: string;
+  eigenaar?: string;
+  status?: DealStatusFilter;
+  waardeMin?: string | number | null;
+  waardeMax?: string | number | null;
+  van?: string;
+  tot?: string;
+  datumveld?: DealDateField;
+  sortering?: DealSort;
+  page?: number;
+  pageSize?: number;
+};
 
-  return prisma.deal.findMany({
-    where: {
-      ...(filters?.stageId ? { stageId: filters.stageId } : {}),
-      ...(query
-        ? {
-            OR: [
-              { title: { contains: query } },
-              { company: { name: { contains: query } } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      company: { select: { id: true, name: true } },
-      stage: true,
-      source: { select: { id: true, name: true } },
-    },
+const dealListInclude = {
+  company: { select: { id: true, name: true } },
+  contact: { select: { id: true, firstName: true, lastName: true } },
+  stage: true,
+  source: { select: { id: true, name: true } },
+} as const;
+
+export const DEAL_LIST_PAGE_SIZE = 25;
+const KANBAN_LIST_CAP = 1000;
+const DEAL_CSV_EXPORT_CAP = 5000;
+
+function normalizeSearch(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toAmount(value: string | number | null | undefined): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+  return parseAmountInput(value);
+}
+
+function statusFilterToEnum(
+  status: DealStatusFilter | undefined,
+): DealStatus | null {
+  if (status === "open") return "OPEN";
+  if (status === "won") return "WON";
+  if (status === "lost") return "LOST";
+  return null;
+}
+
+/**
+ * Shared where for list, kanban, facets and export.
+ * Owner-scope ("aan mij") is always the first AND clause.
+ */
+export function buildDealListWhere(
+  filters: DealListFilters,
+  currentUserId?: string,
+): Prisma.DealWhereInput {
+  const and: Prisma.DealWhereInput[] = [];
+
+  const eigenaar = filters.eigenaar?.trim() || "alle";
+  if (eigenaar === "aan-mij") {
+    and.push({ ownerUserId: currentUserId ?? "__no_match__" });
+  } else if (eigenaar === "niet-toegewezen") {
+    and.push({ ownerUserId: null });
+  } else if (eigenaar !== "alle") {
+    and.push({ ownerUserId: eigenaar });
+  }
+
+  const search = normalizeSearch(filters.zoeken);
+  if (search) {
+    and.push({
+      OR: [
+        { title: { contains: search } },
+        { company: { name: { contains: search } } },
+        { contact: { firstName: { contains: search } } },
+        { contact: { lastName: { contains: search } } },
+      ],
+    });
+  }
+
+  if (filters.stageId) {
+    and.push({ stageId: filters.stageId });
+  }
+
+  if (filters.sourceId === "geen") {
+    and.push({ sourceId: null });
+  } else if (filters.sourceId) {
+    and.push({ sourceId: filters.sourceId });
+  }
+
+  const status = statusFilterToEnum(filters.status);
+  if (status) {
+    and.push({ status });
+  }
+
+  const waardeMin = toAmount(filters.waardeMin);
+  const waardeMax = toAmount(filters.waardeMax);
+  if (waardeMin != null || waardeMax != null) {
+    const valueEstimate: Prisma.DecimalFilter = {};
+    if (waardeMin != null) valueEstimate.gte = waardeMin;
+    if (waardeMax != null) valueEstimate.lte = waardeMax;
+    and.push({ valueEstimate });
+  }
+
+  const van = normalizeDateOnlyInput(filters.van);
+  const tot = normalizeDateOnlyInput(filters.tot);
+  if (van || tot) {
+    const field = filters.datumveld === "verwacht" ? "expectedClose" : "createdAt";
+    const range: Prisma.DateTimeFilter = {};
+    if (van) range.gte = startOfCalendarDate(van);
+    if (tot) range.lt = endExclusiveOfCalendarDate(tot);
+    and.push({ [field]: range });
+  }
+
+  return and.length > 0 ? { AND: and } : {};
+}
+
+function buildDealOrderBy(
+  sortering: DealSort | null | undefined,
+): Prisma.DealOrderByWithRelationInput[] {
+  switch (sortering) {
+    case "oudste":
+      return [{ createdAt: "asc" }, { id: "asc" }];
+    case "gewijzigd":
+      return [{ updatedAt: "desc" }, { id: "desc" }];
+    case "nieuwste":
+    default:
+      return [{ createdAt: "desc" }, { id: "desc" }];
+  }
+}
+
+export type DealListItem = Prisma.DealGetPayload<{
+  include: typeof dealListInclude;
+}>;
+
+export async function listDeals(
+  filters: DealListFilters = {},
+  currentUserId?: string,
+): Promise<{
+  items: DealListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const prisma = getPrismaClient();
+  const pageSize = Math.min(
+    Math.max(filters.pageSize ?? DEAL_LIST_PAGE_SIZE, 1),
+    100,
+  );
+  const page = Math.max(filters.page ?? 1, 1);
+  const where = buildDealListWhere(filters, currentUserId);
+
+  const [total, items] = await Promise.all([
+    prisma.deal.count({ where }),
+    prisma.deal.findMany({
+      where,
+      include: dealListInclude,
+      orderBy: buildDealOrderBy(filters.sortering),
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { items, total, page, pageSize };
+}
+
+export async function listAllDeals(
+  filters: Omit<DealListFilters, "page" | "pageSize"> = {},
+  currentUserId?: string,
+  options?: { take?: number },
+): Promise<{ items: DealListItem[]; total: number; capped: boolean }> {
+  const prisma = getPrismaClient();
+  const take = Math.min(Math.max(options?.take ?? KANBAN_LIST_CAP, 1), 10_000);
+  const where = buildDealListWhere(filters, currentUserId);
+
+  const [total, items] = await Promise.all([
+    prisma.deal.count({ where }),
+    prisma.deal.findMany({
+      where,
+      include: dealListInclude,
+      orderBy: buildDealOrderBy(filters.sortering),
+      take,
+    }),
+  ]);
+
+  return { items, total, capped: total > items.length };
+}
+
+export type DealTeamMember = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export async function listDealTeamMembers(): Promise<DealTeamMember[]> {
+  const prisma = getPrismaClient();
+  return prisma.user.findMany({
+    where: { OR: [{ banned: false }, { banned: null }] },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
   });
+}
+
+export type DealFilterFacets = {
+  stageTotal: number;
+  byStage: Array<{ stageId: string; count: number }>;
+  sourceTotal: number;
+  unassignedSource: number;
+  bySource: Array<{ sourceId: string; count: number }>;
+  ownerTotal: number;
+  unassignedOwner: number;
+  assignedToMe: number;
+  byOwner: Array<{ userId: string; count: number }>;
+  statusTotal: number;
+  byStatus: Partial<Record<DealStatus, number>>;
+};
+
+/**
+ * Facet counts for the leads filter bar.
+ * Each dimension ignores its own filter so counts stay meaningful.
+ */
+export async function getDealFilterFacets(
+  filters: DealListFilters = {},
+  currentUserId?: string,
+): Promise<DealFilterFacets> {
+  const prisma = getPrismaClient();
+
+  const stageWhere = buildDealListWhere(
+    { ...filters, stageId: undefined },
+    currentUserId,
+  );
+  const sourceWhere = buildDealListWhere(
+    { ...filters, sourceId: undefined },
+    currentUserId,
+  );
+  const ownerWhere = buildDealListWhere(
+    { ...filters, eigenaar: "alle" },
+    currentUserId,
+  );
+  const statusWhere = buildDealListWhere(
+    { ...filters, status: "alle" },
+    currentUserId,
+  );
+
+  const [
+    stageTotal,
+    stageGroups,
+    sourceTotal,
+    unassignedSource,
+    sourceGroups,
+    ownerTotal,
+    unassignedOwner,
+    assignedToMe,
+    ownerGroups,
+    statusTotal,
+    statusGroups,
+  ] = await Promise.all([
+    prisma.deal.count({ where: stageWhere }),
+    prisma.deal.groupBy({
+      by: ["stageId"],
+      where: stageWhere,
+      _count: { _all: true },
+    }),
+    prisma.deal.count({ where: sourceWhere }),
+    prisma.deal.count({
+      where: { AND: [sourceWhere, { sourceId: null }] },
+    }),
+    prisma.deal.groupBy({
+      by: ["sourceId"],
+      where: { AND: [sourceWhere, { sourceId: { not: null } }] },
+      _count: { _all: true },
+    }),
+    prisma.deal.count({ where: ownerWhere }),
+    prisma.deal.count({
+      where: { AND: [ownerWhere, { ownerUserId: null }] },
+    }),
+    currentUserId
+      ? prisma.deal.count({
+          where: { AND: [ownerWhere, { ownerUserId: currentUserId }] },
+        })
+      : Promise.resolve(0),
+    prisma.deal.groupBy({
+      by: ["ownerUserId"],
+      where: { AND: [ownerWhere, { ownerUserId: { not: null } }] },
+      _count: { _all: true },
+    }),
+    prisma.deal.count({ where: statusWhere }),
+    prisma.deal.groupBy({
+      by: ["status"],
+      where: statusWhere,
+      _count: { _all: true },
+    }),
+  ]);
+
+  const byStatus: Partial<Record<DealStatus, number>> = {};
+  for (const group of statusGroups) {
+    byStatus[group.status] = group._count._all;
+  }
+
+  return {
+    stageTotal,
+    byStage: stageGroups.map((group) => ({
+      stageId: group.stageId,
+      count: group._count._all,
+    })),
+    sourceTotal,
+    unassignedSource,
+    bySource: sourceGroups.flatMap((group) =>
+      group.sourceId
+        ? [{ sourceId: group.sourceId, count: group._count._all }]
+        : [],
+    ),
+    ownerTotal,
+    unassignedOwner,
+    assignedToMe,
+    byOwner: ownerGroups.flatMap((group) =>
+      group.ownerUserId
+        ? [{ userId: group.ownerUserId, count: group._count._all }]
+        : [],
+    ),
+    statusTotal,
+    byStatus,
+  };
+}
+
+function csvCell(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export async function exportDealsCsv(
+  filters: Omit<DealListFilters, "page" | "pageSize">,
+  currentUserId?: string,
+): Promise<{ csv: string; filename: string; total: number; capped: boolean }> {
+  const { items, total, capped } = await listAllDeals(
+    filters,
+    currentUserId,
+    { take: DEAL_CSV_EXPORT_CAP },
+  );
+  const members = await listDealTeamMembers();
+  const ownerNames = new Map(
+    members.map((member) => [member.id, member.name || member.email]),
+  );
+
+  const header = [
+    "Titel",
+    "Bedrijf",
+    "Contact",
+    "Fase",
+    "Status",
+    "Waarde",
+    "Bron",
+    "Eigenaar",
+    "Aangemaakt",
+    "Verwachte sluiting",
+  ];
+
+  const rows = items.map((deal) => {
+    const contact = deal.contact
+      ? [deal.contact.firstName, deal.contact.lastName].filter(Boolean).join(" ")
+      : "";
+    const owner = deal.ownerUserId
+      ? (ownerNames.get(deal.ownerUserId) ?? deal.ownerUserId)
+      : "";
+    return [
+      deal.title,
+      deal.company?.name ?? "",
+      contact,
+      deal.stage.name,
+      deal.status,
+      deal.valueEstimate == null ? "" : String(deal.valueEstimate),
+      deal.source?.name ?? "",
+      owner,
+      deal.createdAt.toISOString(),
+      deal.expectedClose ? deal.expectedClose.toISOString().slice(0, 10) : "",
+    ].map((cell) => csvCell(cell));
+  });
+
+  const csv = `\uFEFF${[header, ...rows].map((row) => row.join(";")).join("\r\n")}\r\n`;
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    csv,
+    filename: `leads-${today}.csv`,
+    total,
+    capped,
+  };
 }
 
 export async function getDeal(id: string) {

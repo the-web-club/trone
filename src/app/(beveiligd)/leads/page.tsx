@@ -1,85 +1,199 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LeadsBrowser } from "@/components/deal/leads-browser";
 import { LeadsKanban } from "@/components/deal/leads-kanban";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { listDealStages, listDeals } from "@/lib/deal-service";
+import {
+  formatListContactName,
+  LeadsListTable,
+} from "@/components/deal/leads-list-table";
+import { requireSession } from "@/lib/auth-session";
+import {
+  getDealFilterFacets,
+  listAllDeals,
+  listDealStages,
+  listDealTeamMembers,
+  listDeals,
+  listLeadSources,
+} from "@/lib/deal-service";
+import {
+  buildDealsExportHref,
+  buildDealsHref,
+  parseDealsSearchParams,
+} from "@/lib/deals-query";
 
 export const metadata: Metadata = { title: "Leads" };
 
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; stage?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q, stage } = await searchParams;
-  const query = q?.trim() ?? "";
-  const stageId = stage?.trim() || undefined;
+  const session = await requireSession();
+  const params = await searchParams;
+  const parsed = parseDealsSearchParams(params);
+  const currentUserId = session.user.id;
 
-  const [stages, deals] = await Promise.all([
+  const listFilters = {
+    zoeken: parsed.zoeken,
+    stageId: parsed.fase || undefined,
+    sourceId: parsed.bron || undefined,
+    eigenaar: parsed.eigenaar,
+    status: parsed.status,
+    waardeMin: parsed.waardeMin || undefined,
+    waardeMax: parsed.waardeMax || undefined,
+    van: parsed.van || undefined,
+    tot: parsed.tot || undefined,
+    datumveld: parsed.datumveld,
+    sortering: parsed.sortering,
+  };
+
+  const filterValues = {
+    zoeken: parsed.zoeken,
+    fase: parsed.fase,
+    bron: parsed.bron,
+    eigenaar: parsed.eigenaar,
+    status: parsed.status,
+    waardeMin: parsed.waardeMin,
+    waardeMax: parsed.waardeMax,
+    van: parsed.van,
+    tot: parsed.tot,
+    datumveld: parsed.datumveld,
+    sortering: parsed.sortering,
+  };
+
+  const [stages, sources, members, facets, result] = await Promise.all([
     listDealStages(),
-    listDeals({ query: query || undefined, stageId }),
+    listLeadSources(),
+    listDealTeamMembers(),
+    getDealFilterFacets(listFilters, currentUserId),
+    parsed.view === "kanban"
+      ? listAllDeals(listFilters, currentUserId)
+      : listDeals(
+          { ...listFilters, page: parsed.pagina, pageSize: 25 },
+          currentUserId,
+        ),
   ]);
 
+  const ownerNames = new Map(
+    members.map((member) => [member.id, member.name || member.email]),
+  );
+
+  const hasFilters = Boolean(
+    parsed.zoeken ||
+      parsed.fase ||
+      parsed.bron ||
+      parsed.eigenaar !== "alle" ||
+      parsed.status !== "alle" ||
+      parsed.waardeMin ||
+      parsed.waardeMax ||
+      parsed.van ||
+      parsed.tot,
+  );
+
+  let emptyMessage = "Nog geen leads. Voeg de eerste lead toe.";
+  if (result.total === 0 && hasFilters) {
+    if (parsed.eigenaar === "aan-mij" && !parsed.zoeken && !parsed.fase && !parsed.bron) {
+      emptyMessage = "Geen leads aan jou toegewezen.";
+    } else {
+      emptyMessage = "Geen leads gevonden voor deze filters.";
+    }
+  }
+
+  const summary =
+    result.total === 0
+      ? hasFilters
+        ? "Geen resultaten"
+        : "Nog geen leads"
+      : `${result.total} ${result.total === 1 ? "lead" : "leads"}`;
+
+  const exportHref = buildDealsExportHref(filterValues);
+  const pageSize = "pageSize" in result ? result.pageSize : 25;
+  const totalPages = Math.max(Math.ceil(result.total / pageSize), 1);
+
+  function pageHref(nextPage: number) {
+    return buildDealsHref({
+      ...filterValues,
+      view: parsed.view,
+      pagina: nextPage,
+    });
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <header className="page-header">
-        <div className="page-header-copy">
-          <h1 className="page-header-title">Leads</h1>
-          <p className="page-header-description">
-            Verkooppijplijn. Sleep een kaart naar een andere fase, of kies de
-            fase in de lijst.
-          </p>
-        </div>
-        <div className="page-actions">
-          <Link
-            href="/leads/nieuw"
-            className="inline-flex h-8 items-center rounded-sm bg-accent px-3 text-sm font-medium text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover"
-          >
-            Nieuwe lead
-          </Link>
-        </div>
-      </header>
-
-      <form method="get" className="flex max-w-2xl flex-wrap gap-2">
-        <Input
-          name="q"
-          type="search"
-          placeholder="Zoek op titel of bedrijf"
-          defaultValue={query}
-          aria-label="Zoek leads"
-          className="max-w-xs"
+    <LeadsBrowser
+      values={filterValues}
+      view={parsed.view}
+      stages={stages.map((stage) => ({ id: stage.id, name: stage.name }))}
+      sources={sources.map((source) => ({ id: source.id, name: source.name }))}
+      members={members}
+      facets={facets}
+      exportHref={exportHref}
+      summary={summary}
+    >
+      {parsed.view === "kanban" ? (
+        <LeadsKanban
+          stages={stages.map((stage) => ({
+            id: stage.id,
+            name: stage.name,
+            isWon: stage.isWon,
+            isLost: stage.isLost,
+          }))}
+          deals={result.items.map((deal) => ({
+            id: deal.id,
+            title: deal.title,
+            stageId: deal.stageId,
+            companyName: deal.company?.name ?? null,
+            valueEstimate:
+              deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+          }))}
         />
-        <Select name="stage" defaultValue={stageId ?? ""} className="max-w-48" aria-label="Filter op fase">
-          <option value="">Alle fases</option>
-          {stages.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" variant="secondary">
-          Filteren
-        </Button>
-      </form>
-
-      <LeadsKanban
-        stages={stages.map((item) => ({
-          id: item.id,
-          name: item.name,
-          isWon: item.isWon,
-          isLost: item.isLost,
-        }))}
-        deals={deals.map((deal) => ({
-          id: deal.id,
-          title: deal.title,
-          stageId: deal.stageId,
-          companyName: deal.company?.name ?? null,
-          valueEstimate:
-            deal.valueEstimate == null ? null : Number(deal.valueEstimate),
-        }))}
-      />
-    </div>
+      ) : (
+        <>
+          <LeadsListTable
+            rows={result.items.map((deal) => ({
+              id: deal.id,
+              title: deal.title,
+              companyName: deal.company?.name ?? null,
+              contactName: formatListContactName(deal.contact),
+              stageName: deal.stage.name,
+              isWon: deal.stage.isWon,
+              isLost: deal.stage.isLost,
+              valueEstimate:
+                deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+              sourceName: deal.source?.name ?? null,
+              ownerName: deal.ownerUserId
+                ? (ownerNames.get(deal.ownerUserId) ?? null)
+                : null,
+              createdAt: deal.createdAt.toISOString(),
+            }))}
+            emptyMessage={emptyMessage}
+          />
+          {result.total > 0 ? (
+            <nav className="page-pagination" aria-label="Paginering">
+              <p className="text-sm text-fg-muted">
+                Pagina {parsed.pagina} van {totalPages}
+              </p>
+              <div className="flex gap-2">
+                {parsed.pagina > 1 ? (
+                  <Link
+                    href={pageHref(parsed.pagina - 1)}
+                    className="inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm text-fg hover:bg-hover"
+                  >
+                    Vorige
+                  </Link>
+                ) : null}
+                {parsed.pagina < totalPages ? (
+                  <Link
+                    href={pageHref(parsed.pagina + 1)}
+                    className="inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm text-fg hover:bg-hover"
+                  >
+                    Volgende
+                  </Link>
+                ) : null}
+              </div>
+            </nav>
+          ) : null}
+        </>
+      )}
+    </LeadsBrowser>
   );
 }

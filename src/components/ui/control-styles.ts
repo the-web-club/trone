@@ -23,3 +23,19 @@ export const fieldBase =
   " disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunk disabled:text-fg-muted" +
   " aria-invalid:border-danger aria-invalid:focus-visible:border-danger aria-invalid:focus-visible:ring-ring-danger" +
   " data-[invalid]:border-danger";
+
+/** Popup surface for menus, selects and popovers. */
+export const popupSurface =
+  "rounded-md border border-border bg-surface p-1 shadow-[var(--shadow-pop)] outline-none";
+
+export const popupMotion =
+  "origin-[var(--transform-origin)] transition-[opacity,transform] duration-[var(--motion-overlay)] ease-[var(--ease-enter)]" +
+  " data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98]" +
+  " data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98]" +
+  " data-[ending-style]:duration-[var(--motion-overlay-exit)] data-[ending-style]:ease-[var(--ease-exit)]";
+
+/** Row inside a popup surface. */
+export const popupItem =
+  "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-fg outline-none select-none " +
+  controlMotion +
+  " data-[highlighted]:bg-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50";

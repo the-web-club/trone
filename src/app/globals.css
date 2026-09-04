@@ -217,11 +217,43 @@
     gap: 0.5rem;
   }
 
+  .list-toolbar {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.5rem;
+  }
+
+  .list-toolbar-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .list-body {
+    transition-property: opacity;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  .list-body[aria-busy="true"] {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
   .data-table {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     border-radius: var(--r-md);
     border: 1px solid var(--border);
     background: var(--surface);
+  }
+
+  .page-pagination {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 }
