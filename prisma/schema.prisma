@@ -98,22 +98,23 @@ model Verification {
 // CRM — companies & contacts (B2B)
 // ---------------------------------------------------------------------
 model Company {
-  id           String    @id
-  name         String
-  vatNumber    String?
-  cocNumber    String?
-  website      String?
-  phone        String?
-  email        String?
-  addressLine  String?
-  postalCode   String?
-  city         String?
-  country      String    @default("NL")
-  vatRate      Decimal   @default(21.00) @db.Decimal(5, 2)
-  notes        String?   @db.Text
-  ownerUserId  String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id
+  sourceKlantcode String?   @unique
+  name            String
+  vatNumber       String?
+  cocNumber       String?
+  website         String?
+  phone           String?
+  email           String?
+  addressLine     String?
+  postalCode      String?
+  city            String?
+  country         String    @default("NL")
+  vatRate         Decimal   @default(21.00) @db.Decimal(5, 2)
+  notes           String?   @db.Text
+  ownerUserId     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   contacts      Contact[]
   deals         Deal[]
@@ -183,6 +184,7 @@ enum DealStatus {
 
 model Deal {
   id            String     @id
+  aanvraagId    String?    @unique
   title         String
   companyId     String?
   contactId     String?

@@ -45,10 +45,10 @@ export function AppSidebar({
 
   return (
     <aside className="hidden h-full min-h-0 w-[var(--sidebar-w)] shrink-0 flex-col border-r border-border bg-surface lg:flex">
-      <div className="flex h-[var(--topbar-h)] items-center px-4">
+      <div className="flex h-[var(--topbar-h)] items-center px-5">
         <Link
           href="/overzicht"
-          className="flex w-[9.5rem] text-fg"
+          className="flex w-28 text-fg"
           aria-label="TRÔNE Seating"
         >
           <BrandLogo />
