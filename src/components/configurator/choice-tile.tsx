@@ -93,10 +93,10 @@ export function ChoiceTileGroup({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("grid gap-2", cols, className)}
+      className={cn("grid auto-rows-fr gap-2", cols, className)}
     >
       {Children.map(children, (child) => (
-        <div className="min-w-0">{child}</div>
+        <div className="flex min-w-0 [&>*]:flex-1">{child}</div>
       ))}
     </div>
   );

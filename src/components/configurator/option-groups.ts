@@ -1,9 +1,14 @@
 import {
+  optionsForProduct,
   valuesForProductOption,
   type CatalogOption,
   type CatalogValue,
   type QuoteCatalog,
 } from "@/lib/quote-catalog";
+
+/** Zelfde kolommen als beeld + opties, zodat de prijsbalk de beeldbreedte volgt. */
+export const configuratorSplitClass =
+  "flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,28rem)] lg:items-start lg:gap-10";
 
 export type OptionSection = {
   id: string;
@@ -48,8 +53,22 @@ const SECTION_DEFS: { id: string; title: string; codes: string[] }[] = [
   },
 ];
 
-/** Opties waar de UI geen synthetische of catalogus-"Geen" toont. */
-export const HIDE_NONE_OPTION_CODES = ["width"] as const;
+/** Optionele select-opties die altijd een zichtbare default houden. */
+const PREFERRED_DEFAULTS: { code: string; value: string }[] = [
+  { code: "width", value: "Standaard" },
+  { code: "headrest", value: "Met hoofdsteun" },
+];
+
+export function isNoneCatalogValue(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "" || normalized === "geen" || normalized === "none";
+}
+
+export function hiddenNoneValue(
+  option: CatalogOption,
+): CatalogValue | undefined {
+  return option.values.find((value) => isNoneCatalogValue(value.value));
+}
 
 export function groupOptions(options: CatalogOption[]): OptionSection[] {
   const used = new Set<string>();
@@ -70,40 +89,76 @@ export function groupOptions(options: CatalogOption[]): OptionSection[] {
   return sections;
 }
 
+/** Verbergt catalogus-"Geen"/lege waarden; die blijven intern bestaan. */
 export function displayOptionValues(
-  option: CatalogOption,
+  _option: CatalogOption,
   values: CatalogValue[],
 ): CatalogValue[] {
-  if (!(HIDE_NONE_OPTION_CODES as readonly string[]).includes(option.code)) {
-    return values;
-  }
-  return values.filter((value) => value.value !== "Geen");
+  return values.filter((value) => !isNoneCatalogValue(value.value));
 }
 
-export function showNoneChoice(option: CatalogOption): boolean {
+export function visualSelectionId(
+  option: CatalogOption,
+  selectedId: string,
+): string {
+  const none = hiddenNoneValue(option);
+  if (none && selectedId === none.id) return "";
+  return selectedId;
+}
+
+export function internalSelectionId(
+  option: CatalogOption,
+  selectedId: string,
+): string {
+  if (selectedId) return selectedId;
+  return hiddenNoneValue(option)?.id ?? "";
+}
+
+export function hasPreferredDefault(option: CatalogOption): boolean {
+  return PREFERRED_DEFAULTS.some((row) => row.code === option.code);
+}
+
+export function canClearOptionalChoice(option: CatalogOption): boolean {
   return (
     !option.isRequired &&
-    !(HIDE_NONE_OPTION_CODES as readonly string[]).includes(option.code)
+    option.inputType === "select" &&
+    !hasPreferredDefault(option)
   );
 }
 
-/** Zet Breedte op Standaard als er nog geen keuze is. */
+/** Zet Breedte/Hoofdsteun op hun default, en optionele "Geen" intern. */
 export function ensurePreferredSelections(
   catalog: QuoteCatalog,
   productId: string,
   selections: { optionId: string; optionValueId: string }[],
 ): { optionId: string; optionValueId: string }[] {
-  const width = catalog.options.find((option) => option.code === "width");
-  if (!width) return selections;
-  if (selections.some((selection) => selection.optionId === width.id)) {
-    return selections;
+  const available = optionsForProduct(catalog, productId);
+  const chosen = new Set(selections.map((selection) => selection.optionId));
+  const next = [...selections];
+
+  for (const option of available) {
+    if (chosen.has(option.id)) continue;
+
+    const preferred = PREFERRED_DEFAULTS.find((row) => row.code === option.code);
+    if (preferred) {
+      const values = displayOptionValues(
+        option,
+        valuesForProductOption(catalog, productId, option),
+      );
+      const match =
+        values.find((value) => value.value === preferred.value) ?? values[0];
+      if (!match) continue;
+      next.push({ optionId: option.id, optionValueId: match.id });
+      chosen.add(option.id);
+      continue;
+    }
+
+    if (option.isRequired || option.inputType !== "select") continue;
+    const none = hiddenNoneValue(option);
+    if (!none) continue;
+    next.push({ optionId: option.id, optionValueId: none.id });
+    chosen.add(option.id);
   }
-  const values = displayOptionValues(
-    width,
-    valuesForProductOption(catalog, productId, width),
-  );
-  const standaard =
-    values.find((value) => value.value === "Standaard") ?? values[0];
-  if (!standaard) return selections;
-  return [...selections, { optionId: width.id, optionValueId: standaard.id }];
+
+  return next;
 }

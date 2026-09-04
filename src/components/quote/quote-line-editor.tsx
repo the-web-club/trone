@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { X } from "lucide-react";
 import {
   ChoiceTile,
   ChoiceTileGroup,
@@ -7,10 +9,13 @@ import {
 import { OptionSection } from "@/components/configurator/option-section";
 import { OptionToggle } from "@/components/configurator/option-toggle";
 import {
+  canClearOptionalChoice,
+  configuratorSplitClass,
   displayOptionValues,
   ensurePreferredSelections,
   groupOptions,
-  showNoneChoice,
+  internalSelectionId,
+  visualSelectionId,
 } from "@/components/configurator/option-groups";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { ProductStage } from "@/components/configurator/product-stage";
@@ -36,6 +41,7 @@ export function QuoteLineEditor({
   canRemove,
   onChange,
   onRemove,
+  priceBar,
 }: {
   catalog: QuoteCatalog;
   item: QuoteItemInput;
@@ -45,6 +51,7 @@ export function QuoteLineEditor({
   canRemove: boolean;
   onChange: (item: QuoteItemInput) => void;
   onRemove: () => void;
+  priceBar?: ReactNode;
 }) {
   const ctx = toPricingContext(catalog);
   const options = optionsForProduct(catalog, item.productId);
@@ -88,14 +95,18 @@ export function QuoteLineEditor({
   }
 
   function setSelection(optionId: string, optionValueId: string) {
+    const option = options.find((row) => row.id === optionId);
+    const storedId = option
+      ? internalSelectionId(option, optionValueId)
+      : optionValueId;
     const rest = item.selections.filter((selection) => selection.optionId !== optionId);
-    if (!optionValueId) {
+    if (!storedId) {
       onChange({ ...item, selections: rest });
       return;
     }
     onChange({
       ...item,
-      selections: [...rest, { optionId, optionValueId }],
+      selections: [...rest, { optionId, optionValueId: storedId }],
     });
   }
 
@@ -111,14 +122,21 @@ export function QuoteLineEditor({
   }
 
   return (
-    <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,28rem)] lg:items-start lg:gap-10">
-      <ProductStage
-        src={imageUrl}
-        alt={product ? `${product.name}, geconfigureerd` : "Productbeeld"}
-        className="lg:sticky lg:top-4"
-      />
+    <div className={configuratorSplitClass}>
+      <div className="flex min-w-0 flex-col max-lg:contents lg:sticky lg:top-4 lg:min-h-[calc(100dvh-var(--topbar-h)-var(--space-7))]">
+        <ProductStage
+          src={imageUrl}
+          alt={product ? `${product.name}, geconfigureerd` : "Productbeeld"}
+          className="order-1 lg:min-h-0 lg:flex-1"
+        />
+        {priceBar ? (
+          <div className="order-3 sticky bottom-0 z-[var(--z-sticky)] lg:order-2">
+            {priceBar}
+          </div>
+        ) : null}
+      </div>
 
-      <div className="flex flex-col gap-8">
+      <div className="order-2 flex flex-col gap-8">
         <OptionSection title="Model">
           <ChoiceTileGroup label="Product">
             {catalog.products.map((row) => (
@@ -174,13 +192,16 @@ export function QuoteLineEditor({
               title={section.title}
               incomplete={incomplete}
             >
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-6">
                 {section.options.map((option) => {
                   const values = displayOptionValues(
                     option,
                     valuesForProductOption(catalog, item.productId, option),
                   );
-                  const current = selectedValue(option.id);
+                  const current = visualSelectionId(
+                    option,
+                    selectedValue(option.id),
+                  );
 
                   if (isSwatchOption(option.code)) {
                     return (
@@ -215,17 +236,26 @@ export function QuoteLineEditor({
                     );
                   }
 
+                  const canClear =
+                    canClearOptionalChoice(option) && Boolean(current);
+
                   return (
                     <div key={option.id} className="flex flex-col gap-2">
-                      <p className="text-sm font-medium text-fg">{option.name}</p>
-                      <ChoiceTileGroup label={option.name}>
-                        {showNoneChoice(option) ? (
-                          <ChoiceTile
-                            selected={!current}
-                            label="Geen"
-                            onSelect={() => setSelection(option.id, "")}
-                          />
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-fg">{option.name}</p>
+                        {canClear ? (
+                          <button
+                            type="button"
+                            aria-label={`${option.name} wissen`}
+                            onClick={() => setSelection(option.id, "")}
+                            className="inline-flex items-center gap-1 text-label text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+                          >
+                            <X className="size-3.5" strokeWidth={2} aria-hidden />
+                            Wis keuze
+                          </button>
                         ) : null}
+                      </div>
+                      <ChoiceTileGroup label={option.name}>
                         {values.map((value) => (
                           <ChoiceTile
                             key={value.id}

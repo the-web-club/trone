@@ -12,7 +12,7 @@ export function ProductStage({
   return (
     <div
       className={cn(
-        "relative flex min-h-72 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk lg:min-h-[32rem]",
+        "relative flex min-h-72 items-center justify-center overflow-hidden rounded-xl bg-surface-sunk p-8 lg:min-h-[32rem] lg:p-10",
         className,
       )}
     >
@@ -21,7 +21,7 @@ export function ProductStage({
         key={src}
         src={src}
         alt={alt}
-        className="size-full max-h-[32rem] object-contain p-8 configurator-image-fade"
+        className="max-h-full max-w-full object-contain object-center configurator-image-fade"
       />
     </div>
   );
