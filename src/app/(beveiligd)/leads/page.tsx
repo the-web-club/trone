@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { LeadsBrowser } from "@/components/deal/leads-browser";
 import { LeadsKanban } from "@/components/deal/leads-kanban";
-import {
-  formatListContactName,
-  LeadsListTable,
-} from "@/components/deal/leads-list-table";
+import { LeadsListTable } from "@/components/deal/leads-list-table";
 import { ListPagination } from "@/components/list/list-pagination";
 import { requireSession } from "@/lib/auth-session";
 import {
@@ -139,9 +136,12 @@ export default async function LeadsPage({
           }))}
           deals={result.items.map((deal) => ({
             id: deal.id,
+            slug: deal.slug,
             title: deal.title,
             stageId: deal.stageId,
-            companyName: deal.company?.name ?? null,
+            company: deal.company
+              ? { slug: deal.company.slug, name: deal.company.name }
+              : null,
             quoteStatus: deal.quotes[0]?.status ?? null,
             valueEstimate:
               deal.valueEstimate == null ? null : Number(deal.valueEstimate),
@@ -150,11 +150,21 @@ export default async function LeadsPage({
       ) : (
         <>
           <LeadsListTable
+            members={members}
             rows={result.items.map((deal) => ({
               id: deal.id,
+              slug: deal.slug,
               title: deal.title,
-              companyName: deal.company?.name ?? null,
-              contactName: formatListContactName(deal.contact),
+              company: deal.company
+                ? { slug: deal.company.slug, name: deal.company.name }
+                : null,
+              contact: deal.contact
+                ? {
+                    slug: deal.contact.slug,
+                    firstName: deal.contact.firstName,
+                    lastName: deal.contact.lastName,
+                  }
+                : null,
               stageName: deal.stage.name,
               isWon: deal.stage.isWon,
               isLost: deal.stage.isLost,
@@ -162,6 +172,7 @@ export default async function LeadsPage({
               valueEstimate:
                 deal.valueEstimate == null ? null : Number(deal.valueEstimate),
               sourceName: deal.source?.name ?? null,
+              ownerUserId: deal.ownerUserId,
               ownerName: deal.ownerUserId
                 ? (ownerNames.get(deal.ownerUserId) ?? null)
                 : null,

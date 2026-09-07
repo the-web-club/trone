@@ -7,10 +7,16 @@ import {
   parseAmountInput,
   startOfCalendarDate,
 } from "@/lib/date-input";
+import { nextDealSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
-import { createId } from "@/lib/id";
+import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
-import type { DealActivityInput, DealInput } from "@/lib/deal-validation";
+import { getContactCompanyId } from "@/lib/contact-company";
+import {
+  assertDealContactCompany,
+  type DealActivityInput,
+  type DealInput,
+} from "@/lib/deal-validation";
 import { logEvent } from "@/lib/timeline-service";
 import type {
   DealDateField,
@@ -26,6 +32,16 @@ export async function listDealStages() {
 export async function listLeadSources() {
   const prisma = getPrismaClient();
   return prisma.leadSource.findMany({ orderBy: { name: "asc" } });
+}
+
+export async function listDealsForSelect(companyId?: string | null) {
+  const prisma = getPrismaClient();
+  const trimmed = companyId?.trim();
+  return prisma.deal.findMany({
+    where: trimmed ? { companyId: trimmed } : {},
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, companyId: true },
+  });
 }
 
 export type DealListFilters = {
@@ -45,14 +61,14 @@ export type DealListFilters = {
 };
 
 const dealListInclude = {
-  company: { select: { id: true, name: true } },
-  contact: { select: { id: true, firstName: true, lastName: true } },
+  company: { select: { id: true, slug: true, name: true } },
+  contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   stage: true,
   source: { select: { id: true, name: true } },
   quotes: {
     orderBy: { updatedAt: "desc" },
     take: 1,
-    select: { id: true, status: true },
+    select: { id: true, quoteNumber: true, status: true },
   },
 } as const;
 
@@ -425,11 +441,17 @@ export async function exportDealsCsv(
 export async function getDeal(id: string) {
   const prisma = getPrismaClient();
   const deal = await prisma.deal.findUnique({
-    where: { id },
+    where: whereIdOrSlug(id),
     include: {
-      company: { select: { id: true, name: true } },
+      company: { select: { id: true, slug: true, name: true } },
       contact: {
-        select: { id: true, firstName: true, lastName: true, companyId: true },
+        select: {
+          id: true,
+          slug: true,
+          firstName: true,
+          lastName: true,
+          companyId: true,
+        },
       },
       stage: true,
       source: { select: { id: true, name: true } },
@@ -471,14 +493,7 @@ async function assertDealRelations(input: DealInput) {
     throw new AppError("Fase niet gevonden.", "NOT_FOUND", 404);
   }
 
-  if (input.companyId) {
-    const company = await prisma.company.findUnique({
-      where: { id: input.companyId },
-    });
-    if (!company) {
-      throw new AppError("Bedrijf niet gevonden.", "NOT_FOUND", 404);
-    }
-  }
+  let companyId = input.companyId ?? null;
 
   if (input.contactId) {
     const contact = await prisma.contact.findUnique({
@@ -487,27 +502,36 @@ async function assertDealRelations(input: DealInput) {
     if (!contact) {
       throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
     }
-    if (
-      input.companyId &&
-      contact.companyId &&
-      contact.companyId !== input.companyId
-    ) {
-      throw new AppError("Contact hoort niet bij dit bedrijf.", "VALIDATION");
+    const contactCompanyId = getContactCompanyId(contact);
+    if (!companyId && contactCompanyId) {
+      companyId = contactCompanyId;
+    }
+    assertDealContactCompany(contact, companyId);
+  }
+
+  if (companyId) {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    if (!company) {
+      throw new AppError("Bedrijf niet gevonden.", "NOT_FOUND", 404);
     }
   }
 
-  return stage;
+  return { stage, companyId };
 }
 
 export async function createDeal(input: DealInput, ownerUserId?: string) {
   const prisma = getPrismaClient();
-  const stage = await assertDealRelations(input);
+  const { stage, companyId } = await assertDealRelations(input);
 
+  const slug = await nextDealSlug(prisma, input.title);
   return prisma.deal.create({
     data: {
       id: createId(),
+      slug,
       title: input.title,
-      companyId: input.companyId ?? null,
+      companyId,
       contactId: input.contactId ?? null,
       stageId: input.stageId,
       sourceId: input.sourceId ?? null,
@@ -521,13 +545,15 @@ export async function createDeal(input: DealInput, ownerUserId?: string) {
 export async function updateDeal(id: string, input: DealInput, userId?: string) {
   const current = await getDeal(id);
   const prisma = getPrismaClient();
-  const stage = await assertDealRelations(input);
+  const { stage, companyId } = await assertDealRelations(input);
 
+  const slug = await nextDealSlug(prisma, input.title, current.id);
   const updated = await prisma.deal.update({
-    where: { id },
+    where: { id: current.id },
     data: {
+      slug,
       title: input.title,
-      companyId: input.companyId ?? null,
+      companyId,
       contactId: input.contactId ?? null,
       stageId: input.stageId,
       sourceId: input.sourceId ?? null,
@@ -565,7 +591,7 @@ export async function moveDealToStage(
   }
 
   const updated = await prisma.deal.update({
-    where: { id },
+    where: { id: deal.id },
     data: {
       stageId,
       status: statusForStage(stage),
@@ -585,11 +611,33 @@ export async function moveDealToStage(
 }
 
 export async function setDealHot(id: string, isHot: boolean) {
-  await getDeal(id);
+  const deal = await getDeal(id);
   const prisma = getPrismaClient();
   return prisma.deal.update({
-    where: { id },
+    where: { id: deal.id },
     data: { isHot },
+  });
+}
+
+export async function setDealOwner(id: string, ownerUserId: string | null) {
+  const deal = await getDeal(id);
+  const nextOwnerId = ownerUserId?.trim() || null;
+  if (deal.ownerUserId === nextOwnerId) return deal;
+
+  const prisma = getPrismaClient();
+  if (nextOwnerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: nextOwnerId },
+      select: { id: true, banned: true },
+    });
+    if (!user || user.banned === true) {
+      throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+    }
+  }
+
+  return prisma.deal.update({
+    where: { id: deal.id },
+    data: { ownerUserId: nextOwnerId },
   });
 }
 

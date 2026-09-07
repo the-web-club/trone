@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
+import { listDealsForSelectAction } from "@/app/(beveiligd)/actions/deal-actions";
 import {
   createQuoteAction,
   updateQuoteAction,
 } from "@/app/(beveiligd)/actions/quote-actions";
+import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { PriceBar } from "@/components/configurator/price-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
@@ -79,9 +81,22 @@ export function QuoteForm({
     isEdit ? updateQuoteAction : createQuoteAction,
     null,
   );
-  const [companyId, setCompanyId] = useState(initialCompanyId ?? "");
-  const [contactId, setContactId] = useState(initialContactId ?? "");
+  const {
+    companyId,
+    contactId,
+    contacts: visibleContacts,
+    contactsLoading,
+    onCompanyChange,
+    onContactChange,
+  } = useCompanyContactFields({
+    initialCompanyId,
+    initialContactId,
+    initialContacts: contacts,
+  });
   const [dealId, setDealId] = useState(initialDealId ?? "");
+  const [visibleDeals, setVisibleDeals] = useState(deals);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const dealsRequestId = useRef(0);
   const [items, setItems] = useState<QuoteItemInput[]>(
     initialItems && initialItems.length > 0 ? initialItems : [emptyLine(catalog)],
   );
@@ -91,31 +106,31 @@ export function QuoteForm({
   const vatRate = company?.vatRate ?? 21;
   const ctx = useMemo(() => toPricingContext(catalog), [catalog]);
 
-  const visibleContacts = contacts.filter(
-    (contact) => !companyId || !contact.companyId || contact.companyId === companyId,
-  );
-  const visibleDeals = deals.filter(
-    (deal) => !companyId || !deal.companyId || deal.companyId === companyId,
-  );
+  function loadDeals(nextCompanyId: string) {
+    const id = ++dealsRequestId.current;
+    setDealsLoading(true);
+    listDealsForSelectAction(nextCompanyId || null)
+      .then((rows) => {
+        if (id !== dealsRequestId.current) return;
+        setVisibleDeals(rows);
+        setDealId((current) =>
+          !current || rows.some((deal) => deal.id === current) ? current : "",
+        );
+      })
+      .finally(() => {
+        if (id === dealsRequestId.current) setDealsLoading(false);
+      });
+  }
 
-  function onCompanyChange(nextCompanyId: string) {
-    setCompanyId(nextCompanyId);
-    const selectedContact = contacts.find((contact) => contact.id === contactId);
-    if (
-      selectedContact?.companyId &&
-      nextCompanyId &&
-      selectedContact.companyId !== nextCompanyId
-    ) {
-      setContactId("");
-    }
-    const selectedDeal = deals.find((deal) => deal.id === dealId);
-    if (
-      selectedDeal?.companyId &&
-      nextCompanyId &&
-      selectedDeal.companyId !== nextCompanyId
-    ) {
-      setDealId("");
-    }
+  function handleCompanyChange(nextCompanyId: string) {
+    const applied = onCompanyChange(nextCompanyId);
+    if (applied != null) loadDeals(applied);
+  }
+
+  function handleContactChange(nextContactId: string) {
+    const previousCompanyId = companyId;
+    const nextCompanyId = onContactChange(nextContactId);
+    if (nextCompanyId !== previousCompanyId) loadDeals(nextCompanyId);
   }
 
   const pricedItems = items.map((item) => {
@@ -171,7 +186,7 @@ export function QuoteForm({
           <Select
             required
             value={companyId}
-            onChange={(event) => onCompanyChange(event.target.value)}
+            onChange={(event) => handleCompanyChange(event.target.value)}
           >
             <option value="">Kies een klant</option>
             {companies.map((row) => (
@@ -184,7 +199,8 @@ export function QuoteForm({
         <FormField id="contactId" label="Contactpersoon">
           <Select
             value={contactId}
-            onChange={(event) => setContactId(event.target.value)}
+            disabled={contactsLoading}
+            onChange={(event) => handleContactChange(event.target.value)}
           >
             <option value="">Geen contactpersoon</option>
             {visibleContacts.map((contact) => (
@@ -195,7 +211,11 @@ export function QuoteForm({
           </Select>
         </FormField>
         <FormField id="dealId" label="Lead">
-          <Select value={dealId} onChange={(event) => setDealId(event.target.value)}>
+          <Select
+            value={dealId}
+            disabled={dealsLoading}
+            onChange={(event) => setDealId(event.target.value)}
+          >
             <option value="">Geen lead gekoppeld</option>
             {visibleDeals.map((deal) => (
               <option key={deal.id} value={deal.id}>

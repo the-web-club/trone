@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { CreateOrderDialog } from "@/components/order/create-order-dialog";
@@ -9,8 +9,10 @@ import { QuoteVersionActions } from "@/components/quote/quote-version-actions";
 import { QuoteVersionCompare } from "@/components/quote/quote-version-compare";
 import { QuoteVersionHistory } from "@/components/quote/quote-version-history";
 import { isAppError } from "@/lib/errors";
-import { formatDate, formatPersonName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { findOrderByQuoteId } from "@/lib/order-service";
+import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
+import { orderPath, quotePath } from "@/lib/paths";
 import {
   compareVersions,
   getQuoteWithVersions,
@@ -21,11 +23,11 @@ import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const quote = await getQuoteWithVersions(id);
+    const { slug } = await params;
+    const quote = await getQuoteWithVersions(slug);
     const label = formatQuoteVersionNumber(
       quote.quoteNumber,
       quote.currentVersionNumber,
@@ -46,15 +48,16 @@ export default async function OfferteDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ versie?: string; vergelijk?: string; met?: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const query = await searchParams;
-  const quote = await getQuoteWithVersions(id).catch((error) => {
+  const quote = await getQuoteWithVersions(slug).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  if (slug !== quote.quoteNumber) redirect(quotePath(quote));
   const existingOrder = await findOrderByQuoteId(quote.id);
 
   const requestedVersion = parseVersionParam(query.versie);
@@ -111,18 +114,17 @@ export default async function OfferteDetailPage({
             <span>{quote.quoteNumber}</span>
             {displayVersionNumber > 0 ? ` · v${displayVersionNumber}` : null}
             {" · "}
-            <Link href={`/bedrijven/${quote.company.id}`} className="hover:underline">
-              {quote.company.name}
-            </Link>
-            {quote.contact
-              ? ` · ${formatPersonName(quote.contact.firstName, quote.contact.lastName)}`
-              : null}
+            <CompanyLink company={quote.company} />
+            {quote.contact ? (
+              <>
+                {" · "}
+                <ContactLink contact={quote.contact} />
+              </>
+            ) : null}
             {quote.deal ? (
               <>
                 {" · "}
-                <Link href={`/leads/${quote.deal.id}`} className="hover:underline">
-                  {quote.deal.title}
-                </Link>
+                <DealLink deal={quote.deal} />
               </>
             ) : null}
             {` · ${formatDate(quote.createdAt)}`}
@@ -137,6 +139,7 @@ export default async function OfferteDetailPage({
 
       <QuoteVersionActions
         quoteId={quote.id}
+        quoteNumber={quote.quoteNumber}
         status={quote.status}
         viewingHistorical={viewingHistorical}
       />
@@ -145,7 +148,7 @@ export default async function OfferteDetailPage({
         <p className="text-sm text-fg-muted">
           Order{" "}
           <Link
-            href={`/orders/${existingOrder.id}`}
+            href={orderPath(existingOrder)}
             className="font-medium text-fg hover:underline"
           >
             {existingOrder.orderNumber}
@@ -172,7 +175,7 @@ export default async function OfferteDetailPage({
           Alleen-lezen weergave van{" "}
           {formatQuoteVersionNumber(quote.quoteNumber, displayVersionNumber)}.
           {" "}
-          <Link href={`/offertes/${quote.id}`} className="hover:underline">
+          <Link href={quotePath(quote)} className="hover:underline">
             Terug naar de huidige versie
           </Link>
         </p>
@@ -187,7 +190,6 @@ export default async function OfferteDetailPage({
       />
 
       <QuoteVersionHistory
-        quoteId={quote.id}
         quoteNumber={quote.quoteNumber}
         versions={quote.versions}
         activeVersionNumber={
@@ -198,7 +200,6 @@ export default async function OfferteDetailPage({
       />
 
       <QuoteVersionCompare
-        quoteId={quote.id}
         quoteNumber={quote.quoteNumber}
         versions={quote.versions}
         selectedA={compareA}

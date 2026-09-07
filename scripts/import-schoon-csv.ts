@@ -4,6 +4,11 @@ import { resolve } from "node:path";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizeDateOnlyInput, startOfCalendarDate } from "@/lib/date-input";
 import { getPrismaClient } from "@/lib/db";
+import {
+  nextCompanySlug,
+  nextContactSlug,
+  nextDealSlug,
+} from "@/lib/entity-slug";
 import { createId } from "@/lib/id";
 
 type Tx = Prisma.TransactionClient;
@@ -26,7 +31,7 @@ const LEAD_STAGE_NAME = "Lead";
 const LEAD_SOURCE_NAME = "Contactformulier";
 const IMPORT_NOTE_PREFIX = "Geïmporteerde aanvraag";
 const TITLE_MAX = 191;
-const TX_TIMEOUT_MS = 180_000;
+const TX_TIMEOUT_MS = 900_000;
 
 let prismaClient: ReturnType<typeof getPrismaClient> | undefined;
 
@@ -237,15 +242,18 @@ async function upsertCompanyContact(
     (contact) => normalizePersonName(contact.firstName, contact.lastName) === needle,
   );
   if (match) {
+    const slug = await nextContactSlug(tx, firstName, lastName, match.id);
     await tx.contact.update({
       where: { id: match.id },
-      data: { firstName, lastName },
+      data: { firstName, lastName, slug },
     });
     return;
   }
+  const slug = await nextContactSlug(tx, firstName, lastName);
   await tx.contact.create({
     data: {
       id: createId(),
+      slug,
       companyId,
       firstName,
       lastName,
@@ -278,12 +286,22 @@ async function upsertDealContact(
       select: { id: true },
     });
     if (current) {
-      await tx.contact.update({ where: { id: current.id }, data });
+      const slug = await nextContactSlug(
+        tx,
+        data.firstName,
+        data.lastName,
+        current.id,
+      );
+      await tx.contact.update({
+        where: { id: current.id },
+        data: { ...data, slug },
+      });
       return current.id;
     }
   }
+  const slug = await nextContactSlug(tx, data.firstName, data.lastName);
   const created = await tx.contact.create({
-    data: { id: createId(), ...data },
+    data: { id: createId(), slug, ...data },
   });
   return created.id;
 }
@@ -401,14 +419,16 @@ async function importCompanies(
           where: { sourceKlantcode: planned.sourceKlantcode },
           select: { id: true },
         });
+        const slug = await nextCompanySlug(tx, planned.name, existing?.id);
         const company = existing
           ? await tx.company.update({
               where: { id: existing.id },
-              data,
+              data: { ...data, slug },
             })
           : await tx.company.create({
               data: {
                 id: createId(),
+                slug,
                 sourceKlantcode: planned.sourceKlantcode,
                 ...data,
               },
@@ -554,9 +574,11 @@ async function importLeads(
         });
 
         if (existing) {
+          const slug = await nextDealSlug(tx, planned.title, existing.id);
           await tx.deal.update({
             where: { id: existing.id },
             data: {
+              slug,
               title: planned.title,
               createdAt: planned.createdAt,
               companyId: nextCompanyId,
@@ -566,9 +588,11 @@ async function importLeads(
           await upsertImportNote(tx, existing.id, planned.noteBody, planned.createdAt);
           stats.updated += 1;
         } else {
+          const slug = await nextDealSlug(tx, planned.title);
           const created = await tx.deal.create({
             data: {
               id: createId(),
+              slug,
               aanvraagId: planned.aanvraagId,
               title: planned.title,
               companyId: nextCompanyId,

@@ -1,8 +1,9 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { nextCompanySlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
-import { createId } from "@/lib/id";
+import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
@@ -89,10 +90,30 @@ export async function listCompanyCountries() {
 export async function getCompany(id: string) {
   const prisma = getPrismaClient();
   const company = await prisma.company.findUnique({
-    where: { id },
+    where: whereIdOrSlug(id),
     include: {
       contacts: {
         orderBy: [{ isPrimary: "desc" }, { firstName: "asc" }],
+      },
+      deals: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          status: true,
+          contact: {
+            select: {
+              id: true,
+              slug: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          stage: {
+            select: { name: true, isWon: true, isLost: true },
+          },
+        },
       },
     },
   });
@@ -126,9 +147,11 @@ export async function createCompany(
   ownerUserId?: string,
 ) {
   const prisma = getPrismaClient();
+  const slug = await nextCompanySlug(prisma, input.name);
   return prisma.company.create({
     data: {
       id: createId(),
+      slug,
       ...toCompanyData(input),
       ownerUserId: ownerUserId ?? null,
     },
@@ -136,10 +159,14 @@ export async function createCompany(
 }
 
 export async function updateCompany(id: string, input: CompanyInput) {
-  await getCompany(id);
+  const current = await getCompany(id);
   const prisma = getPrismaClient();
+  const slug = await nextCompanySlug(prisma, input.name, current.id);
   return prisma.company.update({
-    where: { id },
-    data: toCompanyData(input),
+    where: { id: current.id },
+    data: {
+      ...toCompanyData(input),
+      slug,
+    },
   });
 }

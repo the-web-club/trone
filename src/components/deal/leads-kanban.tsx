@@ -19,7 +19,9 @@ import { controlMotion } from "@/components/motion/styles";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { CompanyLink } from "@/components/entity-links";
 import { formatEuro } from "@/lib/format";
+import { dealPath } from "@/lib/paths";
 import { cn } from "@/lib/cn";
 import {
   quoteStatusLabels,
@@ -36,9 +38,10 @@ export type KanbanStage = {
 
 export type KanbanDeal = {
   id: string;
+  slug: string;
   title: string;
   stageId: string;
-  companyName: string | null;
+  company: { slug: string; name: string } | null;
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
 };
@@ -76,14 +79,17 @@ function DealCard({
       {...attributes}
     >
       <Link
-        href={`/leads/${deal.id}`}
+        href={dealPath(deal)}
         className="block text-sm font-medium text-fg hover:underline"
         onClick={(event) => event.stopPropagation()}
       >
         {deal.title}
       </Link>
-      <p className="mt-0.5 truncate text-xs text-fg-muted">
-        {deal.companyName ?? "Geen bedrijf"}
+      <p
+        className="mt-0.5 truncate text-xs text-fg-muted"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <CompanyLink company={deal.company} fallback="Geen bedrijf" />
       </p>
       {value ? <p className="mt-1 text-xs text-fg">{value}</p> : null}
       {deal.quoteStatus ? (

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader } from "@/components/shell/page-header";
@@ -17,32 +16,34 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireSession } from "@/lib/auth-session";
-import { formatDate, formatPersonName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
+import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
 import { listTasks } from "@/lib/task-service";
 import { taskPriorityLabels, taskStatusLabels } from "@/lib/task-validation";
 import { buildTasksHref, parseTasksSearchParams } from "@/lib/tasks-query";
 
 export const metadata: Metadata = { title: "Taken" };
 
-function linkedLabel(task: {
-  deal: { id: string; title: string } | null;
-  contact: { id: string; firstName: string; lastName: string | null } | null;
-  company: { id: string; name: string } | null;
+function linkedEntities(task: {
+  deal: { id: string; slug: string; title: string } | null;
+  contact: {
+    id: string;
+    slug: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
+  company: { id: string; slug: string; name: string } | null;
 }) {
-  if (task.deal) {
-    return { href: `/leads/${task.deal.id}`, label: task.deal.title };
-  }
-  if (task.contact) {
-    return {
-      href: `/contacten/${task.contact.id}`,
-      label: formatPersonName(task.contact.firstName, task.contact.lastName),
-    };
-  }
-  if (task.company) {
-    return { href: `/bedrijven/${task.company.id}`, label: task.company.name };
-  }
-  return null;
+  return (
+    <>
+      {task.deal ? <DealLink deal={task.deal} /> : null}
+      {task.deal && (task.contact || task.company) ? " · " : null}
+      {task.contact ? <ContactLink contact={task.contact} /> : null}
+      {task.contact && task.company ? " · " : null}
+      {task.company ? <CompanyLink company={task.company} /> : null}
+    </>
+  );
 }
 
 export default async function TakenPage({
@@ -105,7 +106,7 @@ export default async function TakenPage({
                 <TableEmptyRow colSpan={6}>{emptyMessage}</TableEmptyRow>
               ) : (
                 result.items.map((task) => {
-                  const linked = linkedLabel(task);
+                  const linked = task.deal || task.contact || task.company;
                   const overdue =
                     task.status === "OPEN" &&
                     task.dueAt &&
@@ -126,13 +127,7 @@ export default async function TakenPage({
                         {task.dueAt ? formatDate(task.dueAt) : "—"}
                       </TableCell>
                       <TableCell className="text-fg-muted">
-                        {linked ? (
-                          <Link href={linked.href} className="hover:underline">
-                            {linked.label}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
+                        {linked ? linkedEntities(task) : "—"}
                       </TableCell>
                       <TableCell className="text-fg-muted">
                         {task.assignee.name}

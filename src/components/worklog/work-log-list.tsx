@@ -4,6 +4,7 @@ import { useState } from "react";
 import { deleteWorkLogAction } from "@/app/(beveiligd)/actions/worklog-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CompanyLink } from "@/components/entity-links";
 import { formatDateTime, formatDurationMinutes } from "@/lib/format";
 import {
   workLogCategoryLabels,
@@ -19,7 +20,7 @@ export type WorkLogListItem = {
   userId: string;
   userName: string;
   companyId: string | null;
-  companyName: string | null;
+  company: { slug: string; name: string } | null;
   orderId: string | null;
   orderNumber: string | null;
 };
@@ -90,7 +91,12 @@ function WorkLogRow({
             {" · "}
             {formatDateTime(log.occurredAt)}
             {log.durationMinutes ? ` · ${formatDurationMinutes(log.durationMinutes)}` : ""}
-            {log.companyName ? ` · ${log.companyName}` : ""}
+            {log.company ? (
+              <>
+                {" · "}
+                <CompanyLink company={log.company} />
+              </>
+            ) : null}
             {log.orderNumber ? ` · ${log.orderNumber}` : ""}
           </p>
           {error ? (

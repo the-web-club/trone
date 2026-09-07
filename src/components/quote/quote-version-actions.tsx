@@ -9,13 +9,16 @@ import {
 } from "@/app/(beveiligd)/actions/quote-actions";
 import { Button } from "@/components/ui/button";
 import type { QuoteStatus } from "@/generated/prisma/client";
+import { quoteEditPath } from "@/lib/paths";
 
 export function QuoteVersionActions({
   quoteId,
+  quoteNumber,
   status,
   viewingHistorical,
 }: {
   quoteId: string;
+  quoteNumber: string;
   status: QuoteStatus;
   viewingHistorical: boolean;
 }) {
@@ -49,7 +52,7 @@ export function QuoteVersionActions({
         {status === "DRAFT" ? (
           <>
             <Link
-              href={`/offertes/${quoteId}/bewerken`}
+              href={quoteEditPath({ quoteNumber })}
               className="inline-flex h-8 items-center rounded-sm border border-border bg-surface px-3 text-sm font-medium text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover"
             >
               Bewerken

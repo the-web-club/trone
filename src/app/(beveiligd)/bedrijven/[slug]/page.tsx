@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { updateCompanyAction } from "@/app/(beveiligd)/actions/company-actions";
 import { CompanyForm } from "@/components/company/company-form";
 import {
   CreateContactDialog,
   EditContactDialog,
 } from "@/components/company/contact-form-dialog";
+import { DealStagePill } from "@/components/deal/deal-stage-pill";
+import { ContactLink, DealLink } from "@/components/entity-links";
 import {
   Table,
   TableBody,
@@ -26,16 +28,17 @@ import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
 import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import { listTimelineForCompany } from "@/lib/timeline-service";
+import { companyPath } from "@/lib/paths";
 import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const company = await getCompany(id);
+    const { slug } = await params;
+    const company = await getCompany(slug);
     return { title: company.name };
   } catch {
     return { title: "Bedrijf" };
@@ -45,19 +48,20 @@ export async function generateMetadata({
 export default async function BedrijfDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const session = await requireSession();
-  const company = await getCompany(id).catch((error) => {
+  const company = await getCompany(slug).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  if (slug !== company.slug) redirect(companyPath(company));
   const [logs, orders, events, tasks, assignees] = await Promise.all([
-    listWorkLogs({ companyId: id }),
-    listOrdersForWorkLog(undefined, id),
-    listTimelineForCompany(id),
-    listOpenTasksForEntity({ companyId: id }),
+    listWorkLogs({ companyId: company.id }),
+    listOrdersForWorkLog(undefined, company.id),
+    listTimelineForCompany(company.id),
+    listOpenTasksForEntity({ companyId: company.id }),
     listActiveAssignees(),
   ]);
 
@@ -121,18 +125,10 @@ export default async function BedrijfDetailPage({
                 </TableEmptyRow>
               ) : (
                 company.contacts.map((contact) => {
-                  const fullName = [contact.firstName, contact.lastName]
-                    .filter(Boolean)
-                    .join(" ");
                   return (
                     <TableRow key={contact.id}>
                       <TableCell>
-                        <Link
-                          href={`/contacten/${contact.id}`}
-                          className="font-medium text-fg hover:underline"
-                        >
-                          {fullName}
-                        </Link>
+                        <ContactLink contact={contact} primary />
                         {contact.isPrimary ? (
                           <span className="ml-2 text-xs text-fg-muted">
                             Primair
@@ -166,6 +162,46 @@ export default async function BedrijfDetailPage({
                     </TableRow>
                   );
                 })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-md font-medium text-fg">Leads</h2>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHeaderCell>Lead</TableHeaderCell>
+                <TableHeaderCell>Contact</TableHeaderCell>
+                <TableHeaderCell>Fase</TableHeaderCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {company.deals.length === 0 ? (
+                <TableEmptyRow colSpan={3}>
+                  Nog geen leads bij dit bedrijf.
+                </TableEmptyRow>
+              ) : (
+                company.deals.map((deal) => (
+                  <TableRow key={deal.id}>
+                    <TableCell>
+                      <DealLink deal={deal} primary />
+                    </TableCell>
+                    <TableCell className="text-fg-muted">
+                      <ContactLink contact={deal.contact} />
+                    </TableCell>
+                    <TableCell>
+                      <DealStagePill
+                        name={deal.stage.name}
+                        isWon={deal.stage.isWon}
+                        isLost={deal.stage.isLost}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

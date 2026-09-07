@@ -6,17 +6,10 @@ import { toActionError } from "@/lib/errors";
 import { parseTimelineEventForm } from "@/lib/timeline-validation";
 import { logEvent } from "@/lib/timeline-service";
 
-function revalidateTimelinePaths(links: {
-  dealId?: string | null;
-  contactId?: string | null;
-  companyId?: string | null;
-}) {
-  if (links.dealId) revalidatePath(`/leads/${links.dealId}`);
-  if (links.contactId) revalidatePath(`/contacten/${links.contactId}`);
-  if (links.companyId) revalidatePath(`/bedrijven/${links.companyId}`);
-  revalidatePath("/leads");
-  revalidatePath("/contacten");
-  revalidatePath("/bedrijven");
+function revalidateTimelinePaths() {
+  revalidatePath("/leads", "layout");
+  revalidatePath("/contacten", "layout");
+  revalidatePath("/bedrijven", "layout");
 }
 
 export async function createTimelineEventAction(
@@ -26,7 +19,7 @@ export async function createTimelineEventAction(
   try {
     const session = await requireSession();
     const input = parseTimelineEventForm(formData);
-    const event = await logEvent({
+    await logEvent({
       type: input.type,
       body: input.body ?? null,
       userId: session.user.id,
@@ -34,11 +27,7 @@ export async function createTimelineEventAction(
       contactId: input.contactId,
       companyId: input.companyId,
     });
-    revalidateTimelinePaths({
-      dealId: event.dealId,
-      contactId: event.contactId,
-      companyId: event.companyId,
-    });
+    revalidateTimelinePaths();
     return { loggedAt: Date.now() };
   } catch (error) {
     return toActionError(error);

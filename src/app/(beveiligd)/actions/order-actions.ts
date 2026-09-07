@@ -13,6 +13,7 @@ import {
   parseOrderId,
   parseOrderStatusForm,
 } from "@/lib/order-validation";
+import { orderPath } from "@/lib/paths";
 
 function isNextRedirect(error: unknown): boolean {
   return (
@@ -24,22 +25,14 @@ function isNextRedirect(error: unknown): boolean {
   );
 }
 
-function revalidateOrderPaths(order?: {
-  id?: string;
-  quoteId?: string | null;
-  dealId?: string | null;
-  contactId?: string | null;
-  companyId?: string | null;
-}) {
-  revalidatePath("/orders");
-  revalidatePath("/offertes");
+function revalidateOrderPaths(order?: { orderNumber: string }) {
+  revalidatePath("/orders", "layout");
+  revalidatePath("/offertes", "layout");
   revalidatePath("/overzicht");
-  revalidatePath("/leads");
-  if (order?.id) revalidatePath(`/orders/${order.id}`);
-  if (order?.quoteId) revalidatePath(`/offertes/${order.quoteId}`);
-  if (order?.dealId) revalidatePath(`/leads/${order.dealId}`);
-  if (order?.contactId) revalidatePath(`/contacten/${order.contactId}`);
-  if (order?.companyId) revalidatePath(`/bedrijven/${order.companyId}`);
+  revalidatePath("/leads", "layout");
+  revalidatePath("/bedrijven", "layout");
+  revalidatePath("/contacten", "layout");
+  if (order) revalidatePath(orderPath(order));
 }
 
 export async function createOrderFromQuoteAction(
@@ -50,14 +43,8 @@ export async function createOrderFromQuoteAction(
     const session = await requireSession();
     const input = parseCreateOrderFromQuoteForm(formData);
     const order = await createOrderFromQuote(input, session.user.id);
-    revalidateOrderPaths({
-      id: order.id,
-      quoteId: order.quoteId,
-      dealId: order.dealId,
-      contactId: order.contactId,
-      companyId: order.companyId,
-    });
-    redirect(`/orders/${order.id}`);
+    revalidateOrderPaths(order);
+    redirect(orderPath(order));
   } catch (error) {
     if (isNextRedirect(error)) throw error;
     return toActionError(error);
@@ -73,13 +60,7 @@ export async function updateOrderStatusAction(
     const id = parseOrderId(formData);
     const status = parseOrderStatusForm(formData);
     const order = await updateOrderStatus(id, status, session.user.id);
-    revalidateOrderPaths({
-      id: order.id,
-      quoteId: order.quoteId,
-      dealId: order.dealId,
-      contactId: order.contactId,
-      companyId: order.companyId,
-    });
+    revalidateOrderPaths(order);
     return {};
   } catch (error) {
     return toActionError(error);

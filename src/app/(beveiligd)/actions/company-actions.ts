@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth-session";
 import { parseCompanyForm } from "@/lib/company-validation";
 import { createCompany, updateCompany } from "@/lib/company-service";
 import { toActionError } from "@/lib/errors";
+import { companyPath } from "@/lib/paths";
 
 export async function createCompanyAction(
   _prev: { error?: string } | null,
@@ -15,9 +16,9 @@ export async function createCompanyAction(
     const session = await requireSession();
     const input = parseCompanyForm(formData);
     const company = await createCompany(input, session.user.id);
-    revalidatePath("/bedrijven");
+    revalidatePath("/bedrijven", "layout");
     revalidatePath("/overzicht");
-    redirect(`/bedrijven/${company.id}`);
+    redirect(companyPath(company));
   } catch (error) {
     if (isNextRedirect(error)) throw error;
     return toActionError(error);
@@ -32,9 +33,9 @@ export async function updateCompanyAction(
     await requireSession();
     const id = String(formData.get("id") ?? "");
     const input = parseCompanyForm(formData);
-    await updateCompany(id, input);
-    revalidatePath("/bedrijven");
-    revalidatePath(`/bedrijven/${id}`);
+    const company = await updateCompany(id, input);
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath(companyPath(company));
     revalidatePath("/overzicht");
     return {};
   } catch (error) {

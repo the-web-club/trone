@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState } from "react";
+import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -47,29 +48,18 @@ export function DealForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
-  const [companyId, setCompanyId] = useState(deal?.companyId ?? "");
-  const [contactId, setContactId] = useState(deal?.contactId ?? "");
-
-  const visibleContacts = useMemo(
-    () =>
-      contacts.filter(
-        (contact) =>
-          !companyId || !contact.companyId || contact.companyId === companyId,
-      ),
-    [companyId, contacts],
-  );
-
-  function onCompanyChange(nextCompanyId: string) {
-    setCompanyId(nextCompanyId);
-    const selected = contacts.find((contact) => contact.id === contactId);
-    if (
-      selected?.companyId &&
-      nextCompanyId &&
-      selected.companyId !== nextCompanyId
-    ) {
-      setContactId("");
-    }
-  }
+  const {
+    companyId,
+    contactId,
+    contacts: visibleContacts,
+    contactsLoading,
+    onCompanyChange,
+    onContactChange,
+  } = useCompanyContactFields({
+    initialCompanyId: deal?.companyId,
+    initialContactId: deal?.contactId,
+    initialContacts: contacts,
+  });
 
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-4">
@@ -98,7 +88,8 @@ export function DealForm({
         <Select
           name="contactId"
           value={contactId}
-          onChange={(event) => setContactId(event.target.value)}
+          disabled={contactsLoading}
+          onChange={(event) => onContactChange(event.target.value)}
         >
           <option value="">Geen contactpersoon</option>
           {visibleContacts.map((contact) => (

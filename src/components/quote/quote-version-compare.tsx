@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { formatEuroExact } from "@/lib/format";
+import { quotePath } from "@/lib/paths";
 import {
   formatEuroDelta,
   formatQuoteVersionNumber,
@@ -9,14 +10,12 @@ import {
 } from "@/lib/quote-version";
 
 export function QuoteVersionCompare({
-  quoteId,
   quoteNumber,
   versions,
   selectedA,
   selectedB,
   diff,
 }: {
-  quoteId: string;
   quoteNumber: string;
   versions: { versionNumber: number }[];
   selectedA?: number;
@@ -166,7 +165,7 @@ export function QuoteVersionCompare({
 
           <p>
             <a
-              href={`/offertes/${quoteId}`}
+              href={quotePath({ quoteNumber })}
               className="text-sm text-fg-muted hover:underline"
             >
               Vergelijking sluiten

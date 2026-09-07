@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { DealStagePill } from "@/components/deal/deal-stage-pill";
+import { LeadOwnerSelect } from "@/components/deal/lead-owner-select";
+import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -11,7 +13,9 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEuro, formatPersonName } from "@/lib/format";
+import { formatDate, formatEuro } from "@/lib/format";
+import type { DealTeamMember } from "@/lib/deal-service";
+import { dealPath } from "@/lib/paths";
 import {
   quoteStatusLabels,
   quoteStatusTones,
@@ -20,24 +24,32 @@ import {
 
 export type LeadsListRow = {
   id: string;
+  slug: string;
   title: string;
-  companyName: string | null;
-  contactName: string | null;
+  company: { slug: string; name: string } | null;
+  contact: {
+    slug: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
   stageName: string;
   isWon: boolean;
   isLost: boolean;
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
   sourceName: string | null;
+  ownerUserId: string | null;
   ownerName: string | null;
   createdAt: string;
 };
 
 export function LeadsListTable({
   rows,
+  members,
   emptyMessage,
 }: {
   rows: LeadsListRow[];
+  members: DealTeamMember[];
   emptyMessage: string;
 }) {
   return (
@@ -63,17 +75,19 @@ export function LeadsListTable({
               <TableRow key={row.id} interactive>
                 <TableCell>
                   <Link
-                    href={`/leads/${row.id}`}
+                    href={dealPath(row)}
                     className="font-medium text-fg hover:underline"
                   >
                     {row.title}
                   </Link>
-                  {row.contactName ? (
-                    <p className="text-xs text-fg-muted">{row.contactName}</p>
+                  {row.contact ? (
+                    <p className="text-xs text-fg-muted">
+                      <ContactLink contact={row.contact} />
+                    </p>
                   ) : null}
                 </TableCell>
                 <TableCell className="text-fg-muted">
-                  {row.companyName ?? "—"}
+                  <CompanyLink company={row.company} />
                 </TableCell>
                 <TableCell>
                   <DealStagePill
@@ -97,8 +111,13 @@ export function LeadsListTable({
                 <TableCell className="text-fg-muted">
                   {row.sourceName ?? "—"}
                 </TableCell>
-                <TableCell className="text-fg-muted">
-                  {row.ownerName ?? "Niet toegewezen"}
+                <TableCell>
+                  <LeadOwnerSelect
+                    dealId={row.id}
+                    ownerUserId={row.ownerUserId}
+                    ownerName={row.ownerName}
+                    members={members}
+                  />
                 </TableCell>
                 <TableCell className="text-fg-muted whitespace-nowrap">
                   {formatDate(new Date(row.createdAt))}
@@ -110,11 +129,4 @@ export function LeadsListTable({
       </Table>
     </TableContainer>
   );
-}
-
-export function formatListContactName(
-  contact: { firstName: string; lastName: string | null } | null,
-): string | null {
-  if (!contact) return null;
-  return formatPersonName(contact.firstName, contact.lastName) || null;
 }

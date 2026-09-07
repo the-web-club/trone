@@ -14,6 +14,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatPersonName } from "@/lib/format";
+import {
+  companyPath,
+  contactPath,
+  dealPath,
+  orderPath,
+  quotePath,
+} from "@/lib/paths";
 import type { TimelineEventRecord } from "@/lib/timeline-service";
 import { timelineEventTypeLabels } from "@/lib/timeline-validation";
 
@@ -73,23 +80,23 @@ export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
       ) : null}
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-muted">
         {event.quote ? (
-          <Link href={`/offertes/${event.quote.id}`} className="hover:underline">
+          <Link href={quotePath(event.quote)} className="hover:underline">
             Offerte {event.quote.quoteNumber}
           </Link>
         ) : null}
         {event.order ? (
-          <Link href={`/orders/${event.order.id}`} className="hover:underline">
+          <Link href={orderPath(event.order)} className="hover:underline">
             Order {event.order.orderNumber}
           </Link>
         ) : null}
         {event.deal ? (
-          <Link href={`/leads/${event.deal.id}`} className="hover:underline">
+          <Link href={dealPath(event.deal)} className="hover:underline">
             {event.deal.title}
           </Link>
         ) : null}
         {contactName && event.contact ? (
           <Link
-            href={`/contacten/${event.contact.id}`}
+            href={contactPath(event.contact)}
             className="hover:underline"
           >
             {contactName}
@@ -97,7 +104,7 @@ export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
         ) : null}
         {event.company ? (
           <Link
-            href={`/bedrijven/${event.company.id}`}
+            href={companyPath(event.company)}
             className="hover:underline"
           >
             {event.company.name}

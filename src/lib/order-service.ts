@@ -8,12 +8,13 @@ import {
 } from "@/lib/date-input";
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { createId } from "@/lib/id";
+import { createId, whereIdOrOrderNumber } from "@/lib/id";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { nextNumber, SEQ_ORDER_2026 } from "@/lib/number-sequence-service";
 import type { CreateOrderFromQuoteInput, OrderStatusInput } from "@/lib/order-validation";
 import { orderStatusLabels } from "@/lib/orders-query";
 import { getQuote } from "@/lib/quote-service";
+import { assertContactBelongsToCompany } from "@/lib/contact-company";
 import { logEvent } from "@/lib/timeline-service";
 
 export type OrderListFilters = {
@@ -34,7 +35,7 @@ export async function listOrders(
     orderNumber: string;
     status: OrderStatus;
     createdAt: Date;
-    company: { id: string; name: string };
+    company: { id: string; slug: string; name: string };
   }>
 > {
   const prisma = getPrismaClient();
@@ -70,7 +71,7 @@ export async function listOrders(
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: { company: { select: { id: true, name: true } } },
+      include: { company: { select: { id: true, slug: true, name: true } } },
       skip,
       take,
     }),
@@ -80,17 +81,17 @@ export async function listOrders(
 }
 
 const orderDetailInclude = {
-  company: { select: { id: true, name: true, vatRate: true } },
-  contact: { select: { id: true, firstName: true, lastName: true } },
+  company: { select: { id: true, slug: true, name: true, vatRate: true } },
+  contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   quote: { select: { id: true, quoteNumber: true, status: true } },
-  deal: { select: { id: true, title: true } },
+  deal: { select: { id: true, slug: true, title: true } },
   items: { orderBy: { sortOrder: "asc" as const } },
 } as const;
 
 export async function getOrder(id: string) {
   const prisma = getPrismaClient();
   const order = await prisma.order.findUnique({
-    where: { id },
+    where: whereIdOrOrderNumber(id),
     include: orderDetailInclude,
   });
   if (!order) {
@@ -149,6 +150,9 @@ export async function createOrderFromQuote(
       "Een order kan alleen van een geaccepteerde offerte.",
       "VALIDATION",
     );
+  }
+  if (quote.contact) {
+    assertContactBelongsToCompany(quote.contact, quote.companyId);
   }
 
   const existing = await findOrderByQuoteId(quote.id);

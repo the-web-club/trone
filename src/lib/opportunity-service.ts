@@ -2,6 +2,7 @@ import "server-only";
 
 import { formatDate, formatPersonName } from "@/lib/format";
 import { getPrismaClient } from "@/lib/db";
+import { companyPath, contactPath, dealPath } from "@/lib/paths";
 import {
   isAutoHot,
   isDueTodayOrOverdue,
@@ -46,7 +47,7 @@ export async function listOpportunities(
       where: { status: "OPEN" },
       include: {
         stage: { select: { name: true, isWon: true, isLost: true } },
-        company: { select: { id: true, name: true } },
+        company: { select: { id: true, slug: true, name: true } },
         timelineEvents: {
           select: { occurredAt: true },
           orderBy: { occurredAt: "desc" },
@@ -72,9 +73,9 @@ export async function listOpportunities(
         dueAt: { not: null },
       },
       include: {
-        deal: { select: { id: true, title: true } },
-        contact: { select: { id: true, firstName: true, lastName: true } },
-        company: { select: { id: true, name: true } },
+        deal: { select: { id: true, slug: true, title: true } },
+        contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
+        company: { select: { id: true, slug: true, name: true } },
       },
     }),
   ]);
@@ -97,7 +98,7 @@ export async function listOpportunities(
         id: `stale-${deal.id}`,
         title,
         reason: `Geen activiteit sinds ${formatDate(lastActivityAt)} (${deal.stage.name})`,
-        href: `/leads/${deal.id}`,
+        href: dealPath(deal),
         dealId: deal.id,
         contactId: deal.contactId,
         companyId: deal.companyId,
@@ -109,7 +110,7 @@ export async function listOpportunities(
         id: `hot-${deal.id}`,
         title,
         reason: "Handmatig gemarkeerd als hot",
-        href: `/leads/${deal.id}`,
+        href: dealPath(deal),
         dealId: deal.id,
         contactId: deal.contactId,
         companyId: deal.companyId,
@@ -128,7 +129,7 @@ export async function listOpportunities(
         id: `hot-suggest-${deal.id}`,
         title,
         reason: `Recente activiteit en waarde vanaf €${thresholds.hotWaarde}`,
-        href: `/leads/${deal.id}`,
+        href: dealPath(deal),
         dealId: deal.id,
         contactId: deal.contactId,
         companyId: deal.companyId,
@@ -158,7 +159,7 @@ export async function listOpportunities(
       id: `follow-${company.id}`,
       title: company.name,
       reason: `Laatste order ${lastOrder.orderNumber} op ${formatDate(lastOrder.orderedAt)}`,
-      href: `/bedrijven/${company.id}`,
+      href: companyPath(company),
       companyId: company.id,
     });
   }
@@ -167,17 +168,17 @@ export async function listOpportunities(
   for (const task of tasks) {
     if (!task.dueAt || !isDueTodayOrOverdue(task.dueAt, now)) continue;
     const linked = task.deal
-      ? { href: `/leads/${task.deal.id}`, label: task.deal.title }
+      ? { href: dealPath(task.deal), label: task.deal.title }
       : task.contact
         ? {
-            href: `/contacten/${task.contact.id}`,
+            href: contactPath(task.contact),
             label: formatPersonName(
               task.contact.firstName,
               task.contact.lastName,
             ),
           }
         : task.company
-          ? { href: `/bedrijven/${task.company.id}`, label: task.company.name }
+          ? { href: companyPath(task.company), label: task.company.name }
           : { href: "/taken", label: "Taak" };
     dueActions.push({
       id: `task-${task.id}`,

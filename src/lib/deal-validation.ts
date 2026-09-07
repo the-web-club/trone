@@ -1,5 +1,18 @@
 import { z } from "zod";
+import {
+  assertContactBelongsToCompany,
+  type ContactCompanyRef,
+} from "@/lib/contact-company";
 import { AppError } from "@/lib/errors";
+
+/** Als een lead een contact heeft, moet dat contact bij het bedrijf van de lead horen. */
+export function assertDealContactCompany(
+  contact: ContactCompanyRef | null | undefined,
+  companyId: string | null | undefined,
+) {
+  if (!contact) return;
+  assertContactBelongsToCompany(contact, companyId);
+}
 
 function emptyToUndefined(value: unknown): unknown {
   if (typeof value !== "string") return value;

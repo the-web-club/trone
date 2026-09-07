@@ -4,6 +4,7 @@ import type { Prisma, TimelineEventType } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
+import { getContactCompanyId } from "@/lib/contact-company";
 import {
   timelineWhereForCompany,
   timelineWhereForContact,
@@ -14,9 +15,9 @@ const timelineInclude = {
   user: { select: { id: true, name: true } },
   quote: { select: { id: true, quoteNumber: true } },
   order: { select: { id: true, orderNumber: true } },
-  deal: { select: { id: true, title: true } },
-  contact: { select: { id: true, firstName: true, lastName: true } },
-  company: { select: { id: true, name: true } },
+  deal: { select: { id: true, slug: true, title: true } },
+  contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
+  company: { select: { id: true, slug: true, name: true } },
 } satisfies Prisma.TimelineEventInclude;
 
 export type TimelineEventRecord = Prisma.TimelineEventGetPayload<{
@@ -96,7 +97,7 @@ async function resolveLinks(input: LogEventInput) {
     if (!contact) {
       throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
     }
-    companyId = companyId ?? contact.companyId;
+    companyId = companyId ?? getContactCompanyId(contact);
   }
 
   if (companyId) {
@@ -180,7 +181,7 @@ export async function listTimelineForContact(contactId: string) {
     timelineWhereForContact({
       contactId: contact.id,
       dealIds: contact.deals.map((deal) => deal.id),
-      companyId: contact.companyId,
+      companyId: getContactCompanyId(contact),
     }),
   );
 }

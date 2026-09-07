@@ -6,12 +6,15 @@ import { requireSession } from "@/lib/auth-session";
 import {
   addDealActivity,
   createDeal,
+  listDealsForSelect,
   moveDealToStage,
   setDealHot,
+  setDealOwner,
   updateDeal,
 } from "@/lib/deal-service";
 import { parseDealActivityForm, parseDealForm } from "@/lib/deal-validation";
 import { toActionError } from "@/lib/errors";
+import { dealPath } from "@/lib/paths";
 
 function isNextRedirect(error: unknown): boolean {
   return (
@@ -23,10 +26,11 @@ function isNextRedirect(error: unknown): boolean {
   );
 }
 
-function revalidateDealPaths(dealId?: string) {
-  revalidatePath("/leads");
+function revalidateDealPaths(deal?: { slug: string }) {
+  revalidatePath("/leads", "layout");
   revalidatePath("/overzicht");
-  if (dealId) revalidatePath(`/leads/${dealId}`);
+  revalidatePath("/kansen");
+  if (deal) revalidatePath(dealPath(deal));
 }
 
 export async function createDealAction(
@@ -37,8 +41,8 @@ export async function createDealAction(
     const session = await requireSession();
     const input = parseDealForm(formData);
     const deal = await createDeal(input, session.user.id);
-    revalidateDealPaths(deal.id);
-    redirect(`/leads/${deal.id}`);
+    revalidateDealPaths(deal);
+    redirect(dealPath(deal));
   } catch (error) {
     if (isNextRedirect(error)) throw error;
     return toActionError(error);
@@ -53,8 +57,8 @@ export async function updateDealAction(
     const session = await requireSession();
     const id = String(formData.get("id") ?? "");
     const input = parseDealForm(formData);
-    await updateDeal(id, input, session.user.id);
-    revalidateDealPaths(id);
+    const deal = await updateDeal(id, input, session.user.id);
+    revalidateDealPaths(deal);
     return {};
   } catch (error) {
     return toActionError(error);
@@ -67,8 +71,22 @@ export async function moveDealToStageAction(
 ): Promise<{ error?: string }> {
   try {
     const session = await requireSession();
-    await moveDealToStage(dealId, stageId, session.user.id);
-    revalidateDealPaths(dealId);
+    const deal = await moveDealToStage(dealId, stageId, session.user.id);
+    revalidateDealPaths(deal);
+    return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function setDealOwnerAction(
+  dealId: string,
+  ownerUserId: string | null,
+): Promise<{ error?: string }> {
+  try {
+    await requireSession();
+    const deal = await setDealOwner(dealId, ownerUserId);
+    revalidateDealPaths(deal);
     return {};
   } catch (error) {
     return toActionError(error);
@@ -83,9 +101,8 @@ export async function toggleDealHotAction(
     await requireSession();
     const id = String(formData.get("id") ?? "");
     const isHot = formData.get("isHot") === "true";
-    await setDealHot(id, isHot);
-    revalidateDealPaths(id);
-    revalidatePath("/kansen");
+    const deal = await setDealHot(id, isHot);
+    revalidateDealPaths(deal);
     return {};
   } catch (error) {
     return toActionError(error);
@@ -101,9 +118,14 @@ export async function createDealActivityAction(
     const dealId = String(formData.get("dealId") ?? "");
     const input = parseDealActivityForm(formData);
     await addDealActivity(dealId, input, session.user.id);
-    revalidateDealPaths(dealId);
+    revalidateDealPaths();
     return {};
   } catch (error) {
     return toActionError(error);
   }
+}
+
+export async function listDealsForSelectAction(companyId?: string | null) {
+  await requireSession();
+  return listDealsForSelect(companyId);
 }

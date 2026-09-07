@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { updateContactAction } from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactForm } from "@/components/contact/contact-form";
 import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
+import { CompanyLink, DealLink } from "@/components/entity-links";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +20,8 @@ import {
 } from "@/components/ui/table";
 import { requireSession } from "@/lib/auth-session";
 import { getContact } from "@/lib/contact-service";
+import { getContactCompanyId } from "@/lib/contact-company";
+import { contactPath } from "@/lib/paths";
 import { isAppError } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
@@ -27,11 +30,11 @@ import { listTimelineForContact } from "@/lib/timeline-service";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const contact = await getContact(id);
+    const { slug } = await params;
+    const contact = await getContact(slug);
     return { title: formatPersonName(contact.firstName, contact.lastName) };
   } catch {
     return { title: "Contact" };
@@ -41,19 +44,21 @@ export async function generateMetadata({
 export default async function ContactDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const session = await requireSession();
-  const contact = await getContact(id).catch((error) => {
+  const contact = await getContact(slug).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  if (slug !== contact.slug) redirect(contactPath(contact));
+  const companyId = getContactCompanyId(contact);
   const [events, tasks, assignees] = await Promise.all([
     listTimelineForContact(contact.id),
     listOpenTasksForEntity({
       contactId: contact.id,
-      companyId: contact.companyId ?? undefined,
+      companyId: companyId ?? undefined,
     }),
     listActiveAssignees(),
   ]);
@@ -71,12 +76,7 @@ export default async function ContactDetailPage({
             {contact.company ? (
               <>
                 {" · "}
-                <Link
-                  href={`/bedrijven/${contact.company.id}`}
-                  className="hover:underline"
-                >
-                  {contact.company.name}
-                </Link>
+                <CompanyLink company={contact.company} />
               </>
             ) : null}
           </>
@@ -85,6 +85,19 @@ export default async function ContactDetailPage({
           contact.isPrimary ? <Badge tone="info">Primair</Badge> : undefined
         }
       />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-md font-medium text-fg">Bedrijf</h2>
+        {contact.company ? (
+          <p className="text-sm text-fg">
+            <CompanyLink company={contact.company} primary />
+          </p>
+        ) : (
+          <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
+            Dit contact is niet aan een bedrijf gekoppeld.
+          </p>
+        )}
+      </section>
 
       {contact.companyId ? (
         <section className="flex flex-col gap-4">
@@ -126,12 +139,7 @@ export default async function ContactDetailPage({
                 contact.deals.map((deal) => (
                   <TableRow key={deal.id}>
                     <TableCell>
-                      <Link
-                        href={`/leads/${deal.id}`}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {deal.title}
-                      </Link>
+                      <DealLink deal={deal} primary />
                     </TableCell>
                     <TableCell className="text-fg-muted">
                       {deal.stage.name}
@@ -149,13 +157,13 @@ export default async function ContactDetailPage({
         currentUserId={session.user.id}
         assignees={assignees}
         contactId={contact.id}
-        companyId={contact.companyId}
+        companyId={companyId}
       />
 
       <Timeline
         events={events}
         contactId={contact.id}
-        companyId={contact.companyId}
+        companyId={companyId}
       />
     </div>
   );

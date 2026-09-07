@@ -27,6 +27,7 @@ import {
   parseCompaniesSearchParams,
 } from "@/lib/companies-query";
 import { countryLabel, listSummary } from "@/lib/list-copy";
+import { CompanyLink } from "@/components/entity-links";
 
 export const metadata: Metadata = { title: "Bedrijven" };
 
@@ -103,12 +104,7 @@ export default async function BedrijvenPage({
                 result.items.map((company) => (
                   <TableRow key={company.id} interactive>
                     <TableCell>
-                      <Link
-                        href={`/bedrijven/${company.id}`}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {company.name}
-                      </Link>
+                      <CompanyLink company={company} primary />
                     </TableCell>
                     <TableCell className="text-fg-muted">
                       {company.city || "—"}

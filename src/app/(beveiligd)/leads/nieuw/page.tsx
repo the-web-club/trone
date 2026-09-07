@@ -4,7 +4,7 @@ import { createDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
 import { PageHeader } from "@/components/shell/page-header";
 import { listCompanies } from "@/lib/company-service";
-import { listContacts } from "@/lib/contact-service";
+import { listContactsForSelect } from "@/lib/contact-service";
 import { listDealStages, listLeadSources } from "@/lib/deal-service";
 
 export const metadata: Metadata = { title: "Nieuwe lead" };
@@ -14,7 +14,7 @@ export default async function NieuweLeadPage() {
     listDealStages(),
     listLeadSources(),
     listCompanies(),
-    listContacts(),
+    listContactsForSelect(),
   ]);
 
   return (
@@ -36,12 +36,7 @@ export default async function NieuweLeadPage() {
           id: company.id,
           name: company.name,
         }))}
-        contacts={contacts.map((contact) => ({
-          id: contact.id,
-          firstName: contact.firstName,
-          lastName: contact.lastName,
-          companyId: contact.companyId,
-        }))}
+        contacts={contacts}
       />
     </div>
   );

@@ -18,6 +18,7 @@
     "prisma:validate": "prisma validate",
     "seed": "tsx --env-file=.env.local --conditions react-server scripts/seed.ts",
     "import:schoon-csv": "tsx --env-file=.env.local --conditions react-server scripts/import-schoon-csv.ts",
+    "slugs:backfill": "tsx --env-file=.env.local --conditions react-server scripts/backfill-slugs.ts",
     "placeholders:generate": "tsx --env-file=.env.local --conditions react-server scripts/generate-placeholders.ts",
     "auth:create-admin": "tsx --env-file=.env.local --conditions react-server scripts/create-admin.ts"
   },

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { QuoteForm } from "@/components/quote/quote-form";
 import { PageHeader } from "@/components/shell/page-header";
 import { isAppError } from "@/lib/errors";
+import { quotePath } from "@/lib/paths";
 import { getQuote, getQuoteComposerData } from "@/lib/quote-service";
 import { toQuoteItemInput } from "@/lib/quote-version";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
@@ -11,11 +12,11 @@ import { formatQuoteVersionNumber } from "@/lib/quote-version";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const quote = await getQuote(id);
+    const { slug } = await params;
+    const quote = await getQuote(slug);
     return {
       title: `Bewerken ${formatQuoteVersionNumber(quote.quoteNumber, quote.currentVersionNumber)}`,
     };
@@ -27,16 +28,20 @@ export async function generateMetadata({
 export default async function OfferteBewerkenPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const quote = await getQuote(id).catch((error) => {
+  const { slug } = await params;
+  const quote = await getQuote(slug).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
 
+  if (slug !== quote.quoteNumber) {
+    redirect(`${quotePath(quote)}/bewerken`);
+  }
+
   if (quote.status !== "DRAFT") {
-    redirect(`/offertes/${quote.id}`);
+    redirect(quotePath(quote));
   }
 
   const items = quote.items
@@ -50,10 +55,10 @@ export default async function OfferteBewerkenPage({
     .filter((item): item is NonNullable<typeof item> => item != null);
 
   if (items.length === 0) {
-    redirect(`/offertes/${quote.id}`);
+    redirect(quotePath(quote));
   }
 
-  const data = await getQuoteComposerData();
+  const data = await getQuoteComposerData({ companyId: quote.companyId });
 
   return (
     <div className="flex flex-col gap-8">
@@ -61,7 +66,7 @@ export default async function OfferteBewerkenPage({
         title={`${formatQuoteVersionNumber(quote.quoteNumber, quote.currentVersionNumber)} bewerken`}
         description={
           <>
-            <Link href={`/offertes/${quote.id}`} className="hover:underline">
+            <Link href={quotePath(quote)} className="hover:underline">
               Terug naar offerte
             </Link>
             {" · "}

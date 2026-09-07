@@ -100,6 +100,7 @@ model Verification {
 model Company {
   id              String    @id
   sourceKlantcode String?   @unique
+  slug            String    @unique
   name            String
   vatNumber       String?
   cocNumber       String?
@@ -132,6 +133,7 @@ model Company {
 
 model Contact {
   id        String   @id
+  slug      String   @unique
   companyId String?
   firstName String
   lastName  String?
@@ -185,6 +187,7 @@ enum DealStatus {
 model Deal {
   id            String     @id
   aanvraagId    String?    @unique
+  slug          String     @unique
   title         String
   companyId     String?
   contactId     String?

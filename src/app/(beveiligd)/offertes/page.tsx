@@ -20,11 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listCompanies } from "@/lib/company-service";
-import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
+import { formatDate, formatEuroExact } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 import { listQuoteRows } from "@/lib/quote-service";
 import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
+import { CompanyLink, ContactLink } from "@/components/entity-links";
+import { quotePath } from "@/lib/paths";
 import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
 
 export const metadata: Metadata = { title: "Offertes" };
@@ -110,7 +112,7 @@ export default async function OffertesPage({
                   <TableRow key={quote.id} interactive>
                     <TableCell>
                       <Link
-                        href={`/offertes/${quote.id}`}
+                        href={quotePath(quote)}
                         className="font-medium text-fg hover:underline"
                       >
                         {quote.quoteNumber}
@@ -125,10 +127,13 @@ export default async function OffertesPage({
                         : "Concept"}
                     </TableCell>
                     <TableCell className="text-fg-muted">
-                      {quote.company.name}
-                      {quote.contact
-                        ? ` · ${formatPersonName(quote.contact.firstName, quote.contact.lastName)}`
-                        : ""}
+                      <CompanyLink company={quote.company} />
+                      {quote.contact ? (
+                        <>
+                          {" · "}
+                          <ContactLink contact={quote.contact} />
+                        </>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Badge tone={quoteStatusTones[quote.status]}>

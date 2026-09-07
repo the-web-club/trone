@@ -13,7 +13,7 @@ type WorkLogRecord = {
   companyId: string | null;
   orderId: string | null;
   user: { id: string; name: string };
-  company: { id: string; name: string } | null;
+  company: { id: string; slug: string; name: string } | null;
   order: { id: string; orderNumber: string } | null;
 };
 
@@ -65,7 +65,7 @@ export function WorkLogSection({
           userId: log.userId,
           userName: log.user.name,
           companyId: log.companyId,
-          companyName: log.company?.name ?? null,
+          company: log.company,
           orderId: log.orderId,
           orderNumber: log.order?.orderNumber ?? null,
         }))}

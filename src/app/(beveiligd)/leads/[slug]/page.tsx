@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { updateDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
 import { DealHotToggle } from "@/components/deal/deal-hot-toggle";
@@ -23,23 +23,33 @@ import {
 } from "@/components/ui/table";
 import { requireSession } from "@/lib/auth-session";
 import { listCompanies } from "@/lib/company-service";
-import { listContacts } from "@/lib/contact-service";
+import { listContactsForSelect } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
 import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import { listTimelineForDeal } from "@/lib/timeline-service";
-import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
+import {
+  CompanyLink,
+  ContactLink,
+} from "@/components/entity-links";
+import { formatDate, formatEuroExact } from "@/lib/format";
 import { orderStatusLabels } from "@/lib/orders-query";
+import {
+  dealPath,
+  newQuotePath,
+  orderPath,
+  quotePath,
+} from "@/lib/paths";
 import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const deal = await getDeal(id);
+    const { slug } = await params;
+    const deal = await getDeal(slug);
     return { title: deal.title };
   } catch {
     return { title: "Lead" };
@@ -49,21 +59,22 @@ export async function generateMetadata({
 export default async function LeadDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const session = await requireSession();
-  const deal = await getDeal(id).catch((error) => {
+  const deal = await getDeal(slug).catch((error) => {
     if (isAppError(error) && error.status === 404) notFound();
     throw error;
   });
+  if (slug !== deal.slug) redirect(dealPath(deal));
 
   const [stages, sources, companies, contacts, events, tasks, assignees] =
     await Promise.all([
       listDealStages(),
       listLeadSources(),
       listCompanies(),
-      listContacts(),
+      listContactsForSelect(deal.companyId),
       listTimelineForDeal(deal.id),
       listOpenTasksForEntity({
         dealId: deal.id,
@@ -72,9 +83,6 @@ export default async function LeadDetailPage({
       }),
       listActiveAssignees(),
     ]);
-  const contactName = deal.contact
-    ? formatPersonName(deal.contact.firstName, deal.contact.lastName)
-    : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -88,23 +96,13 @@ export default async function LeadDetailPage({
             {deal.company ? (
               <>
                 {" · "}
-                <Link
-                  href={`/bedrijven/${deal.company.id}`}
-                  className="hover:underline"
-                >
-                  {deal.company.name}
-                </Link>
+                <CompanyLink company={deal.company} />
               </>
             ) : null}
-            {contactName && deal.contact ? (
+            {deal.contact ? (
               <>
                 {" · "}
-                <Link
-                  href={`/contacten/${deal.contact.id}`}
-                  className="hover:underline"
-                >
-                  {contactName}
-                </Link>
+                <ContactLink contact={deal.contact} />
               </>
             ) : null}
           </>
@@ -113,11 +111,7 @@ export default async function LeadDetailPage({
           <>
             <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
             <Link
-              href={
-                deal.companyId
-                  ? `/offertes/nieuw?deal=${deal.id}&company=${deal.companyId}`
-                  : `/offertes/nieuw?deal=${deal.id}`
-              }
+              href={newQuotePath({ deal, company: deal.company })}
               className={pageActionPrimaryClassName()}
             >
               Nieuwe offerte
@@ -145,12 +139,7 @@ export default async function LeadDetailPage({
             id: company.id,
             name: company.name,
           }))}
-          contacts={contacts.map((contact) => ({
-            id: contact.id,
-            firstName: contact.firstName,
-            lastName: contact.lastName,
-            companyId: contact.companyId,
-          }))}
+          contacts={contacts}
           deal={{
             id: deal.id,
             title: deal.title,
@@ -182,11 +171,7 @@ export default async function LeadDetailPage({
                 <TableEmptyRow colSpan={5}>
                   Nog geen offertes bij deze lead.{" "}
                   <Link
-                    href={
-                      deal.companyId
-                        ? `/offertes/nieuw?deal=${deal.id}&company=${deal.companyId}`
-                        : `/offertes/nieuw?deal=${deal.id}`
-                    }
+                    href={newQuotePath({ deal, company: deal.company })}
                     className="text-fg hover:underline"
                   >
                     Nieuwe offerte
@@ -197,7 +182,7 @@ export default async function LeadDetailPage({
                   <TableRow key={quote.id}>
                     <TableCell>
                       <Link
-                        href={`/offertes/${quote.id}`}
+                        href={quotePath(quote)}
                         className="font-medium text-fg hover:underline"
                       >
                         {quote.quoteNumber}
@@ -222,7 +207,7 @@ export default async function LeadDetailPage({
                           {quote.orders.map((order) => (
                             <Link
                               key={order.id}
-                              href={`/orders/${order.id}`}
+                              href={orderPath(order)}
                               className="text-fg hover:underline"
                             >
                               {order.orderNumber}

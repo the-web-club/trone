@@ -1,18 +1,45 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { nextContactSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
-import { createId } from "@/lib/id";
+import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import { getCompany } from "@/lib/company-service";
+import { getContactCompanyId } from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
 import { paginateArgs } from "@/lib/list-query";
+
+export type ContactSelectOption = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  companyId: string | null;
+};
+
+/** Contacten van één bedrijf. Inverse van getContactCompanyId; zie docs/DATA-MODEL.md. */
+export async function listContactsForSelect(
+  companyId?: string | null,
+): Promise<ContactSelectOption[]> {
+  const prisma = getPrismaClient();
+  const trimmed = companyId?.trim();
+  return prisma.contact.findMany({
+    where: trimmed ? { companyId: trimmed } : {},
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      companyId: true,
+    },
+  });
+}
 
 export async function listContacts() {
   const prisma = getPrismaClient();
   return prisma.contact.findMany({
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-    include: { company: { select: { id: true, name: true } } },
+    include: { company: { select: { id: true, slug: true, name: true } } },
   });
 }
 
@@ -50,7 +77,7 @@ export async function listContactRows(filters: ContactListFilters = {}) {
     prisma.contact.findMany({
       where,
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-      include: { company: { select: { id: true, name: true } } },
+      include: { company: { select: { id: true, slug: true, name: true } } },
       skip,
       take,
     }),
@@ -62,13 +89,14 @@ export async function listContactRows(filters: ContactListFilters = {}) {
 export async function getContact(id: string) {
   const prisma = getPrismaClient();
   const contact = await prisma.contact.findUnique({
-    where: { id },
+    where: whereIdOrSlug(id),
     include: {
-      company: { select: { id: true, name: true } },
+      company: { select: { id: true, slug: true, name: true } },
       deals: {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          slug: true,
           title: true,
           status: true,
           stage: { select: { name: true } },
@@ -114,9 +142,15 @@ export async function createContact(companyId: string, input: ContactInput) {
     await clearOtherPrimaries(companyId);
   }
 
+  const slug = await nextContactSlug(
+    prisma,
+    input.firstName,
+    input.lastName,
+  );
   return prisma.contact.create({
     data: {
       id: createId(),
+      slug,
       companyId,
       ...toContactData(input),
     },
@@ -129,17 +163,26 @@ export async function updateContact(
   input: ContactInput,
 ) {
   const contact = await getContact(id);
-  if (contact.companyId !== companyId) {
+  if (getContactCompanyId(contact) !== companyId) {
     throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
   }
 
   if (input.isPrimary) {
-    await clearOtherPrimaries(companyId, id);
+    await clearOtherPrimaries(companyId, contact.id);
   }
 
   const prisma = getPrismaClient();
+  const slug = await nextContactSlug(
+    prisma,
+    input.firstName,
+    input.lastName,
+    contact.id,
+  );
   return prisma.contact.update({
-    where: { id },
-    data: toContactData(input),
+    where: { id: contact.id },
+    data: {
+      ...toContactData(input),
+      slug,
+    },
   });
 }

@@ -23,8 +23,8 @@ import {
   buildContactsHref,
   parseContactsSearchParams,
 } from "@/lib/contacts-query";
-import { formatPersonName } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
+import { CompanyLink, ContactLink } from "@/components/entity-links";
 
 export const metadata: Metadata = { title: "Contacten" };
 
@@ -100,27 +100,13 @@ export default async function ContactenPage({
                 result.items.map((contact) => (
                   <TableRow key={contact.id} interactive>
                     <TableCell>
-                      <Link
-                        href={`/contacten/${contact.id}`}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {formatPersonName(contact.firstName, contact.lastName)}
-                      </Link>
+                      <ContactLink contact={contact} primary />
                     </TableCell>
                     <TableCell className="text-fg-muted">
                       {contact.email || "—"}
                     </TableCell>
                     <TableCell className="text-fg-muted">
-                      {contact.company ? (
-                        <Link
-                          href={`/bedrijven/${contact.company.id}`}
-                          className="hover:underline"
-                        >
-                          {contact.company.name}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
+                      <CompanyLink company={contact.company} />
                     </TableCell>
                   </TableRow>
                 ))

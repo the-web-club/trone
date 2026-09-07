@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatEuroExact } from "@/lib/format";
+import { quotePath } from "@/lib/paths";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
 import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 import type { QuoteStatus } from "@/generated/prisma/client";
@@ -16,12 +17,10 @@ export type QuoteVersionSummary = {
 };
 
 export function QuoteVersionHistory({
-  quoteId,
   quoteNumber,
   versions,
   activeVersionNumber,
 }: {
-  quoteId: string;
   quoteNumber: string;
   versions: QuoteVersionSummary[];
   activeVersionNumber: number | null;
@@ -43,7 +42,7 @@ export function QuoteVersionHistory({
       <ul className="mt-3 flex flex-col gap-1">
         {versions.map((version) => {
           const selected = version.versionNumber === activeVersionNumber;
-          const href = `/offertes/${quoteId}?versie=${version.versionNumber}`;
+          const href = `${quotePath({ quoteNumber })}?versie=${version.versionNumber}`;
           return (
             <li key={version.id}>
               <Link

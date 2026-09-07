@@ -9,6 +9,7 @@ import {
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
+import { getContactCompanyId } from "@/lib/contact-company";
 import { formatDate } from "@/lib/format";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { logEvent } from "@/lib/timeline-service";
@@ -18,9 +19,9 @@ import type { TaskScope, TaskStatusFilter } from "@/lib/tasks-query";
 const taskInclude = {
   assignee: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
-  deal: { select: { id: true, title: true } },
-  contact: { select: { id: true, firstName: true, lastName: true } },
-  company: { select: { id: true, name: true } },
+  deal: { select: { id: true, slug: true, title: true } },
+  contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
+  company: { select: { id: true, slug: true, name: true } },
 } satisfies Prisma.TaskInclude;
 
 export type TaskRecord = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
@@ -76,7 +77,7 @@ async function resolveTaskLinks(input: {
     if (!contact) {
       throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
     }
-    companyId = companyId ?? contact.companyId;
+    companyId = companyId ?? getContactCompanyId(contact);
   }
 
   if (companyId) {

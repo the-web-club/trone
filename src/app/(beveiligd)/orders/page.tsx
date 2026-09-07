@@ -19,6 +19,8 @@ import {
 import { listCompanies } from "@/lib/company-service";
 import { formatDate } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
+import { CompanyLink } from "@/components/entity-links";
+import { orderPath } from "@/lib/paths";
 import { listOrders } from "@/lib/order-service";
 import {
   buildOrdersHref,
@@ -93,14 +95,14 @@ export default async function OrdersPage({
                   <TableRow key={order.id} interactive>
                     <TableCell>
                       <Link
-                        href={`/orders/${order.id}`}
+                        href={orderPath(order)}
                         className="font-medium text-fg hover:underline"
                       >
                         {order.orderNumber}
                       </Link>
                     </TableCell>
                     <TableCell className="text-fg-muted">
-                      {order.company.name}
+                      <CompanyLink company={order.company} />
                     </TableCell>
                     <TableCell>
                       <Badge tone={orderStatusTones[order.status]}>

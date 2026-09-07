@@ -7,7 +7,7 @@ import {
   startOfCalendarDate,
 } from "@/lib/date-input";
 import { AppError } from "@/lib/errors";
-import { createId } from "@/lib/id";
+import { createId, isUuid, whereIdOrQuoteNumber } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import { paginateArgs } from "@/lib/list-query";
 import { loadPricingContext } from "@/lib/pricing-context";
@@ -15,6 +15,9 @@ import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { nextNumber, SEQ_QUOTE_2026 } from "@/lib/number-sequence-service";
 import type { QuoteCatalog } from "@/lib/quote-catalog";
 import { resolveDiscountPercent, type QuoteConfigSnapshot } from "@/lib/quote-catalog";
+import { assertContactBelongsToCompany } from "@/lib/contact-company";
+import { listContactsForSelect } from "@/lib/contact-service";
+import { listDealsForSelect } from "@/lib/deal-service";
 import type {
   QuoteInput,
   QuoteItemInput,
@@ -91,22 +94,44 @@ export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
   };
 }
 
-export async function getQuoteComposerData() {
+export async function resolveQuoteComposerLinks(input: {
+  company?: string;
+  deal?: string;
+}) {
   const prisma = getPrismaClient();
+  let companyId = input.company;
+  let dealId = input.deal;
+
+  if (companyId && !isUuid(companyId)) {
+    const company = await prisma.company.findUnique({
+      where: { slug: companyId },
+      select: { id: true },
+    });
+    companyId = company?.id;
+  }
+
+  if (dealId && !isUuid(dealId)) {
+    const deal = await prisma.deal.findUnique({
+      where: { slug: dealId },
+      select: { id: true },
+    });
+    dealId = deal?.id;
+  }
+
+  return { companyId, dealId };
+}
+
+export async function getQuoteComposerData(opts?: { companyId?: string }) {
+  const prisma = getPrismaClient();
+  const companyId = opts?.companyId?.trim() || undefined;
   const [catalog, companies, contacts, deals] = await Promise.all([
     loadQuoteCatalog(),
     prisma.company.findMany({
       orderBy: { name: "asc" },
       include: { pricing: true },
     }),
-    prisma.contact.findMany({
-      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-      select: { id: true, firstName: true, lastName: true, companyId: true },
-    }),
-    prisma.deal.findMany({
-      orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, companyId: true },
-    }),
+    listContactsForSelect(companyId),
+    listDealsForSelect(companyId),
   ]);
 
   return {
@@ -144,8 +169,8 @@ export async function listQuotes(filters?: { query?: string; status?: QuoteStatu
     },
     orderBy: { createdAt: "desc" },
     include: {
-      company: { select: { id: true, name: true } },
-      contact: { select: { id: true, firstName: true, lastName: true } },
+      company: { select: { id: true, slug: true, name: true } },
+      contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
     },
   });
 }
@@ -190,8 +215,8 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
 
   const where = and.length ? { AND: and } : {};
   const include = {
-    company: { select: { id: true, name: true } },
-    contact: { select: { id: true, firstName: true, lastName: true } },
+    company: { select: { id: true, slug: true, name: true } },
+    contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   } as const;
 
   const [total, items] = await Promise.all([
@@ -209,9 +234,17 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
 }
 
 const quoteHeaderInclude = {
-  company: { select: { id: true, name: true, vatRate: true } },
-  contact: { select: { id: true, firstName: true, lastName: true } },
-  deal: { select: { id: true, title: true } },
+  company: { select: { id: true, slug: true, name: true, vatRate: true } },
+  contact: {
+    select: {
+      id: true,
+      slug: true,
+      firstName: true,
+      lastName: true,
+      companyId: true,
+    },
+  },
+  deal: { select: { id: true, slug: true, title: true } },
   items: { orderBy: { sortOrder: "asc" as const } },
 };
 
@@ -222,7 +255,7 @@ const quoteVersionInclude = {
 export async function getQuote(id: string) {
   const prisma = getPrismaClient();
   const quote = await prisma.quote.findUnique({
-    where: { id },
+    where: whereIdOrQuoteNumber(id),
     include: quoteHeaderInclude,
   });
 
@@ -236,7 +269,7 @@ export async function getQuote(id: string) {
 export async function getQuoteWithVersions(id: string) {
   const prisma = getPrismaClient();
   const quote = await prisma.quote.findUnique({
-    where: { id },
+    where: whereIdOrQuoteNumber(id),
     include: {
       ...quoteHeaderInclude,
       versions: {
@@ -321,18 +354,22 @@ async function assertQuoteRelations(input: QuoteInput) {
     if (!contact) {
       throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
     }
-    if (contact.companyId && contact.companyId !== input.companyId) {
-      throw new AppError("Contact hoort niet bij dit bedrijf.", "VALIDATION");
-    }
+    assertContactBelongsToCompany(contact, input.companyId);
   }
 
   if (input.dealId) {
-    const deal = await prisma.deal.findUnique({ where: { id: input.dealId } });
+    const deal = await prisma.deal.findUnique({
+      where: { id: input.dealId },
+      include: { contact: { select: { companyId: true } } },
+    });
     if (!deal) {
       throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
     }
     if (deal.companyId && deal.companyId !== input.companyId) {
       throw new AppError("Lead hoort niet bij dit bedrijf.", "VALIDATION");
+    }
+    if (deal.contact) {
+      assertContactBelongsToCompany(deal.contact, input.companyId);
     }
   }
 

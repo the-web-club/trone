@@ -127,7 +127,7 @@ export default async function LogboekPage({
           userId: log.userId,
           userName: log.user.name,
           companyId: log.companyId,
-          companyName: log.company?.name ?? null,
+          company: log.company,
           orderId: log.orderId,
           orderNumber: log.order?.orderNumber ?? null,
         }))}

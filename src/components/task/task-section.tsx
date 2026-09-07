@@ -2,9 +2,10 @@ import Link from "next/link";
 import { CompleteTaskButton } from "@/components/task/complete-task-button";
 import { TaskForm } from "@/components/task/task-form";
 import { Badge } from "@/components/ui/badge";
-import { formatDate, formatPersonName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import type { TaskRecord } from "@/lib/task-service";
 import { taskPriorityLabels } from "@/lib/task-validation";
+import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
 
 function isOverdue(dueAt: Date | null) {
   if (!dueAt) return false;
@@ -43,9 +44,6 @@ export function TaskSection({
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((task) => {
-            const contactName = task.contact
-              ? formatPersonName(task.contact.firstName, task.contact.lastName)
-              : null;
             return (
               <li
                 key={task.id}
@@ -63,9 +61,24 @@ export function TaskSection({
                         </span>
                       </>
                     ) : null}
-                    {contactName ? <>{" · "}{contactName}</> : null}
-                    {task.company ? <>{" · "}{task.company.name}</> : null}
-                    {task.deal ? <>{" · "}{task.deal.title}</> : null}
+                    {task.contact ? (
+                      <>
+                        {" · "}
+                        <ContactLink contact={task.contact} />
+                      </>
+                    ) : null}
+                    {task.company ? (
+                      <>
+                        {" · "}
+                        <CompanyLink company={task.company} />
+                      </>
+                    ) : null}
+                    {task.deal ? (
+                      <>
+                        {" · "}
+                        <DealLink deal={task.deal} />
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

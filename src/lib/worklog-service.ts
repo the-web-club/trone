@@ -8,7 +8,7 @@ import type { WorkLogFilter, WorkLogInput } from "@/lib/worklog-validation";
 
 const workLogInclude = {
   user: { select: { id: true, name: true } },
-  company: { select: { id: true, name: true } },
+  company: { select: { id: true, slug: true, name: true } },
   order: { select: { id: true, orderNumber: true, companyId: true } },
 } satisfies Prisma.WorkLogInclude;
 
