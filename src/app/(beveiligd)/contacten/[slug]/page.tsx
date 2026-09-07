@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import {
-  deleteContactAction,
-  updateContactAction,
-} from "@/app/(beveiligd)/actions/contact-actions";
-import { ContactForm } from "@/components/contact/contact-form";
-import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
+import { ContactDetail } from "@/components/contact/contact-detail";
+import { ContactLeadsTable } from "@/components/contact/contact-leads-table";
 import {
   ContactTimeline,
   EntityTasks,
@@ -16,19 +11,6 @@ import {
   DetailTaskSkeleton,
   DetailTimelineSkeleton,
 } from "@/components/detail/detail-skeletons";
-import { CompanyLink, DealLink } from "@/components/entity-links";
-import { PageHeader } from "@/components/shell/page-header";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmptyRow,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
@@ -65,120 +47,51 @@ export default async function ContactDetailPage({
   ]);
   if (slug !== contact.slug) redirect(contactPath(contact));
   const companyId = getContactCompanyId(contact);
-  const name = formatPersonName(contact.firstName, contact.lastName);
-  const isAdmin = isAdminSession(session);
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={name}
-        description={
-          <>
-            <Link href="/contacten" className="hover:underline">
-              Terug naar contacten
-            </Link>
-            {contact.company ? (
-              <>
-                {" · "}
-                <CompanyLink company={contact.company} />
-              </>
-            ) : null}
-          </>
-        }
-        actions={
-          contact.isPrimary || isAdmin ? (
-            <>
-              {contact.isPrimary ? <Badge tone="info">Primair</Badge> : null}
-              {isAdmin ? (
-                <DeleteEntityButton
-                  id={contact.id}
-                  action={deleteContactAction}
-                  title="Contact verwijderen"
-                  description={`Weet je zeker dat je ${name} wilt verwijderen? Leads, offertes en orders blijven bestaan, zonder koppeling naar dit contact.`}
-                />
-              ) : null}
-            </>
-          ) : undefined
-        }
-      />
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Bedrijf</h2>
-        {contact.company ? (
-          <p className="text-sm text-fg">
-            <CompanyLink company={contact.company} primary />
-          </p>
-        ) : (
-          <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
-            Dit contact is niet aan een bedrijf gekoppeld.
-          </p>
-        )}
-      </section>
-
-      {contact.companyId ? (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-md font-medium text-fg">Gegevens</h2>
-          <ContactForm
-            action={updateContactAction}
-            submitLabel="Wijzigingen opslaan"
-            contact={{
-              id: contact.id,
-              companyId: contact.companyId,
-              firstName: contact.firstName,
-              lastName: contact.lastName,
-              jobTitle: contact.jobTitle,
-              email: contact.email,
-              phone: contact.phone,
-              notes: contact.notes,
-              isPrimary: contact.isPrimary,
-            }}
-          />
-        </section>
-      ) : null}
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Leads</h2>
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Lead</TableHeaderCell>
-                <TableHeaderCell>Fase</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contact.deals.length === 0 ? (
-                <TableEmptyRow colSpan={2}>
-                  Nog geen leads bij dit contact.
-                </TableEmptyRow>
-              ) : (
-                contact.deals.map((deal) => (
-                  <TableRow key={deal.id}>
-                    <TableCell>
-                      <DealLink deal={deal} primary />
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      {deal.stage.name}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </section>
-
-      <Suspense fallback={<DetailTaskSkeleton />}>
-        <EntityTasks
-          currentUserId={session.user.id}
-          contactId={contact.id}
-          companyId={companyId}
+    <ContactDetail
+      contact={{
+        id: contact.id,
+        slug: contact.slug,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        jobTitle: contact.jobTitle,
+        email: contact.email,
+        phone: contact.phone,
+        notes: contact.notes,
+        isPrimary: contact.isPrimary,
+        company: contact.company,
+      }}
+      isAdmin={isAdminSession(session)}
+      leads={
+        <ContactLeadsTable
+          leads={contact.deals.map((deal) => ({
+            id: deal.id,
+            slug: deal.slug,
+            title: deal.title,
+            stage: deal.stage,
+          }))}
         />
-      </Suspense>
-
-      <Suspense fallback={<DetailTimelineSkeleton />}>
-        <ContactTimeline contactId={contact.id} companyId={companyId} />
-      </Suspense>
-    </div>
+      }
+      activity={
+        <>
+          <Suspense fallback={<DetailTimelineSkeleton compact />}>
+            <ContactTimeline
+              compact
+              contactId={contact.id}
+              companyId={companyId}
+            />
+          </Suspense>
+          <Suspense fallback={<DetailTaskSkeleton compact />}>
+            <EntityTasks
+              compact
+              currentUserId={session.user.id}
+              contactId={contact.id}
+              companyId={companyId}
+            />
+          </Suspense>
+        </>
+      }
+    />
   );
 }

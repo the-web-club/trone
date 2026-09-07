@@ -200,24 +200,34 @@ export function CompanyDetailSkeleton() {
   );
 }
 
+export function ContactFieldsSkeleton() {
+  return (
+    <DetailSection title="Gegevens">
+      <div className="flex flex-col gap-3" aria-hidden>
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="flex flex-col gap-1">
+            <SkeletonPulse className="h-3 w-24" />
+            <SkeletonPulse className="h-8 w-full" />
+          </div>
+        ))}
+      </div>
+    </DetailSection>
+  );
+}
+
 export function ContactDetailSkeleton() {
   return (
     <div className="flex flex-col gap-8" aria-busy="true">
-      <DetailPageHeaderSkeleton />
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Bedrijf</h2>
-        <SkeletonPulse className="h-5 w-48" />
-      </section>
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Gegevens</h2>
-        <DetailFormSkeleton rows={5} />
-      </section>
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Leads</h2>
-        <DetailTableSkeleton columns={["Lead", "Fase"]} rows={3} />
-      </section>
-      <DetailTaskSkeleton />
-      <DetailTimelineSkeleton />
+      <DetailPageHeaderSkeleton action />
+      <DetailColumns
+        left={<ContactFieldsSkeleton />}
+        right={
+          <>
+            <DetailTimelineSkeleton compact />
+            <DetailTaskSkeleton compact />
+          </>
+        }
+      />
     </div>
   );
 }

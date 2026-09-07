@@ -60,13 +60,20 @@ export async function CompanyTimeline({
 export async function ContactTimeline({
   contactId,
   companyId,
+  compact = false,
 }: {
   contactId: string;
   companyId?: string | null;
+  compact?: boolean;
 }) {
   const events = await listTimelineForContact(contactId);
   return (
-    <Timeline events={events} contactId={contactId} companyId={companyId} />
+    <Timeline
+      compact={compact}
+      events={events}
+      contactId={contactId}
+      companyId={companyId}
+    />
   );
 }
 

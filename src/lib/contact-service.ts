@@ -103,7 +103,7 @@ export const getContact = cache(
             slug: true,
             title: true,
             status: true,
-            stage: { select: { name: true } },
+            stage: { select: { name: true, isWon: true, isLost: true } },
           },
         },
       },
@@ -164,7 +164,7 @@ export async function createContact(companyId: string, input: ContactInput) {
 
 export async function updateContact(
   id: string,
-  companyId: string,
+  companyId: string | null,
   input: ContactInput,
 ) {
   const contact = await getContact(id);
@@ -172,7 +172,7 @@ export async function updateContact(
     throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
   }
 
-  if (input.isPrimary) {
+  if (input.isPrimary && companyId) {
     await clearOtherPrimaries(companyId, contact.id);
   }
 

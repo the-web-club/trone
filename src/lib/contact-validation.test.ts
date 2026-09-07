@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/errors";
-import { parseContactForm } from "@/lib/contact-validation";
+import {
+  contactRecordToInput,
+  mergeContactPatch,
+  parseContactForm,
+} from "@/lib/contact-validation";
 
 function form(entries: Record<string, string>) {
   const data = new FormData();
@@ -61,5 +65,54 @@ describe("parseContactForm", () => {
   it("geeft een duidelijke fout bij ontbrekende voornaam, niet een null-typefout", () => {
     expect(() => parseContactForm(form({}))).toThrow(AppError);
     expect(() => parseContactForm(form({}))).toThrow(/Voornaam is verplicht/);
+  });
+});
+
+const current = contactRecordToInput({
+  firstName: "Rik",
+  lastName: "Jansen",
+  jobTitle: "Inkoper",
+  email: "rik@example.com",
+  phone: "06 12345678",
+  notes: "Bestaande notitie",
+  isPrimary: false,
+});
+
+describe("mergeContactPatch", () => {
+  it("wijzigt alleen het opgegeven veld", () => {
+    expect(mergeContactPatch(current, { jobTitle: "Directeur" })).toEqual({
+      ...current,
+      jobTitle: "Directeur",
+    });
+  });
+
+  it("kan optionele velden leegmaken", () => {
+    expect(mergeContactPatch(current, { email: null, notes: null })).toEqual({
+      ...current,
+      email: undefined,
+      notes: undefined,
+    });
+  });
+
+  it("kan primair aan- en uitzetten", () => {
+    expect(mergeContactPatch(current, { isPrimary: true }).isPrimary).toBe(
+      true,
+    );
+    expect(
+      mergeContactPatch({ ...current, isPrimary: true }, { isPrimary: false })
+        .isPrimary,
+    ).toBe(false);
+  });
+
+  it("weigert een lege voornaam", () => {
+    expect(() => mergeContactPatch(current, { firstName: "   " })).toThrow(
+      AppError,
+    );
+  });
+
+  it("weigert een ongeldig e-mailadres", () => {
+    expect(() =>
+      mergeContactPatch(current, { email: "niet-geldig" }),
+    ).toThrow(AppError);
   });
 });

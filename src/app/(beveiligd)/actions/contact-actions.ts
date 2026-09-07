@@ -3,13 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireSession } from "@/lib/auth-session";
-import { parseContactForm } from "@/lib/contact-validation";
+import {
+  mergeContactPatch,
+  parseContactForm,
+  contactRecordToInput,
+  type ContactPatch,
+} from "@/lib/contact-validation";
 import {
   createContact,
   deleteContact,
+  getContact,
   listContactsForSelect,
   updateContact,
 } from "@/lib/contact-service";
+import { getContactCompanyId } from "@/lib/contact-company";
 import { toActionError } from "@/lib/errors";
 import { companyPath, contactPath } from "@/lib/paths";
 
@@ -50,6 +57,13 @@ export async function createContactAction(
   }
 }
 
+function revalidateContactPaths(contact: { slug: string }) {
+  revalidatePath("/bedrijven", "layout");
+  revalidatePath("/contacten", "layout");
+  revalidatePath(contactPath(contact));
+  revalidatePath("/overzicht");
+}
+
 export async function updateContactAction(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -57,13 +71,31 @@ export async function updateContactAction(
   try {
     await requireSession();
     const id = String(formData.get("id") ?? "");
-    const companyId = String(formData.get("companyId") ?? "");
+    const companyId = String(formData.get("companyId") ?? "") || null;
     const input = parseContactForm(formData);
     const contact = await updateContact(id, companyId, input);
-    revalidatePath("/bedrijven", "layout");
-    revalidatePath("/contacten", "layout");
-    revalidatePath(contactPath(contact));
+    revalidateContactPaths(contact);
     return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function patchContactAction(
+  contactId: string,
+  patch: ContactPatch,
+): Promise<{ error?: string; slug?: string }> {
+  try {
+    await requireSession();
+    const current = await getContact(contactId);
+    const input = mergeContactPatch(contactRecordToInput(current), patch);
+    const contact = await updateContact(
+      current.id,
+      getContactCompanyId(current),
+      input,
+    );
+    revalidateContactPaths(contact);
+    return { slug: contact.slug };
   } catch (error) {
     return toActionError(error);
   }

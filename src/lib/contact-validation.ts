@@ -25,6 +25,16 @@ export const contactSchema = z.object({
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
+export type ContactPatch = {
+  firstName?: string;
+  lastName?: string | null;
+  jobTitle?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  isPrimary?: boolean;
+};
+
 function hasFilledValue(value: unknown): boolean {
   return typeof value === "string" && value.trim() !== "";
 }
@@ -47,6 +57,49 @@ export function parseContactForm(formData: FormData): ContactInput {
     phone: formData.get("phone"),
     notes: formData.get("notes"),
     isPrimary: formData.get("isPrimary"),
+  });
+}
+
+export function contactRecordToInput(contact: {
+  firstName: string;
+  lastName?: string | null;
+  jobTitle?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  isPrimary: boolean;
+}): ContactInput {
+  return parseContactInput({
+    firstName: contact.firstName,
+    lastName: contact.lastName ?? undefined,
+    jobTitle: contact.jobTitle ?? undefined,
+    email: contact.email ?? undefined,
+    phone: contact.phone ?? undefined,
+    notes: contact.notes ?? undefined,
+    isPrimary: contact.isPrimary,
+  });
+}
+
+function mergeOptional(
+  patch: string | null | undefined,
+  current: string | undefined,
+): string | undefined {
+  if (patch === undefined) return current;
+  return patch ?? undefined;
+}
+
+export function mergeContactPatch(
+  current: ContactInput,
+  patch: ContactPatch,
+): ContactInput {
+  return parseContactInput({
+    firstName: patch.firstName ?? current.firstName,
+    lastName: mergeOptional(patch.lastName, current.lastName),
+    jobTitle: mergeOptional(patch.jobTitle, current.jobTitle),
+    email: mergeOptional(patch.email, current.email),
+    phone: mergeOptional(patch.phone, current.phone),
+    notes: mergeOptional(patch.notes, current.notes),
+    isPrimary: patch.isPrimary ?? current.isPrimary,
   });
 }
 
