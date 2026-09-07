@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { formatEuroExact } from "@/lib/format";
 import { quotePath } from "@/lib/paths";
 import {
@@ -40,31 +40,35 @@ export function QuoteVersionCompare({
       <form method="get" className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-sm text-fg-muted">
           Eerste versie
-          <Select
+          <SelectMenu
             name="vergelijk"
             defaultValue={defaultA ? String(defaultA) : ""}
             className="min-w-40"
-          >
-            {versions.map((version) => (
-              <option key={version.versionNumber} value={version.versionNumber}>
-                {formatQuoteVersionNumber(quoteNumber, version.versionNumber)}
-              </option>
-            ))}
-          </Select>
+            searchPlaceholder="Zoek een versie…"
+            items={versions.map((version) => ({
+              value: String(version.versionNumber),
+              label: formatQuoteVersionNumber(
+                quoteNumber,
+                version.versionNumber,
+              ),
+            }))}
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm text-fg-muted">
           Tweede versie
-          <Select
+          <SelectMenu
             name="met"
             defaultValue={defaultB ? String(defaultB) : ""}
             className="min-w-40"
-          >
-            {versions.map((version) => (
-              <option key={version.versionNumber} value={version.versionNumber}>
-                {formatQuoteVersionNumber(quoteNumber, version.versionNumber)}
-              </option>
-            ))}
-          </Select>
+            searchPlaceholder="Zoek een versie…"
+            items={versions.map((version) => ({
+              value: String(version.versionNumber),
+              label: formatQuoteVersionNumber(
+                quoteNumber,
+                version.versionNumber,
+              ),
+            }))}
+          />
         </label>
         <Button type="submit" variant="secondary">
           Vergelijken

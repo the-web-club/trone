@@ -5,7 +5,7 @@ import { createTaskAction } from "@/app/(beveiligd)/actions/task-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { taskPriorityLabels } from "@/lib/task-validation";
 
@@ -54,22 +54,29 @@ export function TaskForm({
           <Input name="dueAt" type="date" />
         </FormField>
         <FormField id="assigneeUserId" label="Toegewezen aan">
-          <Select name="assigneeUserId" defaultValue={currentUserId}>
-            {assignees.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </Select>
+          <SelectMenu
+            name="assigneeUserId"
+            defaultValue={currentUserId}
+            items={assignees.map((user) => ({
+              value: user.id,
+              label: user.name,
+            }))}
+            searchPlaceholder="Zoek een medewerker…"
+          />
         </FormField>
       </div>
       <FormField id="priority" label="Prioriteit">
-        <Select name="priority" defaultValue="">
-          <option value="">Geen</option>
-          <option value="LOW">{taskPriorityLabels.LOW}</option>
-          <option value="NORMAL">{taskPriorityLabels.NORMAL}</option>
-          <option value="HIGH">{taskPriorityLabels.HIGH}</option>
-        </Select>
+        <SelectMenu
+          name="priority"
+          defaultValue=""
+          items={[
+            { value: "", label: "Geen" },
+            { value: "LOW", label: taskPriorityLabels.LOW },
+            { value: "NORMAL", label: taskPriorityLabels.NORMAL },
+            { value: "HIGH", label: taskPriorityLabels.HIGH },
+          ]}
+          searchPlaceholder="Zoek een prioriteit…"
+        />
       </FormField>
       <FormField id="description" label="Toelichting">
         <Textarea name="description" placeholder="Optioneel" />

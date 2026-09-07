@@ -3,7 +3,8 @@
 import { useId, useState } from "react";
 import { SavedIndicator } from "@/components/detail/saved-indicator";
 import { useSavedFlash } from "@/components/detail/use-saved-flash";
-import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { ComboboxMenu } from "@/components/ui/combobox";
+import type { SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
 export const INLINE_SELECT_EMPTY = "__none__";
@@ -15,8 +16,12 @@ export function InlineSelectField({
   disabled,
   hideLabel = false,
   compact = false,
+  searchPlaceholder,
   triggerClassName,
   onSave,
+  onCreate,
+  createLabel,
+  createDisabled,
 }: {
   label: string;
   value: string;
@@ -24,8 +29,12 @@ export function InlineSelectField({
   disabled?: boolean;
   hideLabel?: boolean;
   compact?: boolean;
+  searchPlaceholder?: string;
   triggerClassName?: string;
   onSave: (next: string) => Promise<string | false | null>;
+  onCreate?: (query: string) => void;
+  createLabel?: string;
+  createDisabled?: boolean;
 }) {
   const id = useId();
   const [current, setCurrent] = useState(value);
@@ -83,13 +92,14 @@ export function InlineSelectField({
           {label}
         </label>
       )}
-      <SelectMenu
+      <ComboboxMenu
         id={id}
         value={current || INLINE_SELECT_EMPTY}
         onValueChange={onValueChange}
         items={items}
         disabled={disabled || pending}
         aria-label={label}
+        searchPlaceholder={searchPlaceholder}
         className={cn(
           "w-full max-w-full cursor-pointer border-transparent bg-transparent px-1.5",
           "hover:border-border hover:bg-surface",
@@ -98,6 +108,9 @@ export function InlineSelectField({
           compact && "w-auto",
           triggerClassName,
         )}
+        onCreate={onCreate}
+        createLabel={createLabel}
+        createDisabled={createDisabled}
       />
       {error || saved ? status : null}
     </div>

@@ -23,7 +23,7 @@ export type LeadQuoteRow = {
   quoteNumber: string;
   status: keyof typeof quoteStatusLabels;
   total: number;
-  createdAt: Date;
+  createdAt: string;
   orders: Array<{
     id: string;
     orderNumber: string;
@@ -67,7 +67,7 @@ export function LeadQuotesTable({ quotes }: { quotes: LeadQuoteRow[] }) {
                   {formatEuroExact(quote.total)}
                 </TableCell>
                 <TableCell className="text-fg-muted">
-                  {formatDate(quote.createdAt)}
+                  {formatDate(new Date(quote.createdAt))}
                 </TableCell>
                 <TableCell className="relative z-10">
                   {quote.orders.length === 0 ? (

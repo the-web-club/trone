@@ -9,8 +9,12 @@ import {
 import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { PriceBar } from "@/components/configurator/price-bar";
 import { FormField } from "@/components/ui/form-field";
-import { Select } from "@/components/ui/select";
+import { ComboboxMenu } from "@/components/ui/combobox";
+import { CreateCustomerDialog } from "@/components/quote/create-customer-dialog";
+import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
+import { CreateLeadDialog } from "@/components/quote/create-lead-dialog";
 import { QuoteLineEditor } from "@/components/quote/quote-line-editor";
+import { Button } from "@/components/ui/button";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { formatPersonName } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -88,11 +92,13 @@ export function QuoteForm({
     contactsLoading,
     onCompanyChange,
     onContactChange,
+    applySelection,
   } = useCompanyContactFields({
     initialCompanyId,
     initialContactId,
     initialContacts: contacts,
   });
+  const [companyList, setCompanyList] = useState(companies);
   const [dealId, setDealId] = useState(initialDealId ?? "");
   const [visibleDeals, setVisibleDeals] = useState(deals);
   const [dealsLoading, setDealsLoading] = useState(false);
@@ -101,8 +107,14 @@ export function QuoteForm({
     initialItems && initialItems.length > 0 ? initialItems : [emptyLine(catalog)],
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [leadDialogOpen, setLeadDialogOpen] = useState(false);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [contactQuery, setContactQuery] = useState("");
+  const [leadQuery, setLeadQuery] = useState("");
 
-  const company = companies.find((row) => row.id === companyId);
+  const company = companyList.find((row) => row.id === companyId);
   const vatRate = company?.vatRate ?? 21;
   const ctx = useMemo(() => toPricingContext(catalog), [catalog]);
 
@@ -175,55 +187,178 @@ export function QuoteForm({
     setActiveIndex(items.length);
   }
 
+  function handleCreatedCustomer(result: {
+    company: QuoteFormCompany;
+    contact: QuoteFormContact | null;
+    deal: QuoteFormDeal | null;
+  }) {
+    setCompanyList((list) =>
+      list.some((row) => row.id === result.company.id)
+        ? list
+        : [...list, result.company].sort((a, b) =>
+            a.name.localeCompare(b.name, "nl"),
+          ),
+    );
+    applySelection(
+      {
+        companyId: result.company.id,
+        contactId: result.contact?.id ?? "",
+      },
+      {
+        contacts: result.contact ? [result.contact] : [],
+      },
+    );
+    if (result.deal) {
+      const createdDeal = result.deal;
+      setVisibleDeals((list) =>
+        list.some((row) => row.id === createdDeal.id)
+          ? list
+          : [createdDeal, ...list],
+      );
+      setDealId(createdDeal.id);
+      return;
+    }
+    loadDeals(result.company.id);
+  }
+
+  function handleCreatedContact(contact: QuoteFormContact) {
+    applySelection(
+      { companyId, contactId: contact.id },
+      { contacts: [...visibleContacts, contact] },
+    );
+  }
+
+  function handleCreatedLead(deal: QuoteFormDeal) {
+    setVisibleDeals((list) =>
+      list.some((row) => row.id === deal.id) ? list : [deal, ...list],
+    );
+    setDealId(deal.id);
+  }
+
+  const companyItems = useMemo(
+    () => [
+      { value: "", label: "Kies een klant" },
+      ...companyList.map((row) => ({ value: row.id, label: row.name })),
+    ],
+    [companyList],
+  );
+  const contactItems = useMemo(
+    () => [
+      { value: "", label: "Geen contactpersoon" },
+      ...visibleContacts.map((contact) => ({
+        value: contact.id,
+        label: formatPersonName(contact.firstName, contact.lastName),
+      })),
+    ],
+    [visibleContacts],
+  );
+  const dealItems = useMemo(
+    () => [
+      { value: "", label: "Geen lead gekoppeld" },
+      ...visibleDeals.map((deal) => ({
+        value: deal.id,
+        label: deal.title,
+      })),
+    ],
+    [visibleDeals],
+  );
+
   return (
-    <form action={formAction} className="flex flex-col" data-configurator-page="">
+    <div className="flex flex-col" data-configurator-page="">
+    <form action={formAction} className="flex flex-col">
       {quoteId ? <input type="hidden" name="id" value={quoteId} /> : null}
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
 
       <div className="flex flex-col max-lg:pb-[var(--configurator-bar-space)]">
       <section className="mb-8 grid gap-4 md:grid-cols-3">
-        <FormField id="companyId" label="Klant">
-          <Select
-            required
-            value={companyId}
-            onChange={(event) => handleCompanyChange(event.target.value)}
+        <div className="flex items-end gap-2">
+          <FormField id="companyId" label="Klant" className="min-w-0 flex-1">
+            <ComboboxMenu
+              required
+              value={companyId}
+              onValueChange={handleCompanyChange}
+              items={companyItems}
+              placeholder="Kies een klant"
+              searchPlaceholder="Zoek een klant…"
+              createLabel="Nieuw bedrijf"
+              onCreate={(query) => {
+                setCompanyQuery(query);
+                setCompanyDialogOpen(true);
+              }}
+            />
+          </FormField>
+          <Button
+            type="button"
+            variant="secondary"
+            aria-label="Nieuw bedrijf"
+            onClick={() => setCompanyDialogOpen(true)}
           >
-            <option value="">Kies een klant</option>
-            {companies.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField id="contactId" label="Contactpersoon">
-          <Select
-            value={contactId}
-            disabled={contactsLoading}
-            onChange={(event) => handleContactChange(event.target.value)}
+            Nieuw
+          </Button>
+        </div>
+        <div className="flex items-end gap-2">
+          <FormField id="contactId" label="Contactpersoon" className="min-w-0 flex-1">
+            <ComboboxMenu
+              value={contactId}
+              disabled={contactsLoading}
+              onValueChange={handleContactChange}
+              items={contactItems}
+              placeholder="Geen contactpersoon"
+              searchPlaceholder="Zoek een contact…"
+              createLabel="Nieuw contact"
+              createDisabled={!companyId}
+              onCreate={(query) => {
+                if (!companyId) return;
+                setContactQuery(query);
+                setContactDialogOpen(true);
+              }}
+            />
+          </FormField>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!companyId}
+            aria-label="Nieuw contact"
+            onClick={() => {
+              if (!companyId) return;
+              setContactDialogOpen(true);
+            }}
           >
-            <option value="">Geen contactpersoon</option>
-            {visibleContacts.map((contact) => (
-              <option key={contact.id} value={contact.id}>
-                {formatPersonName(contact.firstName, contact.lastName)}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField id="dealId" label="Lead">
-          <Select
-            value={dealId}
-            disabled={dealsLoading}
-            onChange={(event) => setDealId(event.target.value)}
+            Nieuw
+          </Button>
+        </div>
+        <div className="flex items-end gap-2">
+          <FormField id="dealId" label="Lead" className="min-w-0 flex-1">
+            <ComboboxMenu
+              value={dealId}
+              disabled={dealsLoading}
+              onValueChange={setDealId}
+              items={dealItems}
+              placeholder="Geen lead gekoppeld"
+              searchPlaceholder="Zoek een lead…"
+              createLabel="Nieuwe lead"
+              createDisabled={!companyId}
+              onCreate={(query) => {
+                if (!companyId) return;
+                setLeadQuery(query || company?.name || "");
+                setLeadDialogOpen(true);
+              }}
+            />
+          </FormField>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!companyId}
+            aria-label="Nieuwe lead"
+            onClick={() => {
+              if (!companyId) return;
+              setLeadQuery(company?.name || "");
+              setLeadDialogOpen(true);
+            }}
           >
-            <option value="">Geen lead gekoppeld</option>
-            {visibleDeals.map((deal) => (
-              <option key={deal.id} value={deal.id}>
-                {deal.title}
-              </option>
-            ))}
-          </Select>
-        </FormField>
+            Nieuw
+          </Button>
+        </div>
       </section>
 
       {items.length > 1 ? (
@@ -317,5 +452,38 @@ export function QuoteForm({
       ) : null}
       </div>
     </form>
+    <CreateCustomerDialog
+      showTrigger={false}
+      open={companyDialogOpen}
+      onOpenChange={(next) => {
+        setCompanyDialogOpen(next);
+        if (!next) setCompanyQuery("");
+      }}
+      defaultName={companyQuery}
+      onCreated={handleCreatedCustomer}
+    />
+    <CreateQuoteContactDialog
+      showTrigger={false}
+      companyId={companyId}
+      open={contactDialogOpen}
+      onOpenChange={(next) => {
+        setContactDialogOpen(next);
+        if (!next) setContactQuery("");
+      }}
+      defaultFirstName={contactQuery}
+      onCreated={handleCreatedContact}
+    />
+    <CreateLeadDialog
+      companyId={companyId}
+      contactId={contactId}
+      open={leadDialogOpen}
+      onOpenChange={(next) => {
+        setLeadDialogOpen(next);
+        if (!next) setLeadQuery("");
+      }}
+      defaultTitle={leadQuery || company?.name}
+      onCreated={handleCreatedLead}
+    />
+    </div>
   );
 }

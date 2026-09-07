@@ -104,7 +104,7 @@ export default async function LeadDetailPage({
             quoteNumber: quote.quoteNumber,
             status: quote.status,
             total: Number(quote.total),
-            createdAt: quote.createdAt,
+            createdAt: quote.createdAt.toISOString(),
             orders: quote.orders.map((order) => ({
               id: order.id,
               orderNumber: order.orderNumber,

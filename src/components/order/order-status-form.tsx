@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { updateOrderStatusAction } from "@/app/(beveiligd)/actions/order-actions";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import type { OrderStatus } from "@/generated/prisma/client";
 import { orderStatusLabels, orderStatuses } from "@/lib/orders-query";
 
@@ -23,18 +23,17 @@ export function OrderStatusForm({
     <form action={action} className="flex flex-col items-end gap-2">
       <input type="hidden" name="id" value={orderId} />
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <SelectMenu
           name="status"
           defaultValue={status}
           aria-label="Productiestatus"
           className="w-44"
-        >
-          {orderStatuses.map((value) => (
-            <option key={value} value={value}>
-              {orderStatusLabels[value]}
-            </option>
-          ))}
-        </Select>
+          searchPlaceholder="Zoek een status…"
+          items={orderStatuses.map((value) => ({
+            value,
+            label: orderStatusLabels[value],
+          }))}
+        />
         <Button type="submit" variant="secondary" loading={pending}>
           Status bijwerken
         </Button>

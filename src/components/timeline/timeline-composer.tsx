@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { timelineEventTypeLabels } from "@/lib/timeline-validation";
 
@@ -51,13 +51,18 @@ export function TimelineComposer({
         <input type="hidden" name="companyId" value={companyId} />
       ) : null}
       <FormField id="type" label="Type">
-        <Select name="type" defaultValue="NOTE">
-          <option value="NOTE">{timelineEventTypeLabels.NOTE}</option>
-          <option value="CALL">{timelineEventTypeLabels.CALL}</option>
-          <option value="EMAIL">{timelineEventTypeLabels.EMAIL}</option>
-          <option value="MEETING">{timelineEventTypeLabels.MEETING}</option>
-          <option value="DEMO">{timelineEventTypeLabels.DEMO}</option>
-        </Select>
+        <SelectMenu
+          name="type"
+          defaultValue="NOTE"
+          items={[
+            { value: "NOTE", label: timelineEventTypeLabels.NOTE },
+            { value: "CALL", label: timelineEventTypeLabels.CALL },
+            { value: "EMAIL", label: timelineEventTypeLabels.EMAIL },
+            { value: "MEETING", label: timelineEventTypeLabels.MEETING },
+            { value: "DEMO", label: timelineEventTypeLabels.DEMO },
+          ]}
+          searchPlaceholder="Zoek een type…"
+        />
       </FormField>
       <FormField id="body" label="Toelichting">
         <Textarea name="body" placeholder="Wat is er gebeurd?" />

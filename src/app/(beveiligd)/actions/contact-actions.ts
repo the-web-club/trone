@@ -14,16 +14,35 @@ import { contactPath } from "@/lib/paths";
 export async function createContactAction(
   _prev: { error?: string } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{
+  error?: string;
+  contact?: {
+    id: string;
+    slug: string;
+    firstName: string;
+    lastName: string | null;
+    companyId: string | null;
+  };
+}> {
   try {
     await requireSession();
     const companyId = String(formData.get("companyId") ?? "");
     const input = parseContactForm(formData);
     const contact = await createContact(companyId, input);
-    revalidatePath("/bedrijven", "layout");
-    revalidatePath("/contacten", "layout");
+    revalidatePath("/bedrijven");
+    revalidatePath("/bedrijven/[slug]", "page");
+    revalidatePath("/contacten");
+    revalidatePath("/contacten/[slug]", "page");
     revalidatePath(contactPath(contact));
-    return {};
+    return {
+      contact: {
+        id: contact.id,
+        slug: contact.slug,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        companyId: contact.companyId,
+      },
+    };
   } catch (error) {
     return toActionError(error);
   }

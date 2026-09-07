@@ -21,8 +21,21 @@ export const contactSchema = z.object({
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
+function hasFilledValue(value: unknown): boolean {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+function parseContactInput(data: unknown): ContactInput {
+  const parsed = contactSchema.safeParse(data);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
+  }
+  return parsed.data;
+}
+
 export function parseContactForm(formData: FormData): ContactInput {
-  const parsed = contactSchema.safeParse({
+  return parseContactInput({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
     jobTitle: formData.get("jobTitle"),
@@ -31,11 +44,28 @@ export function parseContactForm(formData: FormData): ContactInput {
     notes: formData.get("notes"),
     isPrimary: formData.get("isPrimary"),
   });
+}
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
-  }
-
-  return parsed.data;
+/** Contact vanaf de configurator. Leeg = overslaan; deels ingevuld vereist voornaam. */
+export function parseOptionalComposerContactForm(
+  formData: FormData,
+): ContactInput | null {
+  const fields = {
+    firstName:
+      typeof formData.get("firstName") === "string"
+        ? formData.get("firstName")
+        : "",
+    lastName: formData.get("lastName"),
+    email: formData.get("contactEmail"),
+    phone: formData.get("contactPhone"),
+    isPrimary: true,
+  };
+  const anyFilled = [
+    fields.firstName,
+    fields.lastName,
+    fields.email,
+    fields.phone,
+  ].some(hasFilledValue);
+  if (!anyFilled) return null;
+  return parseContactInput(fields);
 }

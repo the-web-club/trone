@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { userRoleLabels, userRoles } from "@/lib/user-validation";
 
 export function InviteUserForm() {
@@ -57,13 +57,15 @@ export function InviteUserForm() {
                 <Input name="email" type="email" required autoComplete="email" />
               </FormField>
               <FormField id="role" label="Rol">
-                <Select name="role" defaultValue="user">
-                  {userRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {userRoleLabels[role]}
-                    </option>
-                  ))}
-                </Select>
+                <SelectMenu
+                  name="role"
+                  defaultValue="user"
+                  searchPlaceholder="Zoek een rol…"
+                  items={userRoles.map((role) => ({
+                    value: role,
+                    label: userRoleLabels[role],
+                  }))}
+                />
               </FormField>
               {error ? (
                 <p className="text-sm text-danger" role="alert">

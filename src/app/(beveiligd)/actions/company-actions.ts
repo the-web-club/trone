@@ -3,10 +3,42 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
-import { parseCompanyForm } from "@/lib/company-validation";
+import {
+  parseCompanyForm,
+  parseComposerCompanyForm,
+} from "@/lib/company-validation";
 import { createCompany, updateCompany } from "@/lib/company-service";
 import { toActionError } from "@/lib/errors";
 import { companyPath } from "@/lib/paths";
+
+export type CreatedCompanyOption = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
+/** Compact aanmaken zonder redirect, voor selects op lead en offerte. */
+export async function createCompanyInlineAction(
+  formData: FormData,
+): Promise<{ error?: string; company?: CreatedCompanyOption }> {
+  try {
+    const session = await requireSession();
+    const input = parseComposerCompanyForm(formData);
+    const company = await createCompany(input, session.user.id);
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath("/overzicht");
+    revalidatePath("/leads", "layout");
+    return {
+      company: {
+        id: company.id,
+        slug: company.slug,
+        name: company.name,
+      },
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
 
 export async function createCompanyAction(
   _prev: { error?: string } | null,

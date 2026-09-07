@@ -59,7 +59,7 @@ export function WorkLogSection({
         logs={logs.map((log) => ({
           id: log.id,
           description: log.description,
-          occurredAt: log.occurredAt,
+          occurredAt: log.occurredAt.toISOString(),
           category: log.category,
           durationMinutes: log.durationMinutes,
           userId: log.userId,

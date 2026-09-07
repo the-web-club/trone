@@ -14,7 +14,7 @@ import {
 export type WorkLogListItem = {
   id: string;
   description: string;
-  occurredAt: Date;
+  occurredAt: string;
   category: WorkLogCategory;
   durationMinutes: number | null;
   userId: string;
@@ -89,7 +89,7 @@ function WorkLogRow({
           <p className="mt-0.5 text-xs text-fg-muted">
             {log.userName}
             {" · "}
-            {formatDateTime(log.occurredAt)}
+            {formatDateTime(new Date(log.occurredAt))}
             {log.durationMinutes ? ` · ${formatDurationMinutes(log.durationMinutes)}` : ""}
             {log.company ? (
               <>

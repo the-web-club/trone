@@ -3,8 +3,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { patchDealAction } from "@/app/(beveiligd)/actions/deal-actions";
+import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import {
   COMPANY_SWITCH_WARNING,
   useCompanyContactFields,
@@ -17,6 +18,7 @@ import {
 } from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
 import { CompanyLink, ContactLink } from "@/components/entity-links";
+import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
 import { pageActionPrimaryClassName } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
 import { contactBelongsToCompany } from "@/lib/contact-company";
@@ -91,9 +93,24 @@ export function LeadDetail({
     initialContactId: deal.contactId,
     initialContacts: contacts,
   });
+  const [extraCompanies, setExtraCompanies] = useState<LeadDetailCompany[]>(
+    [],
+  );
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [contactQuery, setContactQuery] = useState("");
+
+  const companyList = useMemo(() => {
+    const merged = [...companies];
+    for (const extra of extraCompanies) {
+      if (!merged.some((item) => item.id === extra.id)) merged.push(extra);
+    }
+    return merged;
+  }, [companies, extraCompanies]);
 
   const company =
-    companies.find((item) => item.id === relation.companyId) ??
+    companyList.find((item) => item.id === relation.companyId) ??
     (deal.company?.id === relation.companyId ? deal.company : null);
   const contact =
     relation.contacts.find((item) => item.id === relation.contactId) ??
@@ -104,13 +121,13 @@ export function LeadDetail({
   const companyItems = useMemo<SelectOption[]>(() => {
     const items: SelectOption[] = [
       { value: INLINE_SELECT_EMPTY, label: "Geen bedrijf gekoppeld" },
-      ...companies.map((item) => ({ value: item.id, label: item.name })),
+      ...companyList.map((item) => ({ value: item.id, label: item.name })),
     ];
     if (company && !items.some((item) => item.value === company.id)) {
       items.splice(1, 0, { value: company.id, label: company.name });
     }
     return items;
-  }, [companies, company]);
+  }, [companyList, company]);
 
   const contactItems = useMemo<SelectOption[]>(() => {
     const items: SelectOption[] = [
@@ -203,6 +220,42 @@ export function LeadDetail({
     return null;
   }
 
+  async function handleCreatedCompany(created: LeadDetailCompany) {
+    setExtraCompanies((list) =>
+      list.some((item) => item.id === created.id) ? list : [...list, created],
+    );
+    await saveCompany(created.id);
+  }
+
+  async function handleCreatedContact(created: {
+    id: string;
+    slug?: string;
+    firstName: string;
+    lastName: string | null;
+    companyId: string | null;
+  }) {
+    const nextCompanyId = created.companyId ?? relation.companyId;
+    relation.applySelection(
+      { companyId: nextCompanyId, contactId: created.id },
+      {
+        contacts: [
+          ...relation.contacts,
+          {
+            id: created.id,
+            slug: created.slug,
+            firstName: created.firstName,
+            lastName: created.lastName,
+            companyId: created.companyId,
+          },
+        ],
+      },
+    );
+    await save({
+      contactId: created.id,
+      companyId: nextCompanyId || null,
+    });
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <header className="page-header">
@@ -227,6 +280,7 @@ export function LeadDetail({
                 "h-5 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-1.5 text-xs font-medium",
                 stageToneClass,
               )}
+              searchPlaceholder="Zoek een fase…"
               onSave={(stageId) => save({ stageId })}
             />
           </div>
@@ -274,19 +328,49 @@ export function LeadDetail({
                   label="Bedrijf"
                   value={relation.companyId}
                   items={companyItems}
+                  searchPlaceholder="Zoek een bedrijf…"
+                  createLabel="Nieuw bedrijf"
+                  onCreate={(query) => {
+                    setCompanyQuery(query);
+                    setCompanyDialogOpen(true);
+                  }}
                   onSave={saveCompany}
                 />
                 <InlineSelectField
                   label="Contactpersoon"
                   value={relation.contactId}
                   items={contactItems}
+                  searchPlaceholder="Zoek een contact…"
+                  createLabel="Nieuw contact"
+                  createDisabled={!relation.companyId}
                   disabled={relation.contactsLoading}
+                  onCreate={(query) => {
+                    if (!relation.companyId) return;
+                    setContactQuery(query);
+                    setContactDialogOpen(true);
+                  }}
                   onSave={saveContact}
+                />
+                <CreateCompanyDialog
+                  showTrigger={false}
+                  open={companyDialogOpen}
+                  onOpenChange={setCompanyDialogOpen}
+                  defaultName={companyQuery}
+                  onCreated={handleCreatedCompany}
+                />
+                <CreateQuoteContactDialog
+                  companyId={relation.companyId}
+                  showTrigger={false}
+                  open={contactDialogOpen}
+                  onOpenChange={setContactDialogOpen}
+                  defaultFirstName={contactQuery}
+                  onCreated={handleCreatedContact}
                 />
                 <InlineSelectField
                   label="Bron"
                   value={deal.sourceId ?? ""}
                   items={sourceItems}
+                  searchPlaceholder="Zoek een bron…"
                   onSave={(sourceId) => save({ sourceId: sourceId || null })}
                 />
                 <InlineTextField

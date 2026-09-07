@@ -83,9 +83,15 @@ export function useCompanyContactFields({
     return { companyId: nextCompanyId, contactId: nextContactId };
   }
 
-  function applySelection(selection: CompanyContactSelection) {
+  function applySelection(
+    selection: CompanyContactSelection,
+    extras?: { contacts?: CompanyContactOption[] },
+  ) {
     setCompanyId(selection.companyId);
     setContactId(selection.contactId);
+    if (extras?.contacts) {
+      setContacts(extras.contacts);
+    }
     loadContacts(selection.companyId);
   }
 

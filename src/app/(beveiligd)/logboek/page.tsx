@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { WorkLogForm } from "@/components/worklog/work-log-form";
 import { WorkLogList } from "@/components/worklog/work-log-list";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
@@ -68,32 +68,34 @@ export default async function LogboekPage({
       </div>
 
       <form method="get" className="flex flex-wrap items-end gap-2">
-        <Select
+        <SelectMenu
           name="userId"
           defaultValue={filters.userId ?? ""}
           className="max-w-48"
           aria-label="Filter op medewerker"
-        >
-          <option value="">Alle medewerkers</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name}
-            </option>
-          ))}
-        </Select>
-        <Select
+          searchPlaceholder="Zoek een medewerker…"
+          items={[
+            { value: "", label: "Alle medewerkers" },
+            ...users.map((user) => ({
+              value: user.id,
+              label: user.name,
+            })),
+          ]}
+        />
+        <SelectMenu
           name="category"
           defaultValue={filters.category ?? ""}
           className="max-w-44"
           aria-label="Filter op categorie"
-        >
-          <option value="">Alle categorieën</option>
-          {workLogCategories.map((category) => (
-            <option key={category} value={category}>
-              {workLogCategoryLabels[category]}
-            </option>
-          ))}
-        </Select>
+          searchPlaceholder="Zoek een categorie…"
+          items={[
+            { value: "", label: "Alle categorieën" },
+            ...workLogCategories.map((category) => ({
+              value: category,
+              label: workLogCategoryLabels[category],
+            })),
+          ]}
+        />
         <Input
           name="from"
           type="date"
@@ -121,7 +123,7 @@ export default async function LogboekPage({
         logs={logs.map((log) => ({
           id: log.id,
           description: log.description,
-          occurredAt: log.occurredAt,
+          occurredAt: log.occurredAt.toISOString(),
           category: log.category,
           durationMinutes: log.durationMinutes,
           userId: log.userId,

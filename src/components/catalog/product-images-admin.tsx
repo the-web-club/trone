@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { isImageKeyOption, mediaUrl } from "@/lib/product-visuals";
 import type { ProductImageMatch } from "@/lib/product-visuals";
@@ -96,17 +96,21 @@ export function ProductImagesAdmin({
                     id={`${product.id}-${option.code}`}
                     label={option.name}
                   >
-                    <Select name="selection" defaultValue="">
-                      <option value="">Geldt voor alle {option.name.toLowerCase()}</option>
-                      {option.values.map((value) => (
-                        <option
-                          key={value.id}
-                          value={`${option.id}:${value.id}`}
-                        >
-                          {value.value}
-                        </option>
-                      ))}
-                    </Select>
+                    <SelectMenu
+                      name="selection"
+                      defaultValue=""
+                      searchPlaceholder="Zoek een waarde…"
+                      items={[
+                        {
+                          value: "",
+                          label: `Geldt voor alle ${option.name.toLowerCase()}`,
+                        },
+                        ...option.values.map((value) => ({
+                          value: `${option.id}:${value.id}`,
+                          label: value.value,
+                        })),
+                      ]}
+                    />
                   </FormField>
                 ))}
                 <label className="flex h-8 items-center gap-2 text-sm text-fg md:col-span-2">

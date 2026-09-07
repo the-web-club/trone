@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   resendInvitationAction,
   setUserActiveAction,
@@ -8,7 +8,7 @@ import {
 } from "@/app/(beveiligd)/actions/user-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -99,6 +99,7 @@ function StaffRowActions({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const roleFormRef = useRef<HTMLFormElement>(null);
   const status = statusCopy[user.status];
   const role = isUserRole(user.role) ? user.role : "user";
 
@@ -131,25 +132,33 @@ function StaffRowActions({
       <TableCell>
         {canManage ? (
           <form
+            ref={roleFormRef}
             className="max-w-40"
             action={(formData) =>
               run("role", (data) => updateUserRoleAction(null, data), formData)
             }
           >
             <input type="hidden" name="userId" value={user.id} />
-            <Select
-              name="role"
+            <input type="hidden" name="role" value={role} />
+            <SelectMenu
               defaultValue={role}
               disabled={pending !== null}
-              onChange={(event) => event.currentTarget.form?.requestSubmit()}
               aria-label={`Rol van ${user.name}`}
-            >
-              {userRoles.map((value) => (
-                <option key={value} value={value}>
-                  {userRoleLabels[value]}
-                </option>
-              ))}
-            </Select>
+              searchPlaceholder="Zoek een rol…"
+              items={userRoles.map((value) => ({
+                value,
+                label: userRoleLabels[value],
+              }))}
+              onValueChange={(next) => {
+                const form = roleFormRef.current;
+                if (!form) return;
+                const input = form.querySelector<HTMLInputElement>(
+                  'input[name="role"]',
+                );
+                if (input) input.value = next;
+                form.requestSubmit();
+              }}
+            />
           </form>
         ) : (
           <Badge tone={user.role === "admin" ? "warning" : "default"}>

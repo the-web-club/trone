@@ -8,6 +8,7 @@ import {
   createDeal,
   getDeal,
   listDealsForSelect,
+  listDealStages,
   moveDealToStage,
   setDealHot,
   setDealOwner,
@@ -151,4 +152,53 @@ export async function createDealActivityAction(
 export async function listDealsForSelectAction(companyId?: string | null) {
   await requireSession();
   return listDealsForSelect(companyId);
+}
+
+export type CreatedDealOption = {
+  id: string;
+  title: string;
+  companyId: string | null;
+};
+
+/** Compact aanmaken zonder redirect, voor de lead-select op de offerte. */
+export async function createDealInlineAction(
+  formData: FormData,
+): Promise<{ error?: string; deal?: CreatedDealOption }> {
+  try {
+    const session = await requireSession();
+    const title = String(formData.get("title") ?? "").trim();
+    const companyId = String(formData.get("companyId") ?? "").trim() || undefined;
+    const contactId = String(formData.get("contactId") ?? "").trim() || undefined;
+    if (!title) {
+      return { error: "Titel is verplicht" };
+    }
+    const stages = await listDealStages();
+    const stage =
+      stages.find((row) => !row.isWon && !row.isLost) ?? stages[0];
+    if (!stage) {
+      return { error: "Geen fase beschikbaar." };
+    }
+    const deal = await createDeal(
+      {
+        title,
+        companyId,
+        contactId,
+        stageId: stage.id,
+      },
+      session.user.id,
+    );
+    revalidatePath("/leads");
+    revalidatePath("/overzicht");
+    revalidatePath("/kansen");
+    revalidatePath(dealPath(deal));
+    return {
+      deal: {
+        id: deal.id,
+        title: deal.title,
+        companyId: deal.companyId,
+      },
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
 }

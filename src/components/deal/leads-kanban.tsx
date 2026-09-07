@@ -18,7 +18,7 @@ import { Lift, Stagger, StaggerItem } from "@/components/motion";
 import { controlMotion } from "@/components/motion/styles";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SelectMenu } from "@/components/ui/select";
 import { CompanyLink } from "@/components/entity-links";
 import { formatEuro } from "@/lib/format";
 import { dealPath } from "@/lib/paths";
@@ -103,18 +103,18 @@ function DealCard({
         className="mt-2"
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <Select
+        <SelectMenu
           aria-label="Fase wijzigen"
           value={deal.stageId}
-          onChange={(event) => onMove(deal.id, event.target.value)}
-          className="h-7 text-xs"
-        >
-          {stages.map((stage) => (
-            <option key={stage.id} value={stage.id}>
-              {stage.name}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(next) => onMove(deal.id, next)}
+          items={stages.map((stage) => ({
+            value: stage.id,
+            label: stage.name,
+          }))}
+          size="sm"
+          searchPlaceholder="Zoek een fase…"
+          className="text-xs"
+        />
       </div>
     </Card>
     </Lift>

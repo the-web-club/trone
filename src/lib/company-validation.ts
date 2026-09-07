@@ -28,8 +28,17 @@ export const companySchema = z.object({
 
 export type CompanyInput = z.infer<typeof companySchema>;
 
+function parseCompanyInput(data: unknown): CompanyInput {
+  const parsed = companySchema.safeParse(data);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
+  }
+  return parsed.data;
+}
+
 export function parseCompanyForm(formData: FormData): CompanyInput {
-  const parsed = companySchema.safeParse({
+  return parseCompanyInput({
     name: formData.get("name"),
     email: formData.get("email"),
     vatNumber: formData.get("vatNumber"),
@@ -43,11 +52,15 @@ export function parseCompanyForm(formData: FormData): CompanyInput {
     vatRate: formData.get("vatRate") || 21,
     notes: formData.get("notes"),
   });
+}
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
-  }
-
-  return parsed.data;
+/** Compacte intake vanaf de configurator: naam, telefoon, e-mail. */
+export function parseComposerCompanyForm(formData: FormData): CompanyInput {
+  return parseCompanyInput({
+    name: formData.get("companyName"),
+    email: formData.get("companyEmail"),
+    phone: formData.get("companyPhone"),
+    country: "NL",
+    vatRate: 21,
+  });
 }
