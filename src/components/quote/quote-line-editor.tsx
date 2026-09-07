@@ -29,10 +29,6 @@ import {
   type QuoteCatalog,
 } from "@/lib/quote-catalog";
 import { formatEuroExact } from "@/lib/format";
-import {
-  placeholderProductPath,
-  placeholderValuePath,
-} from "@/lib/placeholder-visuals";
 import { isSwatchOption, resolveImage } from "@/lib/product-visuals";
 import type { QuoteItemInput } from "@/lib/quote-validation";
 
@@ -149,7 +145,6 @@ export function QuoteLineEditor({
                 selected={row.id === item.productId}
                 label={row.name}
                 priceLabel={formatEuroExact(row.basePrice)}
-                imageSrc={placeholderProductPath(row.sku)}
                 onSelect={() => setProduct(row.id)}
               />
             ))}
@@ -214,7 +209,6 @@ export function QuoteLineEditor({
                         <p className="text-sm font-medium text-fg">{option.name}</p>
                         <SwatchDots
                           optionName={option.name}
-                          optionCode={option.code}
                           values={values}
                           selectedId={current}
                           onSelect={(optionValueId) =>
@@ -235,7 +229,6 @@ export function QuoteLineEditor({
                         checked={current === ja.id}
                         priceLabel={meerprijsLabel(ja)}
                         onRequest={ja.priceOnRequest}
-                        imageSrc={placeholderValuePath(option.code, ja.value)}
                         onChange={(next) =>
                           setSelection(option.id, next ? ja.id : "")
                         }
@@ -269,7 +262,6 @@ export function QuoteLineEditor({
                             selected={value.id === current}
                             label={value.value}
                             priceLabel={meerprijsLabel(value)}
-                            imageSrc={placeholderValuePath(option.code, value.value)}
                             onSelect={() => setSelection(option.id, value.id)}
                           />
                         ))}

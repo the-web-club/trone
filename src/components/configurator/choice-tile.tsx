@@ -12,7 +12,6 @@ export function ChoiceTile({
   label,
   description,
   priceLabel,
-  imageSrc,
   onSelect,
   className,
 }: {
@@ -21,7 +20,6 @@ export function ChoiceTile({
   label: string;
   description?: string;
   priceLabel?: string | null;
-  imageSrc?: string;
   onSelect: () => void;
   className?: string;
 }) {
@@ -44,7 +42,7 @@ export function ChoiceTile({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "flex h-full min-h-12 w-full items-center gap-2.5 rounded-md border px-3 py-2.5 text-left",
+        "flex h-full min-h-12 w-full items-start gap-2 rounded-md border px-3 py-2.5 text-left",
         controlMotion,
         focusRingOutline,
         selected
@@ -54,25 +52,23 @@ export function ChoiceTile({
         className,
       )}
     >
-      {imageSrc ? (
-        <span className="relative size-12 shrink-0 overflow-hidden rounded-sm bg-surface-sunk">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageSrc} alt="" className="size-full object-cover" />
+      <span className="flex min-w-0 flex-1 items-start justify-between gap-3">
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium break-words text-fg">{label}</span>
+          {description ? (
+            <span className="text-label break-words text-fg-muted">{description}</span>
+          ) : null}
         </span>
-      ) : null}
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-sm font-medium text-fg">{label}</span>
-        {description ? (
-          <span className="text-label text-fg-muted">{description}</span>
+        {priceLabel ? (
+          <span className="shrink-0 whitespace-nowrap text-label text-fg-muted">
+            {priceLabel}
+          </span>
         ) : null}
       </span>
-      {priceLabel ? (
-        <span className="shrink-0 text-label text-fg-muted">{priceLabel}</span>
-      ) : null}
       <span
         aria-hidden
         className={cn(
-          "flex size-4 shrink-0 items-center justify-center text-fg",
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center text-fg",
           !selected && "opacity-0",
         )}
       >
@@ -93,12 +89,7 @@ export function ChoiceTileGroup({
   className?: string;
 }) {
   const count = Children.count(children);
-  const cols =
-    count <= 1
-      ? "grid-cols-1"
-      : count === 3
-        ? "grid-cols-3"
-        : "grid-cols-2";
+  const cols = count <= 1 ? "grid-cols-1" : "grid-cols-2";
 
   return (
     <div

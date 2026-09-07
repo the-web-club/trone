@@ -5,19 +5,16 @@ import { Pressable } from "@/components/motion";
 import { controlMotion, focusRingOutline } from "@/components/ui/control-styles";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { cn } from "@/lib/cn";
-import { placeholderSwatchPath } from "@/lib/placeholder-visuals";
 import { mediaUrl } from "@/lib/product-visuals";
 import type { CatalogValue } from "@/lib/quote-catalog";
 
 export function SwatchDots({
   optionName,
-  optionCode,
   values,
   selectedId,
   onSelect,
 }: {
   optionName: string;
-  optionCode: string;
   values: CatalogValue[];
   selectedId: string;
   onSelect: (optionValueId: string) => void;
@@ -39,7 +36,7 @@ export function SwatchDots({
       <div
         role="radiogroup"
         aria-label={optionName}
-        className="flex flex-wrap items-center gap-3"
+        className="flex flex-wrap items-start gap-3"
       >
         {values.map((value, index) => {
           const isSelected = value.id === selectedId;
@@ -47,6 +44,11 @@ export function SwatchDots({
           const aria = price
             ? `${value.value}, ${price}`
             : value.value;
+          const swatchImage = value.swatchImageUrl
+            ? mediaUrl(value.swatchImageUrl)
+            : null;
+          const swatchHex =
+            !swatchImage && value.swatchHex ? value.swatchHex : undefined;
 
           return (
             <Pressable key={value.id}>
@@ -80,51 +82,54 @@ export function SwatchDots({
                 }
               }}
               className={cn(
-                "relative flex size-11 items-center justify-center rounded-full",
+                "flex w-20 flex-col items-center gap-1.5 rounded-md px-0.5 py-0.5",
                 controlMotion,
                 focusRingOutline,
-                isSelected &&
-                  "ring-2 ring-accent ring-offset-2 ring-offset-bg",
               )}
             >
               <span
-                className="size-8 overflow-hidden rounded-full border border-border"
-                style={
-                  !value.swatchImageUrl && value.swatchHex
-                    ? { backgroundColor: value.swatchHex }
-                    : undefined
-                }
+                className={cn(
+                  "relative flex size-11 items-center justify-center rounded-full",
+                  isSelected &&
+                    "ring-2 ring-accent ring-offset-2 ring-offset-bg",
+                )}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    value.swatchImageUrl
-                      ? mediaUrl(value.swatchImageUrl)
-                      : placeholderSwatchPath(optionCode, value.value)
-                  }
-                  alt=""
-                  className="size-full object-cover"
-                />
+                <span
+                  className="size-8 overflow-hidden rounded-full border border-border bg-surface-sunk"
+                  style={swatchHex ? { backgroundColor: swatchHex } : undefined}
+                >
+                  {swatchImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={swatchImage}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : null}
+                </span>
               </span>
+              <span
+                className={cn(
+                  "w-full text-center text-label leading-tight break-words",
+                  isSelected ? "font-medium text-fg" : "text-fg-muted",
+                )}
+              >
+                {value.value}
+              </span>
+              {price ? (
+                <span className="w-full text-center text-label leading-tight text-fg-subtle">
+                  {price}
+                </span>
+              ) : null}
             </button>
             </Pressable>
           );
         })}
       </div>
-      <p className="min-h-4 text-sm text-fg" aria-live="polite">
-        {selected ? (
-          <>
-            {selected.value}
-            {meerprijsLabel(selected) ? (
-              <span className="text-fg-muted">
-                {" · "}
-                {meerprijsLabel(selected)}
-              </span>
-            ) : null}
-          </>
-        ) : (
-          <span className="text-fg-muted">Kies een kleur</span>
-        )}
+      <p className="sr-only" aria-live="polite">
+        {selected
+          ? [selected.value, meerprijsLabel(selected)].filter(Boolean).join(", ")
+          : "Kies een kleur"}
       </p>
     </div>
   );
