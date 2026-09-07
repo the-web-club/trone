@@ -3,6 +3,7 @@ import "server-only";
 import { formatDate, formatPersonName } from "@/lib/format";
 import { getPrismaClient } from "@/lib/db";
 import { companyPath, contactPath, dealPath } from "@/lib/paths";
+import { effectiveDealValue } from "@/lib/deal-value";
 import {
   isAutoHot,
   isDueTodayOrOverdue,
@@ -19,6 +20,7 @@ export type OpportunityItem = {
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
+  hot?: boolean;
 };
 
 export type OpportunityBoard = {
@@ -57,6 +59,7 @@ export async function listOpportunities(
         createdAt: true,
         stage: { select: { name: true, isWon: true, isLost: true } },
         company: { select: { id: true, slug: true, name: true } },
+        quotes: { select: { total: true, status: true } },
         timelineEvents: {
           select: { occurredAt: true },
           orderBy: { occurredAt: "desc" },
@@ -107,23 +110,13 @@ export async function listOpportunities(
   for (const deal of deals) {
     if (deal.stage.isWon || deal.stage.isLost) continue;
     const lastActivityAt = deal.timelineEvents[0]?.occurredAt ?? deal.createdAt;
-    const valueEstimate =
-      deal.valueEstimate == null ? null : Number(deal.valueEstimate);
+    const valueEstimate = effectiveDealValue(
+      deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+      deal.quotes,
+    );
     const title = deal.company
       ? `${deal.title} · ${deal.company.name}`
       : deal.title;
-
-    if (isStale(lastActivityAt, thresholds.stilDagen, now)) {
-      stale.push({
-        id: `stale-${deal.id}`,
-        title,
-        reason: `Geen activiteit sinds ${formatDate(lastActivityAt)} (${deal.stage.name})`,
-        href: dealPath(deal),
-        dealId: deal.id,
-        contactId: deal.contactId,
-        companyId: deal.companyId,
-      });
-    }
 
     if (deal.isHot) {
       hot.push({
@@ -134,6 +127,7 @@ export async function listOpportunities(
         dealId: deal.id,
         contactId: deal.contactId,
         companyId: deal.companyId,
+        hot: true,
       });
     } else if (
       isAutoHot({
@@ -149,6 +143,17 @@ export async function listOpportunities(
         id: `hot-suggest-${deal.id}`,
         title,
         reason: `Recente activiteit en waarde vanaf €${thresholds.hotWaarde}`,
+        href: dealPath(deal),
+        dealId: deal.id,
+        contactId: deal.contactId,
+        companyId: deal.companyId,
+        hot: true,
+      });
+    } else if (isStale(lastActivityAt, thresholds.stilDagen, now)) {
+      stale.push({
+        id: `stale-${deal.id}`,
+        title,
+        reason: `Geen activiteit sinds ${formatDate(lastActivityAt)} (${deal.stage.name})`,
         href: dealPath(deal),
         dealId: deal.id,
         contactId: deal.contactId,

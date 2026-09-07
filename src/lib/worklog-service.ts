@@ -8,7 +8,7 @@ import { ACTIVITY_FEED_CAP } from "@/lib/list-query";
 import type { WorkLogFilter, WorkLogInput } from "@/lib/worklog-validation";
 
 const workLogInclude = {
-  user: { select: { id: true, name: true } },
+  user: { select: { id: true, name: true, image: true, slug: true } },
   company: { select: { id: true, slug: true, name: true } },
   order: { select: { id: true, orderNumber: true, companyId: true } },
 } satisfies Prisma.WorkLogInclude;

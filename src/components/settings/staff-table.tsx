@@ -19,6 +19,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { UserName } from "@/components/user/user-name";
 import {
   userRoleLabels,
   userRoles,
@@ -28,8 +29,10 @@ import {
 
 export type StaffRow = {
   id: string;
+  slug: string;
   name: string;
   email: string;
+  image: string | null;
   role: string;
   status: StaffStatus;
 };
@@ -118,10 +121,18 @@ function StaffRowActions({
   return (
     <TableRow>
       <TableCell>
-        <span className="font-medium">{user.name}</span>
-        {isSelf ? (
-          <span className="ml-2 text-xs text-fg-muted">Jij</span>
-        ) : null}
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <UserName
+            name={user.name}
+            image={user.image}
+            slug={user.slug}
+            size="sm"
+            className="font-medium"
+          />
+          {isSelf ? (
+            <span className="text-xs text-fg-muted">Jij</span>
+          ) : null}
+        </span>
         {error ? (
           <p className="mt-1 text-xs text-danger" role="alert">
             {error}

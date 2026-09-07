@@ -79,6 +79,7 @@ export default async function LogboekPage({
             ...users.map((user) => ({
               value: user.id,
               label: user.name,
+              image: user.image,
             })),
           ]}
         />
@@ -128,6 +129,8 @@ export default async function LogboekPage({
           durationMinutes: log.durationMinutes,
           userId: log.userId,
           userName: log.user.name,
+          userImage: log.user.image,
+          userSlug: log.user.slug,
           companyId: log.companyId,
           company: log.company,
           orderId: log.orderId,

@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 import type { TaskRecord } from "@/lib/task-service";
 import { taskPriorityLabels } from "@/lib/task-validation";
 import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
+import { UserName } from "@/components/user/user-name";
 
 function isOverdue(dueAt: Date | null) {
   if (!dueAt) return false;
@@ -26,7 +27,7 @@ export function TaskSection({
 }: {
   tasks: TaskRecord[];
   currentUserId: string;
-  assignees: Array<{ id: string; name: string }>;
+  assignees: Array<{ id: string; name: string; image?: string | null }>;
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
@@ -77,7 +78,11 @@ export function TaskSection({
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-fg">{task.title}</p>
                   <p className="text-xs text-fg-muted">
-                    {task.assignee.name}
+                    <UserName
+                      name={task.assignee.name}
+                      image={task.assignee.image}
+                      slug={task.assignee.slug}
+                    />
                     {task.dueAt ? (
                       <>
                         {" · "}

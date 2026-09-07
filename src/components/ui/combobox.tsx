@@ -13,6 +13,7 @@ import {
   type ControlSize,
 } from "@/components/ui/control-styles";
 import type { SelectOption } from "@/components/ui/select";
+import { UserAvatar } from "@/components/user/user-avatar";
 import { cn } from "@/lib/cn";
 
 export type ComboboxOption<Value extends string = string> = SelectOption<Value>;
@@ -85,9 +86,19 @@ export function ComboboxMenu<Value extends string = string>({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setQuery("");
+        setQuery("");
       }}
-      onInputValueChange={setQuery}
+      inputValue={query}
+      onInputValueChange={(next) => setQuery(next)}
+      filter={(item, search) => {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        const haystack = [item.label, item.value, item.hint]
+          .filter((part): part is string => Boolean(part))
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      }}
       autoHighlight
       locale="nl"
       itemToStringLabel={(item) => item.label}
@@ -112,6 +123,9 @@ export function ComboboxMenu<Value extends string = string>({
       >
         {prefix ? (
           <span className="shrink-0 text-fg-subtle">{prefix}</span>
+        ) : null}
+        {selected && selected.image !== undefined ? (
+          <UserAvatar name={selected.label} image={selected.image} size="xs" />
         ) : null}
         <span className="min-w-0 flex-1 truncate text-left">
           {selected ? (
@@ -174,6 +188,13 @@ export function ComboboxMenu<Value extends string = string>({
                   <ComboboxPrimitive.ItemIndicator className="absolute left-2 inline-flex text-fg">
                     <Check className="size-3.5" aria-hidden />
                   </ComboboxPrimitive.ItemIndicator>
+                  {option.image !== undefined ? (
+                    <UserAvatar
+                      name={option.label}
+                      image={option.image}
+                      size="xs"
+                    />
+                  ) : null}
                   <span className="min-w-0 flex-1 truncate">{option.label}</span>
                   {option.hint ? (
                     <span className="shrink-0 text-xs tabular-nums text-fg-subtle">

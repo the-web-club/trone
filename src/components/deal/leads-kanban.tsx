@@ -19,7 +19,9 @@ import { controlMotion } from "@/components/motion/styles";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { SelectMenu } from "@/components/ui/select";
+import { DealHotIcon } from "@/components/deal/deal-hot-icon";
 import { CompanyLink } from "@/components/entity-links";
+import { UserAvatar } from "@/components/user/user-avatar";
 import { formatEuro } from "@/lib/format";
 import { dealPath } from "@/lib/paths";
 import { cn } from "@/lib/cn";
@@ -44,6 +46,9 @@ export type KanbanDeal = {
   company: { slug: string; name: string } | null;
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
+  isHot: boolean;
+  ownerName: string | null;
+  ownerImage: string | null;
 };
 
 function stageTone(stage: KanbanStage): "default" | "success" | "danger" {
@@ -78,13 +83,16 @@ function DealCard({
       {...listeners}
       {...attributes}
     >
-      <Link
-        href={dealPath(deal)}
-        className="block text-sm font-medium text-fg hover:underline"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {deal.title}
-      </Link>
+      <div className="flex items-start gap-1">
+        <Link
+          href={dealPath(deal)}
+          className="min-w-0 flex-1 text-sm font-medium text-fg hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {deal.title}
+        </Link>
+        {deal.isHot ? <DealHotIcon className="mt-0.5" /> : null}
+      </div>
       <p
         className="mt-0.5 truncate text-xs text-fg-muted"
         onClick={(event) => event.stopPropagation()}
@@ -97,6 +105,16 @@ function DealCard({
           <Badge tone={quoteStatusTones[deal.quoteStatus]}>
             {quoteStatusLabels[deal.quoteStatus]}
           </Badge>
+        </div>
+      ) : null}
+      {deal.ownerName ? (
+        <div className="mt-2 flex items-center gap-1.5">
+          <UserAvatar
+            name={deal.ownerName}
+            image={deal.ownerImage}
+            size="xs"
+          />
+          <span className="truncate text-xs text-fg-muted">{deal.ownerName}</span>
         </div>
       ) : null}
       <div

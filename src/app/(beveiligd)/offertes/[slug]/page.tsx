@@ -12,7 +12,7 @@ import { isAppError } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { findOrderByQuoteId } from "@/lib/order-service";
 import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
-import { orderPath, quotePath } from "@/lib/paths";
+import { orderPath, quotePath, quotePdfPath } from "@/lib/paths";
 import {
   compareVersions,
   getQuoteWithVersions,
@@ -142,6 +142,10 @@ export default async function OfferteDetailPage({
         quoteNumber={quote.quoteNumber}
         status={quote.status}
         viewingHistorical={viewingHistorical}
+        pdfHref={quotePdfPath(
+          quote,
+          viewingHistorical ? { versie: displayVersionNumber } : undefined,
+        )}
       />
 
       {!viewingHistorical && existingOrder ? (

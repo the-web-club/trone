@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DealHotIcon } from "@/components/deal/deal-hot-icon";
 import { LeadOwnerSelect } from "@/components/deal/lead-owner-select";
 import {
   LeadStageSelect,
@@ -40,8 +41,10 @@ export type LeadsListRow = {
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
   sourceName: string | null;
+  isHot: boolean;
   ownerUserId: string | null;
   ownerName: string | null;
+  ownerImage: string | null;
   createdAt: string;
 };
 
@@ -78,12 +81,15 @@ export function LeadsListTable({
             rows.map((row) => (
               <TableRow key={row.id} interactive>
                 <TableCell>
-                  <Link
-                    href={dealPath(row)}
-                    className="font-medium text-fg hover:underline"
-                  >
-                    {row.title}
-                  </Link>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <Link
+                      href={dealPath(row)}
+                      className="min-w-0 font-medium text-fg hover:underline"
+                    >
+                      {row.title}
+                    </Link>
+                    {row.isHot ? <DealHotIcon /> : null}
+                  </div>
                   {row.contact ? (
                     <p className="text-xs text-fg-muted">
                       <ContactLink contact={row.contact} />
@@ -121,6 +127,7 @@ export function LeadsListTable({
                     dealId={row.id}
                     ownerUserId={row.ownerUserId}
                     ownerName={row.ownerName}
+                    ownerImage={row.ownerImage}
                     members={members}
                   />
                 </TableCell>

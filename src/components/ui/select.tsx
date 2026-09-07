@@ -33,6 +33,8 @@ export type SelectOption<Value extends string = string> = {
   /** Muted trailing text, e.g. a facet count. */
   hint?: string;
   disabled?: boolean;
+  /** When set, show a user avatar (photo or initials) next to the label. */
+  image?: string | null;
 };
 
 export type SelectMenuProps<Value extends string = string> =

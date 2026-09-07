@@ -157,6 +157,7 @@ export function LeadsFilters({
       value: member.id,
       label: member.name || member.email,
       hint: count(ownerCount.get(member.id)),
+      image: member.image,
     })),
   ];
 

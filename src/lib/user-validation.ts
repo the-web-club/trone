@@ -105,3 +105,14 @@ export function parseUserId(formData: FormData): string {
 
   return parsed.data;
 }
+
+export function parseUpdateUserImageForm(formData: FormData): {
+  userId: string;
+  remove: boolean;
+} {
+  const userId = parseUserId(formData);
+  const removeRaw = formData.get("remove");
+  const remove =
+    removeRaw === "true" || removeRaw === "1" || removeRaw === "on";
+  return { userId, remove };
+}

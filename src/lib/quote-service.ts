@@ -17,7 +17,7 @@ import type { QuoteCatalog } from "@/lib/quote-catalog";
 import { resolveDiscountPercent, type QuoteConfigSnapshot } from "@/lib/quote-catalog";
 import { assertContactBelongsToCompany } from "@/lib/contact-company";
 import { listContactsForSelect } from "@/lib/contact-service";
-import { listDealsForSelect } from "@/lib/deal-service";
+import { listDealsForSelect, syncDealValueFromQuotes } from "@/lib/deal-service";
 import type {
   QuoteInput,
   QuoteItemInput,
@@ -257,6 +257,12 @@ const quoteHeaderInclude = {
       vatRate: true,
       country: true,
       vatNumber: true,
+      cocNumber: true,
+      email: true,
+      phone: true,
+      addressLine: true,
+      postalCode: true,
+      city: true,
       viesValid: true,
       viesValidatedAt: true,
       viesCheckedName: true,
@@ -268,6 +274,9 @@ const quoteHeaderInclude = {
       slug: true,
       firstName: true,
       lastName: true,
+      jobTitle: true,
+      email: true,
+      phone: true,
       companyId: true,
     },
   },
@@ -654,6 +663,7 @@ export async function createQuote(input: QuoteInput, userId?: string) {
     });
   });
 
+  await syncDealValueFromQuotes(input.dealId ?? null);
   return getQuote(quoteId);
 }
 
@@ -717,6 +727,11 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
       });
     }
   });
+
+  await syncDealValueFromQuotes(input.dealId ?? null);
+  if (current.dealId && current.dealId !== (input.dealId ?? null)) {
+    await syncDealValueFromQuotes(current.dealId);
+  }
 
   return getQuote(id);
 }
@@ -967,5 +982,6 @@ export async function updateQuoteStatus(
     });
   }
 
+  await syncDealValueFromQuotes(quote.dealId);
   return getQuote(id);
 }

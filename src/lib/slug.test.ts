@@ -14,6 +14,8 @@ import {
   orderPath,
   quoteEditPath,
   quotePath,
+  quotePdfPath,
+  staffPath,
 } from "@/lib/paths";
 
 describe("slugify", () => {
@@ -74,12 +76,21 @@ describe("public paths", () => {
     expect(dealPath({ slug: "voor-15-caterpillars" })).toBe(
       "/leads/voor-15-caterpillars",
     );
+    expect(staffPath({ slug: "frederik-derks" })).toBe(
+      "/instellingen/medewerkers/frederik-derks",
+    );
     expect(quotePath({ quoteNumber: "OFF202600001" })).toBe(
       "/offertes/OFF202600001",
     );
     expect(quoteEditPath({ quoteNumber: "OFF202600001" })).toBe(
       "/offertes/OFF202600001/bewerken",
     );
+    expect(quotePdfPath({ quoteNumber: "OFF202600001" })).toBe(
+      "/offertes/OFF202600001/pdf",
+    );
+    expect(
+      quotePdfPath({ quoteNumber: "OFF202600001" }, { versie: 2 }),
+    ).toBe("/offertes/OFF202600001/pdf?versie=2");
     expect(orderPath({ orderNumber: "2026-00001" })).toBe("/orders/2026-00001");
     expect(
       newQuotePath({

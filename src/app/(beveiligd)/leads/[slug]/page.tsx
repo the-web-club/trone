@@ -16,6 +16,7 @@ import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
+import { effectiveDealValue, sumActiveQuoteTotals } from "@/lib/deal-value";
 import { formatEuro } from "@/lib/format";
 import { dealPath } from "@/lib/paths";
 
@@ -74,8 +75,12 @@ export default async function LeadDetailPage({
         sourceId: deal.sourceId,
         valueEstimate:
           deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+        quotedTotal: sumActiveQuoteTotals(deal.quotes),
         valueEstimateLabel: formatEuro(
-          deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+          effectiveDealValue(
+            deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+            deal.quotes,
+          ),
         ) ?? "—",
         company: deal.company,
         contact: deal.contact,

@@ -19,6 +19,7 @@ import { requireSession } from "@/lib/auth-session";
 import { formatDate } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
+import { UserName } from "@/components/user/user-name";
 import { listTasks } from "@/lib/task-service";
 import { taskPriorityLabels, taskStatusLabels } from "@/lib/task-validation";
 import { buildTasksHref, parseTasksSearchParams } from "@/lib/tasks-query";
@@ -130,7 +131,11 @@ export default async function TakenPage({
                         {linked ? linkedEntities(task) : "—"}
                       </TableCell>
                       <TableCell className="text-fg-muted">
-                        {task.assignee.name}
+                        <UserName
+                          name={task.assignee.name}
+                          image={task.assignee.image}
+                          slug={task.assignee.slug}
+                        />
                       </TableCell>
                       <TableCell>
                         <Badge

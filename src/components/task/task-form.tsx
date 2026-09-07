@@ -18,7 +18,7 @@ export function TaskForm({
   onSuccess,
 }: {
   currentUserId: string;
-  assignees: Array<{ id: string; name: string }>;
+  assignees: Array<{ id: string; name: string; image?: string | null }>;
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
@@ -60,6 +60,7 @@ export function TaskForm({
             items={assignees.map((user) => ({
               value: user.id,
               label: user.name,
+              image: user.image,
             }))}
             searchPlaceholder="Zoek een medewerker…"
           />

@@ -56,8 +56,10 @@ export default async function MedewerkersPage({
           emptyMessage={emptyMessage}
           users={result.items.map((user) => ({
             id: user.id,
+            slug: user.slug ?? user.id,
             name: user.name,
             email: user.email,
+            image: user.image,
             role: user.role,
             status: staffStatus(user),
           }))}

@@ -9,7 +9,16 @@ export default async function BeveiligdLayout({
   const session = await requireSession();
 
   return (
-    <AppShell userName={session.user.name} userEmail={session.user.email}>
+    <AppShell
+      userName={session.user.name}
+      userEmail={session.user.email}
+      userImage={session.user.image}
+      userSlug={
+        "slug" in session.user
+          ? ((session.user as { slug?: string | null }).slug ?? null)
+          : null
+      }
+    >
       {children}
     </AppShell>
   );

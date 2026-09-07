@@ -24,6 +24,10 @@ import type {
   DealSort,
   DealStatusFilter,
 } from "@/lib/deals-query";
+import {
+  effectiveDealValue,
+  sumActiveQuoteTotals,
+} from "@/lib/deal-value";
 
 export const listDealStages = cache(
   async function listDealStages() {
@@ -74,6 +78,7 @@ const dealListSelect = {
   stageId: true,
   sourceId: true,
   ownerUserId: true,
+  isHot: true,
   valueEstimate: true,
   status: true,
   expectedClose: true,
@@ -84,8 +89,7 @@ const dealListSelect = {
   source: { select: { id: true, name: true } },
   quotes: {
     orderBy: { updatedAt: "desc" as const },
-    take: 1,
-    select: { id: true, quoteNumber: true, status: true },
+    select: { id: true, quoteNumber: true, status: true, total: true },
   },
 } satisfies Prisma.DealSelect;
 
@@ -257,13 +261,15 @@ export type DealTeamMember = {
   id: string;
   name: string;
   email: string;
+  image: string | null;
+  slug: string | null;
 };
 
 export async function listDealTeamMembers(): Promise<DealTeamMember[]> {
   const prisma = getPrismaClient();
   return prisma.user.findMany({
     where: { OR: [{ banned: false }, { banned: null }] },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, image: true, slug: true },
     orderBy: { name: "asc" },
   });
 }
@@ -418,13 +424,17 @@ export async function exportDealsCsv(
     const owner = deal.ownerUserId
       ? (ownerNames.get(deal.ownerUserId) ?? deal.ownerUserId)
       : "";
+    const value = effectiveDealValue(
+      deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+      deal.quotes,
+    );
     return [
       deal.title,
       deal.company?.name ?? "",
       contact,
       deal.stage.name,
       deal.status,
-      deal.valueEstimate == null ? "" : String(deal.valueEstimate),
+      value == null ? "" : String(value),
       deal.source?.name ?? "",
       owner,
       deal.createdAt.toISOString(),
@@ -554,6 +564,7 @@ export async function updateDeal(id: string, input: DealInput, userId?: string) 
   const { stage, companyId } = await assertDealRelations(input);
 
   const slug = await nextDealSlug(prisma, input.title, current.id);
+  const quotedTotal = sumActiveQuoteTotals(current.quotes);
   const updated = await prisma.deal.update({
     where: { id: current.id },
     data: {
@@ -563,7 +574,7 @@ export async function updateDeal(id: string, input: DealInput, userId?: string) 
       contactId: input.contactId ?? null,
       stageId: input.stageId,
       sourceId: input.sourceId ?? null,
-      valueEstimate: input.valueEstimate ?? null,
+      valueEstimate: quotedTotal ?? input.valueEstimate ?? null,
       status: statusForStage(stage),
     },
   });
@@ -660,5 +671,20 @@ export async function addDealActivity(
     dealId,
     contactId: deal.contactId,
     companyId: deal.companyId,
+  });
+}
+
+export async function syncDealValueFromQuotes(
+  dealId: string | null | undefined,
+) {
+  if (!dealId) return;
+  const prisma = getPrismaClient();
+  const quotes = await prisma.quote.findMany({
+    where: { dealId },
+    select: { total: true, status: true },
+  });
+  await prisma.deal.update({
+    where: { id: dealId },
+    data: { valueEstimate: sumActiveQuoteTotals(quotes) },
   });
 }

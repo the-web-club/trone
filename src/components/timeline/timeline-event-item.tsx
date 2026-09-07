@@ -13,6 +13,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { UserName } from "@/components/user/user-name";
 import { formatDateTime, formatPersonName } from "@/lib/format";
 import {
   companyPath,
@@ -69,9 +70,17 @@ export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
         <Badge tone={typeTones[event.type]}>
           {timelineEventTypeLabels[event.type]}
         </Badge>
-        <span className="text-xs text-fg-muted">
-          {event.user?.name ?? "Systeem"}
-          {" · "}
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
+          {event.user ? (
+            <UserName
+              name={event.user.name}
+              image={event.user.image}
+              slug={event.user.slug}
+            />
+          ) : (
+            "Systeem"
+          )}
+          <span aria-hidden>·</span>
           {formatDateTime(event.occurredAt)}
         </span>
       </div>

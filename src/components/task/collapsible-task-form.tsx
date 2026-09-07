@@ -11,7 +11,7 @@ export function CollapsibleTaskForm({
   companyId,
 }: {
   currentUserId: string;
-  assignees: Array<{ id: string; name: string }>;
+  assignees: Array<{ id: string; name: string; image?: string | null }>;
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;

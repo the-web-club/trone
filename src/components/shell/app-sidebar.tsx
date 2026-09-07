@@ -7,8 +7,10 @@ import { useState } from "react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { controlMotion } from "@/components/motion/styles";
 import { appNavItems } from "@/components/shell/nav-config";
+import { UserAvatar } from "@/components/user/user-avatar";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { staffPath } from "@/lib/paths";
 
 export function sidebarNavItemClassName(active: boolean): string {
   return cn(
@@ -28,9 +30,13 @@ export function isNavItemActive(pathname: string, href: string): boolean {
 export function AppSidebar({
   userName,
   userEmail,
+  userImage,
+  userSlug,
 }: {
   userName: string;
   userEmail: string;
+  userImage?: string | null;
+  userSlug?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -76,9 +82,21 @@ export function AppSidebar({
         })}
       </nav>
       <div className="border-t border-border p-1.5">
-        <div className="px-2 py-1.5">
-          <p className="truncate text-sm text-fg">{userName}</p>
-          <p className="truncate text-xs text-fg-subtle">{userEmail}</p>
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <UserAvatar name={userName} image={userImage} size="sm" />
+          <div className="min-w-0">
+            {userSlug ? (
+              <Link
+                href={staffPath({ slug: userSlug })}
+                className="block truncate text-sm text-fg hover:underline"
+              >
+                {userName}
+              </Link>
+            ) : (
+              <p className="truncate text-sm text-fg">{userName}</p>
+            )}
+            <p className="truncate text-xs text-fg-subtle">{userEmail}</p>
+          </div>
         </div>
         <button
           type="button"

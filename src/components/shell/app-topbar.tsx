@@ -11,14 +11,20 @@ import {
 } from "@/components/shell/app-sidebar";
 import { appNavItems, navTitleForPath } from "@/components/shell/nav-config";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/user/user-avatar";
 import { authClient } from "@/lib/auth-client";
+import { staffPath } from "@/lib/paths";
 
 export function AppTopbar({
   userName,
   userEmail,
+  userImage,
+  userSlug,
 }: {
   userName: string;
   userEmail: string;
+  userImage?: string | null;
+  userSlug?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -78,10 +84,23 @@ export function AppTopbar({
             })}
           </nav>
           <div className="mt-2 border-t border-border pt-2">
-            <p className="truncate px-2 text-sm text-fg">{userName}</p>
-            <p className="mb-1 truncate px-2 text-xs text-fg-subtle">
-              {userEmail}
-            </p>
+            <div className="mb-1 flex items-center gap-2 px-2">
+              <UserAvatar name={userName} image={userImage} size="sm" />
+              <div className="min-w-0">
+                {userSlug ? (
+                  <Link
+                    href={staffPath({ slug: userSlug })}
+                    className="block truncate text-sm text-fg hover:underline"
+                    onClick={() => setOpen(false)}
+                  >
+                    {userName}
+                  </Link>
+                ) : (
+                  <p className="truncate text-sm text-fg">{userName}</p>
+                )}
+                <p className="truncate text-xs text-fg-subtle">{userEmail}</p>
+              </div>
+            </div>
             <Button
               variant="ghost"
               size="sm"

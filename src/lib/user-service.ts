@@ -2,7 +2,9 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
+import { uploadImage } from "@/lib/blob";
 import { getPrismaClient } from "@/lib/db";
+import { nextUserSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
 import { paginateArgs } from "@/lib/list-query";
 import type { InviteUserInput, StaffStatus, UserRole } from "@/lib/user-validation";
@@ -36,12 +38,12 @@ export async function listUsers() {
 }
 
 export async function listUsersForSelect(): Promise<
-  Array<{ id: string; name: string }>
+  Array<{ id: string; name: string; image: string | null; slug: string | null }>
 > {
   const prisma = getPrismaClient();
   return prisma.user.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, image: true, slug: true },
   });
 }
 
@@ -67,8 +69,13 @@ export async function listStaffRows(filters?: {
     filters?.page,
     filters?.pageSize,
   );
+  const pageItems = filtered.slice(skip, skip + take);
+  const items = [];
+  for (const user of pageItems) {
+    items.push(await ensureUserSlug(user));
+  }
   return {
-    items: filtered.slice(skip, skip + take),
+    items,
     total: filtered.length,
     page,
     pageSize,
@@ -90,7 +97,110 @@ export async function getUser(id: string) {
     throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
   }
 
-  return user;
+  return ensureUserSlug(user);
+}
+
+export async function getStaffBySlug(slug: string) {
+  const prisma = getPrismaClient();
+  const include = {
+    accounts: {
+      select: { providerId: true, password: true },
+    },
+  } as const;
+
+  const user =
+    (await prisma.user.findUnique({
+      where: { slug },
+      include,
+    })) ??
+    (await prisma.user.findUnique({
+      where: { id: slug },
+      include,
+    }));
+
+  if (!user) {
+    throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+  }
+
+  return ensureUserSlug(user);
+}
+
+export async function getStaffDetail(slug: string) {
+  const user = await getStaffBySlug(slug);
+  const prisma = getPrismaClient();
+  const deals = await prisma.deal.findMany({
+    where: { ownerUserId: user.id },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      isHot: true,
+      company: { select: { id: true, slug: true, name: true } },
+      contact: {
+        select: { slug: true, firstName: true, lastName: true },
+      },
+      stage: { select: { name: true, isWon: true, isLost: true } },
+    },
+  });
+
+  const companyIds = [
+    ...new Set(
+      deals
+        .map((deal) => deal.company?.id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const companies = await prisma.company.findMany({
+    where: {
+      OR: [
+        { ownerUserId: user.id },
+        ...(companyIds.length > 0 ? [{ id: { in: companyIds } }] : []),
+      ],
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      city: true,
+      ownerUserId: true,
+    },
+  });
+
+  return { user, deals, companies };
+}
+
+export async function updateUserImage(
+  userId: string,
+  file: File | null,
+  actor: { userId: string; isAdmin: boolean },
+) {
+  if (!actor.isAdmin && actor.userId !== userId) {
+    throw new AppError("Je mag alleen je eigen avatar wijzigen.", "FORBIDDEN", 403);
+  }
+
+  const user = await getUser(userId);
+  const prisma = getPrismaClient();
+  const image = file ? await uploadImage(file, `avatars/${user.id}`) : null;
+  return prisma.user.update({
+    where: { id: user.id },
+    data: { image },
+  });
+}
+
+async function ensureUserSlug<T extends { id: string; name: string; slug: string | null }>(
+  user: T,
+): Promise<T & { slug: string }> {
+  if (user.slug) return user as T & { slug: string };
+  const prisma = getPrismaClient();
+  const slug = await nextUserSlug(prisma, user.name, user.id);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { slug },
+  });
+  return { ...user, slug };
 }
 
 async function countActiveAdmins(exceptUserId?: string) {

@@ -5,6 +5,7 @@ import { deleteWorkLogAction } from "@/app/(beveiligd)/actions/worklog-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CompanyLink } from "@/components/entity-links";
+import { UserName } from "@/components/user/user-name";
 import { formatDateTime, formatDurationMinutes } from "@/lib/format";
 import {
   workLogCategoryLabels,
@@ -19,6 +20,8 @@ export type WorkLogListItem = {
   durationMinutes: number | null;
   userId: string;
   userName: string;
+  userImage: string | null;
+  userSlug: string | null;
   companyId: string | null;
   company: { slug: string; name: string } | null;
   orderId: string | null;
@@ -87,7 +90,11 @@ function WorkLogRow({
         <div className="min-w-0">
           <p className="text-sm text-fg">{log.description}</p>
           <p className="mt-0.5 text-xs text-fg-muted">
-            {log.userName}
+            <UserName
+              name={log.userName}
+              image={log.userImage}
+              slug={log.userSlug}
+            />
             {" · "}
             {formatDateTime(new Date(log.occurredAt))}
             {log.durationMinutes ? ` · ${formatDurationMinutes(log.durationMinutes)}` : ""}

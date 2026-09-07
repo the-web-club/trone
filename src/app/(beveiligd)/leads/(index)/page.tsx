@@ -17,6 +17,7 @@ import {
   buildDealsHref,
   parseDealsSearchParams,
 } from "@/lib/deals-query";
+import { effectiveDealValue } from "@/lib/deal-value";
 
 export const metadata: Metadata = { title: "Leads" };
 
@@ -73,6 +74,9 @@ export default async function LeadsPage({
 
   const ownerNames = new Map(
     members.map((member) => [member.id, member.name || member.email]),
+  );
+  const ownerImages = new Map(
+    members.map((member) => [member.id, member.image]),
   );
 
   const hasFilters = Boolean(
@@ -143,8 +147,17 @@ export default async function LeadsPage({
               ? { slug: deal.company.slug, name: deal.company.name }
               : null,
             quoteStatus: deal.quotes[0]?.status ?? null,
-            valueEstimate:
+            valueEstimate: effectiveDealValue(
               deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+              deal.quotes,
+            ),
+            isHot: deal.isHot,
+            ownerName: deal.ownerUserId
+              ? (ownerNames.get(deal.ownerUserId) ?? null)
+              : null,
+            ownerImage: deal.ownerUserId
+              ? (ownerImages.get(deal.ownerUserId) ?? null)
+              : null,
           }))}
         />
       ) : (
@@ -174,12 +187,18 @@ export default async function LeadsPage({
               stageId: deal.stageId,
               stageName: deal.stage.name,
               quoteStatus: deal.quotes[0]?.status ?? null,
-              valueEstimate:
+              valueEstimate: effectiveDealValue(
                 deal.valueEstimate == null ? null : Number(deal.valueEstimate),
+                deal.quotes,
+              ),
               sourceName: deal.source?.name ?? null,
+              isHot: deal.isHot,
               ownerUserId: deal.ownerUserId,
               ownerName: deal.ownerUserId
                 ? (ownerNames.get(deal.ownerUserId) ?? null)
+                : null,
+              ownerImage: deal.ownerUserId
+                ? (ownerImages.get(deal.ownerUserId) ?? null)
                 : null,
               createdAt: deal.createdAt.toISOString(),
             }))}

@@ -13,11 +13,13 @@ export function LeadOwnerSelect({
   dealId,
   ownerUserId,
   ownerName,
+  ownerImage,
   members,
 }: {
   dealId: string;
   ownerUserId: string | null;
   ownerName: string | null;
+  ownerImage?: string | null;
   members: DealTeamMember[];
 }) {
   const router = useRouter();
@@ -38,16 +40,18 @@ export function LeadOwnerSelect({
       ...members.map((member) => ({
         value: member.id,
         label: member.name || member.email,
+        image: member.image,
       })),
     ];
     if (ownerUserId && !options.some((option) => option.value === ownerUserId)) {
       options.splice(1, 0, {
         value: ownerUserId,
         label: ownerName || ownerUserId,
+        image: ownerImage,
       });
     }
     return options;
-  }, [members, ownerName, ownerUserId]);
+  }, [members, ownerImage, ownerName, ownerUserId]);
 
   async function onValueChange(next: string) {
     if (next === value) return;

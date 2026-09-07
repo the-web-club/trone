@@ -18,8 +18,8 @@ import type { TaskInput } from "@/lib/task-validation";
 import type { TaskScope, TaskStatusFilter } from "@/lib/tasks-query";
 
 const taskInclude = {
-  assignee: { select: { id: true, name: true } },
-  createdBy: { select: { id: true, name: true } },
+  assignee: { select: { id: true, name: true, image: true, slug: true } },
+  createdBy: { select: { id: true, name: true, image: true, slug: true } },
   deal: { select: { id: true, slug: true, title: true } },
   contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   company: { select: { id: true, slug: true, name: true } },
@@ -104,7 +104,7 @@ export const listActiveAssignees = cache(
     const prisma = getPrismaClient();
     return prisma.user.findMany({
       where: { isActive: true, OR: [{ banned: false }, { banned: null }] },
-      select: { id: true, name: true },
+      select: { id: true, name: true, image: true, slug: true },
       orderBy: { name: "asc" },
     });
   },

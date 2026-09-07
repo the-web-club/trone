@@ -59,3 +59,21 @@ export async function nextDealSlug(
     "lead",
   );
 }
+
+export async function nextUserSlug(
+  db: SlugDb,
+  name: string,
+  exceptId?: string,
+) {
+  return allocateUniqueSlug(
+    async (slug) => {
+      const row = await db.user.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      return Boolean(row && row.id !== exceptId);
+    },
+    name,
+    "medewerker",
+  );
+}

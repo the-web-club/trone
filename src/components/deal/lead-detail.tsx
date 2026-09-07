@@ -38,6 +38,7 @@ export type LeadDetailRecord = {
   sourceId: string | null;
   valueEstimate: number | null;
   valueEstimateLabel: string;
+  quotedTotal: number | null;
   company: { id: string; slug: string; name: string } | null;
   contact: {
     id: string;
@@ -405,24 +406,35 @@ function LeadDetailFields({
           searchPlaceholder="Zoek een bron…"
           onSave={(sourceId) => save({ sourceId: sourceId || null })}
         />
-        <InlineTextField
-          label="Geschatte waarde"
-          value={
-            deal.valueEstimate == null ? "" : String(deal.valueEstimate)
-          }
-          displayValue={deal.valueEstimateLabel}
-          type="number"
-          min={0}
-          step={1}
-          onSave={async (next) => {
-            if (next === "") return save({ valueEstimate: null });
-            const parsed = Number(next);
-            if (Number.isNaN(parsed) || parsed < 0) {
-              return "Geschatte waarde moet 0 of hoger zijn";
+        {deal.quotedTotal == null ? (
+          <InlineTextField
+            label="Geschatte waarde"
+            value={
+              deal.valueEstimate == null ? "" : String(deal.valueEstimate)
             }
-            return save({ valueEstimate: parsed });
-          }}
-        />
+            displayValue={deal.valueEstimateLabel}
+            type="number"
+            min={0}
+            step={1}
+            onSave={async (next) => {
+              if (next === "") return save({ valueEstimate: null });
+              const parsed = Number(next);
+              if (Number.isNaN(parsed) || parsed < 0) {
+                return "Geschatte waarde moet 0 of hoger zijn";
+              }
+              return save({ valueEstimate: parsed });
+            }}
+          />
+        ) : (
+          <div className="flex flex-col gap-1">
+            <p className="text-label font-medium text-fg-muted">
+              Geschatte waarde
+            </p>
+            <p className="min-h-8 px-1.5 py-1 text-sm text-fg">
+              {deal.valueEstimateLabel}
+            </p>
+          </div>
+        )}
       </div>
     </DetailSection>
   );

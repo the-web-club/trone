@@ -3,14 +3,4 @@ export function listSummary(total: number, singular: string, plural: string) {
   return `${total} ${plural}`;
 }
 
-export const countryLabels: Record<string, string> = {
-  NL: "Nederland",
-  BE: "België",
-  DE: "Duitsland",
-  FR: "Frankrijk",
-  GB: "Verenigd Koninkrijk",
-};
-
-export function countryLabel(code: string): string {
-  return countryLabels[code] ?? code;
-}
+export { countryLabel } from "@/lib/countries";

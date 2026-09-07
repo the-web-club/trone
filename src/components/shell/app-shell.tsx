@@ -5,10 +5,14 @@ import { AppTopbar } from "@/components/shell/app-topbar";
 export function AppShell({
   userName,
   userEmail,
+  userImage,
+  userSlug,
   children,
 }: {
   userName: string;
   userEmail: string;
+  userImage?: string | null;
+  userSlug?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -19,9 +23,19 @@ export function AppShell({
       >
         Ga naar inhoud
       </a>
-      <AppSidebar userName={userName} userEmail={userEmail} />
+      <AppSidebar
+        userName={userName}
+        userEmail={userEmail}
+        userImage={userImage}
+        userSlug={userSlug}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <AppTopbar userName={userName} userEmail={userEmail} />
+        <AppTopbar
+          userName={userName}
+          userEmail={userEmail}
+          userImage={userImage}
+          userSlug={userSlug}
+        />
         <main id="hoofdinhoud" className="page-shell">
           <div className="page-shell-inner">
             <PageTransition>{children}</PageTransition>

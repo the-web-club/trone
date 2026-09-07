@@ -13,7 +13,7 @@ import {
 } from "@/lib/timeline-where";
 
 const timelineInclude = {
-  user: { select: { id: true, name: true } },
+  user: { select: { id: true, name: true, image: true, slug: true } },
   quote: { select: { id: true, quoteNumber: true } },
   order: { select: { id: true, orderNumber: true } },
   deal: { select: { id: true, slug: true, title: true } },

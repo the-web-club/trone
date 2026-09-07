@@ -10,17 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import type { QuoteStatus } from "@/generated/prisma/client";
 import { quoteEditPath } from "@/lib/paths";
+import { pageActionSecondaryClassName } from "@/components/shell/page-header";
 
 export function QuoteVersionActions({
   quoteId,
   quoteNumber,
   status,
   viewingHistorical,
+  pdfHref,
 }: {
   quoteId: string;
   quoteNumber: string;
   status: QuoteStatus;
   viewingHistorical: boolean;
+  pdfHref: string;
 }) {
   const [sendState, sendAction, sendPending] = useActionState(
     sendQuoteAction,
@@ -38,17 +41,29 @@ export function QuoteVersionActions({
   const error =
     sendState?.error ?? revisionState?.error ?? outcomeState?.error ?? null;
 
+  const pdfLink = (
+    <a href={pdfHref} className={pageActionSecondaryClassName()}>
+      Download PDF
+    </a>
+  );
+
   if (viewingHistorical) {
     return (
-      <p className="text-sm text-fg-muted">
-        Je bekijkt een eerdere versie. Deze is alleen-lezen.
-      </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {pdfLink}
+        </div>
+        <p className="text-sm text-fg-muted">
+          Je bekijkt een eerdere versie. Deze is alleen-lezen.
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
+        {pdfLink}
         {status === "DRAFT" ? (
           <>
             <Link

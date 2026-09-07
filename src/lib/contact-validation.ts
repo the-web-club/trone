@@ -2,13 +2,17 @@ import { z } from "zod";
 import { AppError } from "@/lib/errors";
 
 function emptyToUndefined(value: unknown): unknown {
+  if (value == null) return undefined;
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
   return trimmed === "" ? undefined : trimmed;
 }
 
 export const contactSchema = z.object({
-  firstName: z.string().trim().min(1, "Voornaam is verplicht"),
+  firstName: z.preprocess(
+    (value) => (typeof value === "string" ? value : ""),
+    z.string().trim().min(1, "Voornaam is verplicht"),
+  ),
   lastName: z.preprocess(emptyToUndefined, z.string().optional()),
   jobTitle: z.preprocess(emptyToUndefined, z.string().optional()),
   email: z.preprocess(emptyToUndefined, z.email("Ongeldig e-mailadres").optional()),

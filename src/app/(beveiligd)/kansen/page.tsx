@@ -15,12 +15,8 @@ export default async function KansenPage() {
     listOpportunities(session.user.id),
     listActiveAssignees(),
   ]);
-  const total =
-    board.stale.length +
-    board.followUp.length +
-    board.hot.length +
-    board.hotSuggestions.length +
-    board.dueActions.length;
+  const hotTotal = board.hot.length + board.hotSuggestions.length;
+  const total = hotTotal + board.followUp.length + board.dueActions.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,7 +24,8 @@ export default async function KansenPage() {
         title="Kansen"
         description={
           <>
-            Leads en klanten die aandacht verdienen. Drempels pas je aan in{" "}
+            Hot leads, handmatig of via het systeem. Stilstaande leads staan
+            onderaan. Drempels pas je aan in{" "}
             <Link href="/instellingen/drempels" className="hover:underline">
               Instellingen
             </Link>

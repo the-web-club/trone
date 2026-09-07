@@ -5,6 +5,17 @@ export function formatPersonName(
   return [firstName, lastName].filter(Boolean).join(" ");
 }
 
+export function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0];
+  if (!first) return "?";
+  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
+  const last = parts[parts.length - 1];
+  if (!last) return first.slice(0, 2).toUpperCase();
+  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+}
+
 export function formatEuro(value: number | null | undefined): string | null {
   if (value == null || Number.isNaN(value)) return null;
   return new Intl.NumberFormat("nl-NL", {

@@ -10,12 +10,25 @@ export function dealPath(deal: { slug: string }): string {
   return `/leads/${deal.slug}`;
 }
 
+export function staffPath(user: { slug: string }): string {
+  return `/instellingen/medewerkers/${user.slug}`;
+}
+
 export function quotePath(quote: { quoteNumber: string }): string {
   return `/offertes/${quote.quoteNumber}`;
 }
 
 export function quoteEditPath(quote: { quoteNumber: string }): string {
   return `/offertes/${quote.quoteNumber}/bewerken`;
+}
+
+export function quotePdfPath(
+  quote: { quoteNumber: string },
+  opts?: { versie?: number },
+): string {
+  const base = `/offertes/${quote.quoteNumber}/pdf`;
+  if (opts?.versie) return `${base}?versie=${opts.versie}`;
+  return base;
 }
 
 export function orderPath(order: { orderNumber: string }): string {

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { CountrySelect } from "@/components/company/country-select";
 
 export function CreateCustomerDialog({
   onCreated,
@@ -108,6 +109,9 @@ export function CreateCustomerDialog({
                   />
                 </FormField>
               </div>
+              <FormField id={`${id}-companyCountry`} label="Land">
+                <CountrySelect name="companyCountry" defaultValue="NL" />
+              </FormField>
             </div>
 
             <div className="flex flex-col gap-3">

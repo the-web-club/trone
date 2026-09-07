@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { getPrismaClient } from "@/lib/db";
+import { nextUserSlug } from "@/lib/entity-slug";
 import { invitationMail, sendMail } from "@/lib/mail";
 
 function requireEnv(name: string): string {
@@ -64,6 +65,25 @@ function createAuth() {
           required: false,
           defaultValue: true,
           input: false,
+        },
+        slug: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            const prisma = getPrismaClient();
+            const slug = await nextUserSlug(prisma, user.name, user.id);
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { slug },
+            });
+          },
         },
       },
     },
