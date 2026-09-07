@@ -16,7 +16,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { listCompanies } from "@/lib/company-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { formatDate } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 import { CompanyLink } from "@/components/entity-links";
@@ -50,7 +50,7 @@ export default async function OrdersPage({
       tot: parsed.tot || undefined,
       page: parsed.pagina,
     }),
-    listCompanies(),
+    listCompaniesForSelect(),
   ]);
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { DealForm } from "@/components/deal/deal-form";
 import { PageHeader } from "@/components/shell/page-header";
-import { listCompanies } from "@/lib/company-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { listDealStages, listLeadSources } from "@/lib/deal-service";
 
@@ -13,7 +13,7 @@ export default async function NieuweLeadPage() {
   const [stages, sources, companies, contacts] = await Promise.all([
     listDealStages(),
     listLeadSources(),
-    listCompanies(),
+    listCompaniesForSelect(),
     listContactsForSelect(),
   ]);
 

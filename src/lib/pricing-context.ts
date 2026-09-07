@@ -13,10 +13,33 @@ export async function loadPricingContext(
   prisma: PrismaClient
 ): Promise<PricingContext> {
   const [products, options, values, availability] = await Promise.all([
-    prisma.product.findMany({ where: { isActive: true } }),
-    prisma.productOption.findMany({ orderBy: { sortOrder: "asc" } }),
-    prisma.optionValue.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } }),
-    prisma.productOptionAvailability.findMany(),
+    prisma.product.findMany({
+      where: { isActive: true },
+      select: { id: true, sku: true, name: true, basePrice: true },
+    }),
+    prisma.productOption.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        inputType: true,
+        isRequired: true,
+      },
+    }),
+    prisma.optionValue.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        value: true,
+        priceDelta: true,
+        priceOnRequest: true,
+      },
+    }),
+    prisma.productOptionAvailability.findMany({
+      select: { productId: true, optionId: true, optionValueId: true },
+    }),
   ]);
 
   return {

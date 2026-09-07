@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { updateCompanyAction } from "@/app/(beveiligd)/actions/company-actions";
 import { CompanyForm } from "@/components/company/company-form";
 import {
@@ -8,6 +9,16 @@ import {
   EditContactDialog,
 } from "@/components/company/contact-form-dialog";
 import { DealStagePill } from "@/components/deal/deal-stage-pill";
+import {
+  CompanyWorkLogs,
+  CompanyTimeline,
+  EntityTasks,
+} from "@/components/detail/entity-activity";
+import {
+  DetailTaskSkeleton,
+  DetailTimelineSkeleton,
+  DetailWorkLogSkeleton,
+} from "@/components/detail/detail-skeletons";
 import { ContactLink, DealLink } from "@/components/entity-links";
 import {
   Table,
@@ -20,16 +31,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shell/page-header";
-import { TaskSection } from "@/components/task/task-section";
-import { Timeline } from "@/components/timeline/timeline";
-import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
-import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
-import { listTimelineForCompany } from "@/lib/timeline-service";
 import { companyPath } from "@/lib/paths";
-import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 
 export async function generateMetadata({
   params,
@@ -51,19 +56,14 @@ export default async function BedrijfDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await requireSession();
-  const company = await getCompany(slug).catch((error) => {
-    if (isAppError(error) && error.status === 404) notFound();
-    throw error;
-  });
-  if (slug !== company.slug) redirect(companyPath(company));
-  const [logs, orders, events, tasks, assignees] = await Promise.all([
-    listWorkLogs({ companyId: company.id }),
-    listOrdersForWorkLog(undefined, company.id),
-    listTimelineForCompany(company.id),
-    listOpenTasksForEntity({ companyId: company.id }),
-    listActiveAssignees(),
+  const [session, company] = await Promise.all([
+    requireSession(),
+    getCompany(slug).catch((error) => {
+      if (isAppError(error) && error.status === 404) notFound();
+      throw error;
+    }),
   ]);
+  if (slug !== company.slug) redirect(companyPath(company));
 
   return (
     <div className="flex flex-col gap-8">
@@ -208,30 +208,25 @@ export default async function BedrijfDetailPage({
         </TableContainer>
       </section>
 
-      <TaskSection
-        tasks={tasks}
-        currentUserId={session.user.id}
-        assignees={assignees}
-        companyId={company.id}
-      />
+      <Suspense fallback={<DetailTaskSkeleton />}>
+        <EntityTasks
+          currentUserId={session.user.id}
+          companyId={company.id}
+        />
+      </Suspense>
 
-      <Timeline events={events} companyId={company.id} />
+      <Suspense fallback={<DetailTimelineSkeleton />}>
+        <CompanyTimeline companyId={company.id} />
+      </Suspense>
 
-      <WorkLogSection
-        title="Werkzaamheden"
-        currentUserId={session.user.id}
-        isAdmin={isAdminSession(session)}
-        defaultCompanyId={company.id}
-        lockCompany
-        companies={[{ id: company.id, name: company.name }]}
-        orders={orders.map((order) => ({
-          id: order.id,
-          orderNumber: order.orderNumber,
-          companyId: order.companyId,
-          companyName: company.name,
-        }))}
-        logs={logs}
-      />
+      <Suspense fallback={<DetailWorkLogSkeleton />}>
+        <CompanyWorkLogs
+          companyId={company.id}
+          companyName={company.name}
+          currentUserId={session.user.id}
+          isAdmin={isAdminSession(session)}
+        />
+      </Suspense>
     </div>
   );
 }

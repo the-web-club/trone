@@ -151,6 +151,12 @@ export default async function LeadsPage({
         <>
           <LeadsListTable
             members={members}
+            stages={stages.map((stage) => ({
+              id: stage.id,
+              name: stage.name,
+              isWon: stage.isWon,
+              isLost: stage.isLost,
+            }))}
             rows={result.items.map((deal) => ({
               id: deal.id,
               slug: deal.slug,
@@ -165,9 +171,8 @@ export default async function LeadsPage({
                     lastName: deal.contact.lastName,
                   }
                 : null,
+              stageId: deal.stageId,
               stageName: deal.stage.name,
-              isWon: deal.stage.isWon,
-              isLost: deal.stage.isLost,
               quoteStatus: deal.quotes[0]?.status ?? null,
               valueEstimate:
                 deal.valueEstimate == null ? null : Number(deal.valueEstimate),

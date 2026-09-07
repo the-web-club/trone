@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { LeadDetail } from "@/components/deal/lead-detail";
 import { LeadQuotesTable } from "@/components/deal/lead-quotes-table";
-import { TaskSection } from "@/components/task/task-section";
-import { Timeline } from "@/components/timeline/timeline";
+import {
+  DealTimeline,
+  EntityTasks,
+} from "@/components/detail/entity-activity";
+import {
+  DetailTaskSkeleton,
+  DetailTimelineSkeleton,
+} from "@/components/detail/detail-skeletons";
 import { requireSession } from "@/lib/auth-session";
-import { listCompanies } from "@/lib/company-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
-import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
-import { listTimelineForDeal } from "@/lib/timeline-service";
 import { formatEuro } from "@/lib/format";
 import { dealPath } from "@/lib/paths";
 
@@ -34,27 +39,27 @@ export default async function LeadDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await requireSession();
-  const deal = await getDeal(slug).catch((error) => {
-    if (isAppError(error) && error.status === 404) notFound();
-    throw error;
-  });
+  const companiesPromise = listCompaniesForSelect();
+  const sourcesPromise = listLeadSources();
+  const [session, deal, stages] = await Promise.all([
+    requireSession(),
+    getDeal(slug).catch((error) => {
+      if (isAppError(error) && error.status === 404) notFound();
+      throw error;
+    }),
+    listDealStages(),
+  ]);
   if (slug !== deal.slug) redirect(dealPath(deal));
 
-  const [stages, sources, companies, contacts, events, tasks, assignees] =
-    await Promise.all([
-      listDealStages(),
-      listLeadSources(),
-      listCompanies(),
-      listContactsForSelect(deal.companyId),
-      listTimelineForDeal(deal.id),
-      listOpenTasksForEntity({
-        dealId: deal.id,
-        contactId: deal.contactId ?? undefined,
-        companyId: deal.companyId ?? undefined,
-      }),
-      listActiveAssignees(),
-    ]);
+  const relationOptions = Promise.all([
+    sourcesPromise,
+    companiesPromise,
+    listContactsForSelect(deal.companyId),
+  ]).then(([sources, companies, contacts]) => ({
+    sources: sources.map((source) => ({ id: source.id, name: source.name })),
+    companies,
+    contacts,
+  }));
 
   return (
     <LeadDetail
@@ -87,16 +92,7 @@ export default async function LeadDetailPage({
         isWon: stage.isWon,
         isLost: stage.isLost,
       }))}
-      sources={sources.map((source) => ({
-        id: source.id,
-        name: source.name,
-      }))}
-      companies={companies.map((company) => ({
-        id: company.id,
-        slug: company.slug,
-        name: company.name,
-      }))}
-      contacts={contacts}
+      relationOptions={relationOptions}
       quotes={
         <LeadQuotesTable
           quotes={deal.quotes.map((quote) => ({
@@ -115,22 +111,23 @@ export default async function LeadDetailPage({
       }
       activity={
         <>
-          <Timeline
-            compact
-            events={events}
-            dealId={deal.id}
-            contactId={deal.contactId}
-            companyId={deal.companyId}
-          />
-          <TaskSection
-            compact
-            tasks={tasks}
-            currentUserId={session.user.id}
-            assignees={assignees}
-            dealId={deal.id}
-            contactId={deal.contactId}
-            companyId={deal.companyId}
-          />
+          <Suspense fallback={<DetailTimelineSkeleton compact />}>
+            <DealTimeline
+              compact
+              dealId={deal.id}
+              contactId={deal.contactId}
+              companyId={deal.companyId}
+            />
+          </Suspense>
+          <Suspense fallback={<DetailTaskSkeleton compact />}>
+            <EntityTasks
+              compact
+              currentUserId={session.user.id}
+              dealId={deal.id}
+              contactId={deal.contactId}
+              companyId={deal.companyId}
+            />
+          </Suspense>
         </>
       }
     />

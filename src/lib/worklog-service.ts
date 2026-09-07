@@ -4,6 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
+import { ACTIVITY_FEED_CAP } from "@/lib/list-query";
 import type { WorkLogFilter, WorkLogInput } from "@/lib/worklog-validation";
 
 const workLogInclude = {
@@ -82,8 +83,10 @@ export async function listWorkLogs(filters: WorkLogFilter = {}) {
       ...(filters.orderId ? { orderId: filters.orderId } : {}),
       ...(occurredAt ? { occurredAt } : {}),
     },
+    // ACTIVITY_FEED_CAP (200): newest first. Real pagination can come later.
     orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
     include: workLogInclude,
+    take: ACTIVITY_FEED_CAP,
   });
 }
 

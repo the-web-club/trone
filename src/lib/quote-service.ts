@@ -214,7 +214,13 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
   }
 
   const where = and.length ? { AND: and } : {};
-  const include = {
+  const select = {
+    id: true,
+    quoteNumber: true,
+    currentVersionNumber: true,
+    status: true,
+    total: true,
+    createdAt: true,
     company: { select: { id: true, slug: true, name: true } },
     contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   } as const;
@@ -224,7 +230,7 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
     prisma.quote.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include,
+      select,
       skip,
       take,
     }),

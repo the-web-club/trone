@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { Prisma } from "@/generated/prisma/client";
 import { nextContactSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
@@ -19,7 +20,7 @@ export type ContactSelectOption = {
 };
 
 /** Contacten van één bedrijf. Inverse van getContactCompanyId; zie docs/DATA-MODEL.md. */
-export async function listContactsForSelect(
+export const listContactsForSelect = cache(async function listContactsForSelect(
   companyId?: string | null,
 ): Promise<ContactSelectOption[]> {
   const prisma = getPrismaClient();
@@ -35,7 +36,7 @@ export async function listContactsForSelect(
       companyId: true,
     },
   });
-}
+});
 
 export async function listContacts() {
   const prisma = getPrismaClient();
@@ -88,29 +89,31 @@ export async function listContactRows(filters: ContactListFilters = {}) {
   return { items, total, page, pageSize };
 }
 
-export async function getContact(id: string) {
-  const prisma = getPrismaClient();
-  const contact = await prisma.contact.findUnique({
-    where: whereIdOrSlug(id),
-    include: {
-      company: { select: { id: true, slug: true, name: true } },
-      deals: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          status: true,
-          stage: { select: { name: true } },
+export const getContact = cache(
+  async function getContact(id: string) {
+    const prisma = getPrismaClient();
+    const contact = await prisma.contact.findUnique({
+      where: whereIdOrSlug(id),
+      include: {
+        company: { select: { id: true, slug: true, name: true } },
+        deals: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            status: true,
+            stage: { select: { name: true } },
+          },
         },
       },
-    },
-  });
-  if (!contact) {
-    throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
-  }
-  return contact;
-}
+    });
+    if (!contact) {
+      throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
+    }
+    return contact;
+  },
+);
 
 function toContactData(input: ContactInput) {
   return {

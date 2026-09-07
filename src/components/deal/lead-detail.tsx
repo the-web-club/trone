@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense, use, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
 import { patchDealAction } from "@/app/(beveiligd)/actions/deal-actions";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/components/contact/use-company-contact-fields";
 import { DealHotToggle } from "@/components/deal/deal-hot-toggle";
 import { DetailColumns, DetailSection } from "@/components/detail/detail-layout";
+import { LeadFieldsSkeleton } from "@/components/detail/detail-skeletons";
 import {
   INLINE_SELECT_EMPTY,
   InlineSelectField,
@@ -70,24 +70,145 @@ export type LeadDetailContact = {
   companyId: string | null;
 };
 
+export type LeadRelationOptions = {
+  sources: LeadDetailOption[];
+  companies: LeadDetailCompany[];
+  contacts: LeadDetailContact[];
+};
+
 export function LeadDetail({
   deal,
   stages,
-  sources,
-  companies,
-  contacts,
+  relationOptions,
   quotes,
   activity,
 }: {
   deal: LeadDetailRecord;
   stages: LeadDetailStage[];
-  sources: LeadDetailOption[];
-  companies: LeadDetailCompany[];
-  contacts: LeadDetailContact[];
+  relationOptions: Promise<LeadRelationOptions>;
   quotes: ReactNode;
   activity: ReactNode;
 }) {
   const router = useRouter();
+  const company = deal.company;
+  const contact = deal.contact;
+  const stage =
+    stages.find((item) => item.id === deal.stageId) ?? deal.stage;
+
+  const stageItems = useMemo<SelectOption[]>(
+    () => stages.map((item) => ({ value: item.id, label: item.name })),
+    [stages],
+  );
+
+  const stageToneClass = stage.isWon
+    ? "bg-success-bg text-success hover:bg-success-bg hover:text-success"
+    : stage.isLost
+      ? "bg-danger-bg text-danger hover:bg-danger-bg hover:text-danger"
+      : "bg-info-bg text-info hover:bg-info-bg hover:text-info";
+
+  async function save(patch: DealPatch): Promise<string | null> {
+    const result = await patchDealAction(deal.id, patch);
+    if (result.error) return result.error;
+    if (result.slug && result.slug !== deal.slug) {
+      router.replace(dealPath({ slug: result.slug }));
+    } else {
+      router.refresh();
+    }
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <header className="page-header">
+        <div className="page-header-copy min-w-0 flex-1">
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <InlineTextField
+                label="Titel"
+                value={deal.title}
+                variant="title"
+                required
+                onSave={(title) => save({ title })}
+              />
+            </div>
+            <InlineSelectField
+              label="Fase"
+              value={deal.stageId}
+              items={stageItems}
+              hideLabel
+              compact
+              triggerClassName={cn(
+                "h-5 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-1.5 text-xs font-medium",
+                stageToneClass,
+              )}
+              searchPlaceholder="Zoek een fase…"
+              onSave={(stageId) => save({ stageId })}
+            />
+          </div>
+          <div className="page-header-description">
+            <Link href="/leads" className="hover:underline">
+              Terug naar de pijplijn
+            </Link>
+            {company ? (
+              <>
+                {" · "}
+                <CompanyLink company={company} />
+              </>
+            ) : null}
+            {contact?.slug ? (
+              <>
+                {" · "}
+                <ContactLink
+                  contact={{
+                    slug: contact.slug,
+                    firstName: contact.firstName,
+                    lastName: contact.lastName,
+                  }}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
+        <div className="page-actions">
+          <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
+          <Link
+            href={newQuotePath({ deal, company })}
+            className={pageActionPrimaryClassName()}
+          >
+            Nieuwe offerte
+          </Link>
+        </div>
+      </header>
+
+      <DetailColumns
+        left={
+          <>
+            <Suspense fallback={<LeadFieldsSkeleton />}>
+              <LeadDetailFields
+                deal={deal}
+                relationOptions={relationOptions}
+                save={save}
+              />
+            </Suspense>
+            {quotes}
+          </>
+        }
+        right={activity}
+      />
+    </div>
+  );
+}
+
+function LeadDetailFields({
+  deal,
+  relationOptions,
+  save,
+}: {
+  deal: LeadDetailRecord;
+  relationOptions: Promise<LeadRelationOptions>;
+  save: (patch: DealPatch) => Promise<string | null>;
+}) {
+  const { sources, companies, contacts } = use(relationOptions);
   const relation = useCompanyContactFields({
     initialCompanyId: deal.companyId,
     initialContactId: deal.contactId,
@@ -115,8 +236,6 @@ export function LeadDetail({
   const contact =
     relation.contacts.find((item) => item.id === relation.contactId) ??
     (deal.contact?.id === relation.contactId ? deal.contact : null);
-  const stage =
-    stages.find((item) => item.id === deal.stageId) ?? deal.stage;
 
   const companyItems = useMemo<SelectOption[]>(() => {
     const items: SelectOption[] = [
@@ -153,28 +272,6 @@ export function LeadDetail({
     ],
     [sources],
   );
-
-  const stageItems = useMemo<SelectOption[]>(
-    () => stages.map((item) => ({ value: item.id, label: item.name })),
-    [stages],
-  );
-
-  const stageToneClass = stage.isWon
-    ? "bg-success-bg text-success hover:bg-success-bg hover:text-success"
-    : stage.isLost
-      ? "bg-danger-bg text-danger hover:bg-danger-bg hover:text-danger"
-      : "bg-info-bg text-info hover:bg-info-bg hover:text-info";
-
-  async function save(patch: DealPatch): Promise<string | null> {
-    const result = await patchDealAction(deal.id, patch);
-    if (result.error) return result.error;
-    if (result.slug && result.slug !== deal.slug) {
-      router.replace(dealPath({ slug: result.slug }));
-    } else {
-      router.refresh();
-    }
-    return null;
-  }
 
   async function saveCompany(nextId: string): Promise<string | false | null> {
     const selected = relation.contacts.find(
@@ -257,147 +354,76 @@ export function LeadDetail({
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy min-w-0 flex-1">
-          <div className="flex flex-wrap items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <InlineTextField
-                label="Titel"
-                value={deal.title}
-                variant="title"
-                required
-                onSave={(title) => save({ title })}
-              />
-            </div>
-            <InlineSelectField
-              label="Fase"
-              value={deal.stageId}
-              items={stageItems}
-              hideLabel
-              compact
-              triggerClassName={cn(
-                "h-5 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-1.5 text-xs font-medium",
-                stageToneClass,
-              )}
-              searchPlaceholder="Zoek een fase…"
-              onSave={(stageId) => save({ stageId })}
-            />
-          </div>
-          <div className="page-header-description">
-            <Link href="/leads" className="hover:underline">
-              Terug naar de pijplijn
-            </Link>
-            {company ? (
-              <>
-                {" · "}
-                <CompanyLink company={company} />
-              </>
-            ) : null}
-            {contact?.slug ? (
-              <>
-                {" · "}
-                <ContactLink
-                  contact={{
-                    slug: contact.slug,
-                    firstName: contact.firstName,
-                    lastName: contact.lastName,
-                  }}
-                />
-              </>
-            ) : null}
-          </div>
-        </div>
-        <div className="page-actions">
-          <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
-          <Link
-            href={newQuotePath({ deal, company })}
-            className={pageActionPrimaryClassName()}
-          >
-            Nieuwe offerte
-          </Link>
-        </div>
-      </header>
-
-      <DetailColumns
-        left={
-          <>
-            <DetailSection title="Gegevens">
-              <div className="flex flex-col gap-3">
-                <InlineSelectField
-                  label="Bedrijf"
-                  value={relation.companyId}
-                  items={companyItems}
-                  searchPlaceholder="Zoek een bedrijf…"
-                  createLabel="Nieuw bedrijf"
-                  onCreate={(query) => {
-                    setCompanyQuery(query);
-                    setCompanyDialogOpen(true);
-                  }}
-                  onSave={saveCompany}
-                />
-                <InlineSelectField
-                  label="Contactpersoon"
-                  value={relation.contactId}
-                  items={contactItems}
-                  searchPlaceholder="Zoek een contact…"
-                  createLabel="Nieuw contact"
-                  createDisabled={!relation.companyId}
-                  disabled={relation.contactsLoading}
-                  onCreate={(query) => {
-                    if (!relation.companyId) return;
-                    setContactQuery(query);
-                    setContactDialogOpen(true);
-                  }}
-                  onSave={saveContact}
-                />
-                <CreateCompanyDialog
-                  showTrigger={false}
-                  open={companyDialogOpen}
-                  onOpenChange={setCompanyDialogOpen}
-                  defaultName={companyQuery}
-                  onCreated={handleCreatedCompany}
-                />
-                <CreateQuoteContactDialog
-                  companyId={relation.companyId}
-                  showTrigger={false}
-                  open={contactDialogOpen}
-                  onOpenChange={setContactDialogOpen}
-                  defaultFirstName={contactQuery}
-                  onCreated={handleCreatedContact}
-                />
-                <InlineSelectField
-                  label="Bron"
-                  value={deal.sourceId ?? ""}
-                  items={sourceItems}
-                  searchPlaceholder="Zoek een bron…"
-                  onSave={(sourceId) => save({ sourceId: sourceId || null })}
-                />
-                <InlineTextField
-                  label="Geschatte waarde"
-                  value={
-                    deal.valueEstimate == null ? "" : String(deal.valueEstimate)
-                  }
-                  displayValue={deal.valueEstimateLabel}
-                  type="number"
-                  min={0}
-                  step={1}
-                  onSave={async (next) => {
-                    if (next === "") return save({ valueEstimate: null });
-                    const parsed = Number(next);
-                    if (Number.isNaN(parsed) || parsed < 0) {
-                      return "Geschatte waarde moet 0 of hoger zijn";
-                    }
-                    return save({ valueEstimate: parsed });
-                  }}
-                />
-              </div>
-            </DetailSection>
-            {quotes}
-          </>
-        }
-        right={activity}
-      />
-    </div>
+    <DetailSection title="Gegevens">
+      <div className="flex flex-col gap-3">
+        <InlineSelectField
+          label="Bedrijf"
+          value={relation.companyId}
+          items={companyItems}
+          searchPlaceholder="Zoek een bedrijf…"
+          createLabel="Nieuw bedrijf"
+          onCreate={(query) => {
+            setCompanyQuery(query);
+            setCompanyDialogOpen(true);
+          }}
+          onSave={saveCompany}
+        />
+        <InlineSelectField
+          label="Contactpersoon"
+          value={relation.contactId}
+          items={contactItems}
+          searchPlaceholder="Zoek een contact…"
+          createLabel="Nieuw contact"
+          createDisabled={!relation.companyId}
+          disabled={relation.contactsLoading}
+          onCreate={(query) => {
+            if (!relation.companyId) return;
+            setContactQuery(query);
+            setContactDialogOpen(true);
+          }}
+          onSave={saveContact}
+        />
+        <CreateCompanyDialog
+          showTrigger={false}
+          open={companyDialogOpen}
+          onOpenChange={setCompanyDialogOpen}
+          defaultName={companyQuery}
+          onCreated={handleCreatedCompany}
+        />
+        <CreateQuoteContactDialog
+          companyId={relation.companyId}
+          showTrigger={false}
+          open={contactDialogOpen}
+          onOpenChange={setContactDialogOpen}
+          defaultFirstName={contactQuery}
+          onCreated={handleCreatedContact}
+        />
+        <InlineSelectField
+          label="Bron"
+          value={deal.sourceId ?? ""}
+          items={sourceItems}
+          searchPlaceholder="Zoek een bron…"
+          onSave={(sourceId) => save({ sourceId: sourceId || null })}
+        />
+        <InlineTextField
+          label="Geschatte waarde"
+          value={
+            deal.valueEstimate == null ? "" : String(deal.valueEstimate)
+          }
+          displayValue={deal.valueEstimateLabel}
+          type="number"
+          min={0}
+          step={1}
+          onSave={async (next) => {
+            if (next === "") return save({ valueEstimate: null });
+            const parsed = Number(next);
+            if (Number.isNaN(parsed) || parsed < 0) {
+              return "Geschatte waarde moet 0 of hoger zijn";
+            }
+            return save({ valueEstimate: parsed });
+          }}
+        />
+      </div>
+    </DetailSection>
   );
 }

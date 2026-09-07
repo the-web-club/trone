@@ -1,6 +1,9 @@
 import Link from "next/link";
-import { DealStagePill } from "@/components/deal/deal-stage-pill";
 import { LeadOwnerSelect } from "@/components/deal/lead-owner-select";
+import {
+  LeadStageSelect,
+  type LeadStageOption,
+} from "@/components/deal/lead-stage-select";
 import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,9 +35,8 @@ export type LeadsListRow = {
     firstName: string;
     lastName: string | null;
   } | null;
+  stageId: string;
   stageName: string;
-  isWon: boolean;
-  isLost: boolean;
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
   sourceName: string | null;
@@ -46,10 +48,12 @@ export type LeadsListRow = {
 export function LeadsListTable({
   rows,
   members,
+  stages,
   emptyMessage,
 }: {
   rows: LeadsListRow[];
   members: DealTeamMember[];
+  stages: LeadStageOption[];
   emptyMessage: string;
 }) {
   return (
@@ -90,10 +94,11 @@ export function LeadsListTable({
                   <CompanyLink company={row.company} />
                 </TableCell>
                 <TableCell>
-                  <DealStagePill
-                    name={row.stageName}
-                    isWon={row.isWon}
-                    isLost={row.isLost}
+                  <LeadStageSelect
+                    dealId={row.id}
+                    stageId={row.stageId}
+                    stageName={row.stageName}
+                    stages={stages}
                   />
                 </TableCell>
                 <TableCell>

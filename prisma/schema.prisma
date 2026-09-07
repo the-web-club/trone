@@ -60,6 +60,7 @@ model Session {
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("session")
 }
 
@@ -80,6 +81,7 @@ model Account {
   updatedAt             DateTime  @updatedAt
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("account")
 }
 
@@ -128,6 +130,8 @@ model Company {
   timelineEvents TimelineEvent[]
   tasks          Task[]
 
+  @@index([city])
+  @@index([country])
   @@map("company")
 }
 
@@ -214,6 +218,12 @@ model Deal {
 
   @@index([companyId])
   @@index([stageId])
+  @@index([status])
+  @@index([ownerUserId])
+  @@index([sourceId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([status, stageId])
   @@map("deal")
 }
 
@@ -326,6 +336,7 @@ model Task {
   @@index([companyId])
   @@index([status])
   @@index([dueAt])
+  @@index([status, assigneeUserId])
   @@map("task")
 }
 
@@ -534,6 +545,10 @@ model Quote {
   timelineEvents TimelineEvent[]
 
   @@index([companyId])
+  @@index([dealId])
+  @@index([contactId])
+  @@index([status])
+  @@index([createdAt])
   @@map("quote")
 }
 
@@ -637,6 +652,11 @@ model Order {
   timelineEvents TimelineEvent[]
 
   @@index([companyId])
+  @@index([quoteId])
+  @@index([dealId])
+  @@index([contactId])
+  @@index([status])
+  @@index([createdAt])
   @@map("order")
 }
 
@@ -691,6 +711,7 @@ model Invoice {
   company Company @relation(fields: [companyId], references: [id])
 
   @@index([orderId])
+  @@index([companyId])
   @@index([mollieInvoiceId])
   @@map("invoice")
 }

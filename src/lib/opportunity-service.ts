@@ -45,7 +45,16 @@ export async function listOpportunities(
   const [deals, companies, tasks] = await Promise.all([
     prisma.deal.findMany({
       where: { status: "OPEN" },
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        contactId: true,
+        companyId: true,
+        valueEstimate: true,
+        isHot: true,
+        status: true,
+        createdAt: true,
         stage: { select: { name: true, isWon: true, isLost: true } },
         company: { select: { id: true, slug: true, name: true } },
         timelineEvents: {
@@ -56,14 +65,25 @@ export async function listOpportunities(
       },
     }),
     prisma.company.findMany({
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
         orders: {
           select: { orderedAt: true, orderNumber: true },
           orderBy: { orderedAt: "desc" },
           take: 1,
         },
-        deals: { select: { createdAt: true } },
-        quotes: { select: { createdAt: true } },
+        deals: {
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        quotes: {
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     }),
     prisma.task.findMany({

@@ -87,4 +87,46 @@ describe("getDealFilterFacets", () => {
     expect(where).not.toContain("aan-mij");
     expect(where).not.toContain("user-me");
   });
+
+  it("leidt totalen af uit vier groupBy-queries, zonder losse counts", async () => {
+    mockDealGroupBy.mockImplementation(async (args: { by: string[] }) => {
+      if (args.by[0] === "stageId") {
+        return [
+          { stageId: "s1", _count: { _all: 4 } },
+          { stageId: "s2", _count: { _all: 6 } },
+        ];
+      }
+      if (args.by[0] === "sourceId") {
+        return [
+          { sourceId: null, _count: { _all: 3 } },
+          { sourceId: "src-a", _count: { _all: 7 } },
+        ];
+      }
+      if (args.by[0] === "ownerUserId") {
+        return [
+          { ownerUserId: null, _count: { _all: 2 } },
+          { ownerUserId: "user-me", _count: { _all: 5 } },
+          { ownerUserId: "user-other", _count: { _all: 3 } },
+        ];
+      }
+      return [
+        { status: "OPEN", _count: { _all: 8 } },
+        { status: "WON", _count: { _all: 2 } },
+      ];
+    });
+
+    const facets = await getDealFilterFacets({}, "user-me");
+
+    expect(mockDealCount).not.toHaveBeenCalled();
+    expect(mockDealGroupBy).toHaveBeenCalledTimes(4);
+    expect(facets.stageTotal).toBe(10);
+    expect(facets.sourceTotal).toBe(10);
+    expect(facets.unassignedSource).toBe(3);
+    expect(facets.bySource).toEqual([{ sourceId: "src-a", count: 7 }]);
+    expect(facets.ownerTotal).toBe(10);
+    expect(facets.unassignedOwner).toBe(2);
+    expect(facets.assignedToMe).toBe(5);
+    expect(facets.statusTotal).toBe(10);
+    expect(facets.byStatus).toEqual({ OPEN: 8, WON: 2 });
+  });
 });

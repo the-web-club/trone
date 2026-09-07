@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth, type Auth } from "@/lib/auth";
@@ -9,12 +10,14 @@ export type AppSession = NonNullable<
   Awaited<ReturnType<Auth["api"]["getSession"]>>
 >;
 
-export async function getSession(): Promise<AppSession | null> {
-  const session = await getAuth().api.getSession({
-    headers: await headers(),
-  });
-  return session;
-}
+export const getSession = cache(
+  async function getSession(): Promise<AppSession | null> {
+    const session = await getAuth().api.getSession({
+      headers: await headers(),
+    });
+    return session;
+  },
+);
 
 export async function requireSession(): Promise<AppSession> {
   const session = await getSession();

@@ -4,6 +4,7 @@ import type { Prisma, TimelineEventType } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
+import { ACTIVITY_FEED_CAP } from "@/lib/list-query";
 import { getContactCompanyId } from "@/lib/contact-company";
 import {
   timelineWhereForCompany,
@@ -139,10 +140,12 @@ export async function logEvent(input: LogEventInput) {
 
 async function listTimeline(where: Prisma.TimelineEventWhereInput) {
   const prisma = getPrismaClient();
+  // ACTIVITY_FEED_CAP (200): newest first. Real pagination can come later.
   return prisma.timelineEvent.findMany({
     where,
     include: timelineInclude,
     orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+    take: ACTIVITY_FEED_CAP,
   });
 }
 

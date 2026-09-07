@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { Prisma, TaskStatus } from "@/generated/prisma/client";
 import {
   endExclusiveOfCalendarDate,
@@ -98,14 +99,16 @@ function dueAtFromInput(value?: string) {
   return date ? startOfCalendarDate(date) : null;
 }
 
-export async function listActiveAssignees() {
-  const prisma = getPrismaClient();
-  return prisma.user.findMany({
-    where: { isActive: true, OR: [{ banned: false }, { banned: null }] },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
-}
+export const listActiveAssignees = cache(
+  async function listActiveAssignees() {
+    const prisma = getPrismaClient();
+    return prisma.user.findMany({
+      where: { isActive: true, OR: [{ banned: false }, { banned: null }] },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  },
+);
 
 export async function getTask(id: string) {
   const prisma = getPrismaClient();

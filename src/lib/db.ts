@@ -7,6 +7,8 @@ import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 // Conventie overgenomen van crm.thewebclub.nl: losse host-vars i.p.v.
 // DATABASE_URL op runtime, TLS aan, kleine connection pool (serverless).
 // DATABASE_URL wordt alleen door de Prisma CLI (migrations) gebruikt.
+// Eén client per isolate (ook in productie), anders raakt connectionLimit: 5
+// uitgeput door een nieuwe pool per getPrismaClient()-aanroep.
 // =====================================================================
 
 declare global {
@@ -33,7 +35,6 @@ function requireEnv(name: string): string {
 }
 
 export function getPrismaClient(): PrismaClient {
-  if (process.env.NODE_ENV === "production") return createClient();
   if (!global.__tronePrisma) global.__tronePrisma = createClient();
   return global.__tronePrisma;
 }

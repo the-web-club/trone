@@ -71,7 +71,13 @@ export async function listOrders(
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: { company: { select: { id: true, slug: true, name: true } } },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        createdAt: true,
+        company: { select: { id: true, slug: true, name: true } },
+      },
       skip,
       take,
     }),

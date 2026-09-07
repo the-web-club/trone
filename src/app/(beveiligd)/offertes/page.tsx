@@ -19,7 +19,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { listCompanies } from "@/lib/company-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { formatDate, formatEuroExact } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 import { listQuoteRows } from "@/lib/quote-service";
@@ -50,7 +50,7 @@ export default async function OffertesPage({
       tot: parsed.tot || undefined,
       page: parsed.pagina,
     }),
-    listCompanies(),
+    listCompaniesForSelect(),
   ]);
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);

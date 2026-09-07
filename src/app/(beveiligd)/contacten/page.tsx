@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactsFilters } from "@/components/contact/contacts-filters";
+import { CreateContactListDialog } from "@/components/contact/create-contact-list-dialog";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import {
@@ -48,7 +49,7 @@ export default async function ContactenPage({
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
   const emptyMessage = hasFilters
     ? "Geen contacten gevonden voor deze filters."
-    : "Nog geen contacten. Voeg het eerste contact toe via een bedrijf.";
+    : "Nog geen contacten. Voeg het eerste contact toe.";
 
   return (
     <ListBrowser>
@@ -61,9 +62,15 @@ export default async function ContactenPage({
             : listSummary(result.total, "contact", "contacten"),
         ]}
         actions={
-          <Link href="/bedrijven" className={pageActionSecondaryClassName()}>
-            Naar bedrijven
-          </Link>
+          <>
+            <CreateContactListDialog
+              companies={companies}
+              defaultCompanyId={parsed.bedrijf}
+            />
+            <Link href="/bedrijven" className={pageActionSecondaryClassName()}>
+              Naar bedrijven
+            </Link>
+          </>
         }
       />
       <ContactsFilters values={parsed} companies={companies} />
@@ -84,9 +91,17 @@ export default async function ContactenPage({
                   {!hasFilters ? (
                     <>
                       {" "}
-                      <Link href="/bedrijven" className="text-fg hover:underline">
-                        Open bedrijven
-                      </Link>
+                      <CreateContactListDialog
+                        companies={companies}
+                        trigger={
+                          <button
+                            type="button"
+                            className="text-fg hover:underline"
+                          >
+                            Nieuw contact
+                          </button>
+                        }
+                      />
                     </>
                   ) : null}
                 </TableEmptyRow>

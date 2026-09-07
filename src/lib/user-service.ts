@@ -35,6 +35,16 @@ export async function listUsers() {
   });
 }
 
+export async function listUsersForSelect(): Promise<
+  Array<{ id: string; name: string }>
+> {
+  const prisma = getPrismaClient();
+  return prisma.user.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
 export async function listStaffRows(filters?: {
   query?: string;
   role?: string;

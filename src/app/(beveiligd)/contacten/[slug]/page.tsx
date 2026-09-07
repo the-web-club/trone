@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { updateContactAction } from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactForm } from "@/components/contact/contact-form";
-import { TaskSection } from "@/components/task/task-section";
-import { Timeline } from "@/components/timeline/timeline";
+import {
+  ContactTimeline,
+  EntityTasks,
+} from "@/components/detail/entity-activity";
+import {
+  DetailTaskSkeleton,
+  DetailTimelineSkeleton,
+} from "@/components/detail/detail-skeletons";
 import { CompanyLink, DealLink } from "@/components/entity-links";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +31,6 @@ import { getContactCompanyId } from "@/lib/contact-company";
 import { contactPath } from "@/lib/paths";
 import { isAppError } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
-import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
-import { listTimelineForContact } from "@/lib/timeline-service";
 
 export async function generateMetadata({
   params,
@@ -47,21 +52,15 @@ export default async function ContactDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await requireSession();
-  const contact = await getContact(slug).catch((error) => {
-    if (isAppError(error) && error.status === 404) notFound();
-    throw error;
-  });
+  const [session, contact] = await Promise.all([
+    requireSession(),
+    getContact(slug).catch((error) => {
+      if (isAppError(error) && error.status === 404) notFound();
+      throw error;
+    }),
+  ]);
   if (slug !== contact.slug) redirect(contactPath(contact));
   const companyId = getContactCompanyId(contact);
-  const [events, tasks, assignees] = await Promise.all([
-    listTimelineForContact(contact.id),
-    listOpenTasksForEntity({
-      contactId: contact.id,
-      companyId: companyId ?? undefined,
-    }),
-    listActiveAssignees(),
-  ]);
   const name = formatPersonName(contact.firstName, contact.lastName);
 
   return (
@@ -152,19 +151,17 @@ export default async function ContactDetailPage({
         </TableContainer>
       </section>
 
-      <TaskSection
-        tasks={tasks}
-        currentUserId={session.user.id}
-        assignees={assignees}
-        contactId={contact.id}
-        companyId={companyId}
-      />
+      <Suspense fallback={<DetailTaskSkeleton />}>
+        <EntityTasks
+          currentUserId={session.user.id}
+          contactId={contact.id}
+          companyId={companyId}
+        />
+      </Suspense>
 
-      <Timeline
-        events={events}
-        contactId={contact.id}
-        companyId={companyId}
-      />
+      <Suspense fallback={<DetailTimelineSkeleton />}>
+        <ContactTimeline contactId={contact.id} companyId={companyId} />
+      </Suspense>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { Prisma } from "@/generated/prisma/client";
 import { nextCompanySlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
@@ -22,12 +23,12 @@ export async function listCompanies(query?: string) {
 }
 
 export async function listCompaniesForSelect(): Promise<
-  Array<{ id: string; name: string }>
+  Array<{ id: string; slug: string; name: string }>
 > {
   const prisma = getPrismaClient();
   return prisma.company.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, slug: true, name: true },
   });
 }
 
@@ -52,7 +53,16 @@ function buildCompanyListWhere(
 
 export async function listCompanyRows(
   filters: CompanyListFilters = {},
-): Promise<PagedList<Awaited<ReturnType<typeof listCompanies>>[number]>> {
+): Promise<
+  PagedList<{
+    id: string;
+    slug: string;
+    name: string;
+    city: string | null;
+    country: string;
+    _count: { contacts: number };
+  }>
+> {
   const prisma = getPrismaClient();
   const where = buildCompanyListWhere(filters);
   const { page, pageSize, skip, take } = paginateArgs(
@@ -65,7 +75,14 @@ export async function listCompanyRows(
     prisma.company.findMany({
       where,
       orderBy: { name: "asc" },
-      include: { _count: { select: { contacts: true } } },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        city: true,
+        country: true,
+        _count: { select: { contacts: true } },
+      },
       skip,
       take,
     }),
@@ -97,43 +114,45 @@ export async function listCompanyCountries() {
   return rows.map((row) => row.country).filter(Boolean);
 }
 
-export async function getCompany(id: string) {
-  const prisma = getPrismaClient();
-  const company = await prisma.company.findUnique({
-    where: whereIdOrSlug(id),
-    include: {
-      contacts: {
-        orderBy: [{ isPrimary: "desc" }, { firstName: "asc" }],
-      },
-      deals: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          status: true,
-          contact: {
-            select: {
-              id: true,
-              slug: true,
-              firstName: true,
-              lastName: true,
+export const getCompany = cache(
+  async function getCompany(id: string) {
+    const prisma = getPrismaClient();
+    const company = await prisma.company.findUnique({
+      where: whereIdOrSlug(id),
+      include: {
+        contacts: {
+          orderBy: [{ isPrimary: "desc" }, { firstName: "asc" }],
+        },
+        deals: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            status: true,
+            contact: {
+              select: {
+                id: true,
+                slug: true,
+                firstName: true,
+                lastName: true,
+              },
             },
-          },
-          stage: {
-            select: { name: true, isWon: true, isLost: true },
+            stage: {
+              select: { name: true, isWon: true, isLost: true },
+            },
           },
         },
       },
-    },
-  });
+    });
 
-  if (!company) {
-    throw new AppError("Bedrijf niet gevonden.", "NOT_FOUND", 404);
-  }
+    if (!company) {
+      throw new AppError("Bedrijf niet gevonden.", "NOT_FOUND", 404);
+    }
 
-  return company;
-}
+    return company;
+  },
+);
 
 function toCompanyData(input: CompanyInput) {
   return {

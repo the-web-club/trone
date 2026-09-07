@@ -1,6 +1,12 @@
 export const LIST_PAGE_SIZE = 25;
 export const LIST_SEARCH_MIN_ALPHANUMERIC = 3;
 
+/**
+ * Hard cap for unbounded activity feeds (timeline, work log).
+ * Newest first; real UI pagination can come later.
+ */
+export const ACTIVITY_FEED_CAP = 200;
+
 /** Letters and digits only; spaces and punctuation do not count toward the minimum. */
 export function alphanumericLength(value: string): number {
   return value.replace(/[^\p{L}\p{N}]/gu, "").length;

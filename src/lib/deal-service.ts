@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { DealStatus, Prisma } from "@/generated/prisma/client";
 import {
   endExclusiveOfCalendarDate,
@@ -24,15 +25,19 @@ import type {
   DealStatusFilter,
 } from "@/lib/deals-query";
 
-export async function listDealStages() {
-  const prisma = getPrismaClient();
-  return prisma.dealStage.findMany({ orderBy: { sortOrder: "asc" } });
-}
+export const listDealStages = cache(
+  async function listDealStages() {
+    const prisma = getPrismaClient();
+    return prisma.dealStage.findMany({ orderBy: { sortOrder: "asc" } });
+  },
+);
 
-export async function listLeadSources() {
-  const prisma = getPrismaClient();
-  return prisma.leadSource.findMany({ orderBy: { name: "asc" } });
-}
+export const listLeadSources = cache(
+  async function listLeadSources() {
+    const prisma = getPrismaClient();
+    return prisma.leadSource.findMany({ orderBy: { name: "asc" } });
+  },
+);
 
 export async function listDealsForSelect(companyId?: string | null) {
   const prisma = getPrismaClient();
@@ -60,17 +65,29 @@ export type DealListFilters = {
   pageSize?: number;
 };
 
-const dealListInclude = {
+const dealListSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  companyId: true,
+  contactId: true,
+  stageId: true,
+  sourceId: true,
+  ownerUserId: true,
+  valueEstimate: true,
+  status: true,
+  expectedClose: true,
+  createdAt: true,
   company: { select: { id: true, slug: true, name: true } },
   contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
-  stage: true,
+  stage: { select: { id: true, name: true, isWon: true, isLost: true } },
   source: { select: { id: true, name: true } },
   quotes: {
-    orderBy: { updatedAt: "desc" },
+    orderBy: { updatedAt: "desc" as const },
     take: 1,
     select: { id: true, quoteNumber: true, status: true },
   },
-} as const;
+} satisfies Prisma.DealSelect;
 
 export const DEAL_LIST_PAGE_SIZE = 25;
 const KANBAN_LIST_CAP = 1000;
@@ -180,7 +197,7 @@ function buildDealOrderBy(
 }
 
 export type DealListItem = Prisma.DealGetPayload<{
-  include: typeof dealListInclude;
+  select: typeof dealListSelect;
 }>;
 
 export async function listDeals(
@@ -204,7 +221,7 @@ export async function listDeals(
     prisma.deal.count({ where }),
     prisma.deal.findMany({
       where,
-      include: dealListInclude,
+      select: dealListSelect,
       orderBy: buildDealOrderBy(filters.sortering),
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -227,7 +244,7 @@ export async function listAllDeals(
     prisma.deal.count({ where }),
     prisma.deal.findMany({
       where,
-      include: dealListInclude,
+      select: dealListSelect,
       orderBy: buildDealOrderBy(filters.sortering),
       take,
     }),
@@ -268,6 +285,7 @@ export type DealFilterFacets = {
 /**
  * Facet counts for the leads filter bar.
  * Each dimension ignores its own filter so counts stay meaningful.
+ * Four groupBy queries; totals/unassigned are derived from the groups.
  */
 export async function getDealFilterFacets(
   filters: DealListFilters = {},
@@ -292,85 +310,71 @@ export async function getDealFilterFacets(
     currentUserId,
   );
 
-  const [
-    stageTotal,
-    stageGroups,
-    sourceTotal,
-    unassignedSource,
-    sourceGroups,
-    ownerTotal,
-    unassignedOwner,
-    assignedToMe,
-    ownerGroups,
-    statusTotal,
-    statusGroups,
-  ] = await Promise.all([
-    prisma.deal.count({ where: stageWhere }),
-    prisma.deal.groupBy({
-      by: ["stageId"],
-      where: stageWhere,
-      _count: { _all: true },
-    }),
-    prisma.deal.count({ where: sourceWhere }),
-    prisma.deal.count({
-      where: { AND: [sourceWhere, { sourceId: null }] },
-    }),
-    prisma.deal.groupBy({
-      by: ["sourceId"],
-      where: { AND: [sourceWhere, { sourceId: { not: null } }] },
-      _count: { _all: true },
-    }),
-    prisma.deal.count({ where: ownerWhere }),
-    prisma.deal.count({
-      where: { AND: [ownerWhere, { ownerUserId: null }] },
-    }),
-    currentUserId
-      ? prisma.deal.count({
-          where: { AND: [ownerWhere, { ownerUserId: currentUserId }] },
-        })
-      : Promise.resolve(0),
-    prisma.deal.groupBy({
-      by: ["ownerUserId"],
-      where: { AND: [ownerWhere, { ownerUserId: { not: null } }] },
-      _count: { _all: true },
-    }),
-    prisma.deal.count({ where: statusWhere }),
-    prisma.deal.groupBy({
-      by: ["status"],
-      where: statusWhere,
-      _count: { _all: true },
-    }),
-  ]);
+  const [stageGroups, sourceGroups, ownerGroups, statusGroups] =
+    await Promise.all([
+      prisma.deal.groupBy({
+        by: ["stageId"],
+        where: stageWhere,
+        _count: { _all: true },
+      }),
+      prisma.deal.groupBy({
+        by: ["sourceId"],
+        where: sourceWhere,
+        _count: { _all: true },
+      }),
+      prisma.deal.groupBy({
+        by: ["ownerUserId"],
+        where: ownerWhere,
+        _count: { _all: true },
+      }),
+      prisma.deal.groupBy({
+        by: ["status"],
+        where: statusWhere,
+        _count: { _all: true },
+      }),
+    ]);
 
   const byStatus: Partial<Record<DealStatus, number>> = {};
   for (const group of statusGroups) {
     byStatus[group.status] = group._count._all;
   }
 
+  const unassignedSource =
+    sourceGroups.find((group) => group.sourceId == null)?._count._all ?? 0;
+  const unassignedOwner =
+    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
+
   return {
-    stageTotal,
+    stageTotal: sumGroupCounts(stageGroups),
     byStage: stageGroups.map((group) => ({
       stageId: group.stageId,
       count: group._count._all,
     })),
-    sourceTotal,
+    sourceTotal: sumGroupCounts(sourceGroups),
     unassignedSource,
     bySource: sourceGroups.flatMap((group) =>
       group.sourceId
         ? [{ sourceId: group.sourceId, count: group._count._all }]
         : [],
     ),
-    ownerTotal,
+    ownerTotal: sumGroupCounts(ownerGroups),
     unassignedOwner,
-    assignedToMe,
+    assignedToMe: currentUserId
+      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
+          ?._count._all ?? 0)
+      : 0,
     byOwner: ownerGroups.flatMap((group) =>
       group.ownerUserId
         ? [{ userId: group.ownerUserId, count: group._count._all }]
         : [],
     ),
-    statusTotal,
+    statusTotal: sumGroupCounts(statusGroups),
     byStatus,
   };
+}
+
+function sumGroupCounts(groups: Array<{ _count: { _all: number } }>): number {
+  return groups.reduce((sum, group) => sum + group._count._all, 0);
 }
 
 function csvCell(value: string): string {
@@ -438,47 +442,49 @@ export async function exportDealsCsv(
   };
 }
 
-export async function getDeal(id: string) {
-  const prisma = getPrismaClient();
-  const deal = await prisma.deal.findUnique({
-    where: whereIdOrSlug(id),
-    include: {
-      company: { select: { id: true, slug: true, name: true } },
-      contact: {
-        select: {
-          id: true,
-          slug: true,
-          firstName: true,
-          lastName: true,
-          companyId: true,
+export const getDeal = cache(
+  async function getDeal(id: string) {
+    const prisma = getPrismaClient();
+    const deal = await prisma.deal.findUnique({
+      where: whereIdOrSlug(id),
+      include: {
+        company: { select: { id: true, slug: true, name: true } },
+        contact: {
+          select: {
+            id: true,
+            slug: true,
+            firstName: true,
+            lastName: true,
+            companyId: true,
+          },
         },
-      },
-      stage: true,
-      source: { select: { id: true, name: true } },
-      quotes: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          orders: {
-            orderBy: { createdAt: "desc" },
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              createdAt: true,
-              total: true,
+        stage: true,
+        source: { select: { id: true, name: true } },
+        quotes: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            orders: {
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                orderNumber: true,
+                status: true,
+                createdAt: true,
+                total: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  if (!deal) {
-    throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
-  }
+    if (!deal) {
+      throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
+    }
 
-  return deal;
-}
+    return deal;
+  },
+);
 
 function statusForStage(stage: { isWon: boolean; isLost: boolean }): DealStatus {
   if (stage.isWon) return "WON";

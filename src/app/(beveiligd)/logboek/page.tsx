@@ -6,8 +6,8 @@ import { SelectMenu } from "@/components/ui/select";
 import { WorkLogForm } from "@/components/worklog/work-log-form";
 import { WorkLogList } from "@/components/worklog/work-log-list";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
-import { listCompanies } from "@/lib/company-service";
-import { listUsers } from "@/lib/user-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
+import { listUsersForSelect } from "@/lib/user-service";
 import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
 import {
   parseWorkLogFilters,
@@ -40,8 +40,8 @@ export default async function LogboekPage({
 
   const [logs, users, companies, orders] = await Promise.all([
     listWorkLogs(filters),
-    listUsers(),
-    listCompanies(),
+    listUsersForSelect(),
+    listCompaniesForSelect(),
     listOrdersForWorkLog(),
   ]);
 
