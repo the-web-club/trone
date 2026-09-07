@@ -16,15 +16,21 @@ describe("mailFromAddress", () => {
     );
   });
 
-  it("zet alleen een e-mailadres in de merknaam", () => {
-    expect(mailFromAddress("ops@example.com")).toBe(
-      `${MAIL_SENDER_NAME} <ops@example.com>`,
+  it("negeert een onbevestigd of verouderd from-adres", () => {
+    expect(mailFromAddress("noreply@troneseating.nl")).toBe(
+      `${MAIL_SENDER_NAME} <${MAIL_SENDER_EMAIL}>`,
+    );
+    expect(mailFromAddress("Support <help@example.com>")).toBe(
+      `${MAIL_SENDER_NAME} <${MAIL_SENDER_EMAIL}>`,
     );
   });
 
-  it("laat een al geformatteerde from-waarde intact", () => {
-    expect(mailFromAddress("Support <help@example.com>")).toBe(
-      "Support <help@example.com>",
+  it("laat de geverifieerde updates-afzender intact", () => {
+    expect(
+      mailFromAddress(`Support <${MAIL_SENDER_EMAIL}>`),
+    ).toBe(`Support <${MAIL_SENDER_EMAIL}>`);
+    expect(mailFromAddress(MAIL_SENDER_EMAIL)).toBe(
+      `${MAIL_SENDER_NAME} <${MAIL_SENDER_EMAIL}>`,
     );
   });
 });

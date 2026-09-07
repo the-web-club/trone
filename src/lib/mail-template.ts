@@ -32,10 +32,22 @@ function stripSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function senderFromOverride(override?: string | null) {
+  const raw = override?.trim();
+  if (!raw) return null;
+  if (/<[^>]+>/.test(raw)) {
+    return raw.toLowerCase().includes(MAIL_SENDER_EMAIL) ? raw : null;
+  }
+  if (raw.toLowerCase() === MAIL_SENDER_EMAIL) {
+    return `${MAIL_SENDER_NAME} <${raw}>`;
+  }
+  return null;
+}
+
 export function mailFromAddress(override?: string | null) {
-  const raw = override?.trim() || MAIL_SENDER_EMAIL;
-  if (/<[^>]+>/.test(raw)) return raw;
-  return `${MAIL_SENDER_NAME} <${raw}>`;
+  return (
+    senderFromOverride(override) ?? `${MAIL_SENDER_NAME} <${MAIL_SENDER_EMAIL}>`
+  );
 }
 
 export function mailAssetOrigin(

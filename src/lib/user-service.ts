@@ -214,12 +214,27 @@ async function countActiveAdmins(exceptUserId?: string) {
   });
 }
 
+async function requestHeaders() {
+  try {
+    return await headers();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function inviteUser(input: InviteUserInput) {
   const prisma = getPrismaClient();
   const existing = await prisma.user.findUnique({
     where: { email: input.email.toLowerCase() },
+    include: {
+      accounts: { select: { providerId: true, password: true } },
+    },
   });
   if (existing) {
+    if (staffStatus(existing) === "invited") {
+      await sendInvitation(existing.id);
+      return existing;
+    }
     throw new AppError("Dit e-mailadres is al in gebruik.", "VALIDATION");
   }
 
@@ -243,14 +258,22 @@ export async function sendInvitation(userId: string) {
     throw new AppError("Een gedeactiveerde medewerker kan geen uitnodiging ontvangen.", "VALIDATION");
   }
 
-  const request = await getAuth().api.requestPasswordReset({
-    body: {
-      email: user.email,
-      redirectTo: "/wachtwoord-instellen",
-    },
-  });
+  try {
+    const requestHeadersValue = await requestHeaders();
+    const request = await getAuth().api.requestPasswordReset({
+      body: {
+        email: user.email,
+        redirectTo: "/wachtwoord-instellen",
+      },
+      ...(requestHeadersValue ? { headers: requestHeadersValue } : {}),
+    });
 
-  if (!request.status) {
+    if (!request.status) {
+      throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
+    }
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error("Uitnodiging versturen mislukt:", error);
     throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
   }
 }
