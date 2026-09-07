@@ -6,13 +6,20 @@ import { requireSession } from "@/lib/auth-session";
 import {
   addDealActivity,
   createDeal,
+  getDeal,
   listDealsForSelect,
   moveDealToStage,
   setDealHot,
   setDealOwner,
   updateDeal,
 } from "@/lib/deal-service";
-import { parseDealActivityForm, parseDealForm } from "@/lib/deal-validation";
+import {
+  dealRecordToInput,
+  mergeDealPatch,
+  parseDealActivityForm,
+  parseDealForm,
+  type DealPatch,
+} from "@/lib/deal-validation";
 import { toActionError } from "@/lib/errors";
 import { dealPath } from "@/lib/paths";
 
@@ -60,6 +67,22 @@ export async function updateDealAction(
     const deal = await updateDeal(id, input, session.user.id);
     revalidateDealPaths(deal);
     return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function patchDealAction(
+  dealId: string,
+  patch: DealPatch,
+): Promise<{ error?: string; slug?: string }> {
+  try {
+    const session = await requireSession();
+    const current = await getDeal(dealId);
+    const input = mergeDealPatch(dealRecordToInput(current), patch);
+    const deal = await updateDeal(current.id, input, session.user.id);
+    revalidateDealPaths(deal);
+    return { slug: deal.slug };
   } catch (error) {
     return toActionError(error);
   }

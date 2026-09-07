@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { createTaskAction } from "@/app/(beveiligd)/actions/task-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -15,14 +15,23 @@ export function TaskForm({
   dealId,
   contactId,
   companyId,
+  onSuccess,
 }: {
   currentUserId: string;
   assignees: Array<{ id: string; name: string }>;
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(createTaskAction, null);
+  const notifiedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!state?.createdAt || notifiedAt.current === state.createdAt) return;
+    notifiedAt.current = state.createdAt;
+    onSuccess?.();
+  }, [state?.createdAt, onSuccess]);
 
   return (
     <form

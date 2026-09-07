@@ -124,13 +124,13 @@ export function QuoteForm({
 
   function handleCompanyChange(nextCompanyId: string) {
     const applied = onCompanyChange(nextCompanyId);
-    if (applied != null) loadDeals(applied);
+    if (applied != null) loadDeals(applied.companyId);
   }
 
   function handleContactChange(nextContactId: string) {
     const previousCompanyId = companyId;
-    const nextCompanyId = onContactChange(nextContactId);
-    if (nextCompanyId !== previousCompanyId) loadDeals(nextCompanyId);
+    const next = onContactChange(nextContactId);
+    if (next.companyId !== previousCompanyId) loadDeals(next.companyId);
   }
 
   const pricedItems = items.map((item) => {

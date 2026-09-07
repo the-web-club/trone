@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -12,21 +12,36 @@ export function TimelineComposer({
   dealId,
   contactId,
   companyId,
+  plain = false,
+  onSuccess,
 }: {
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
+  plain?: boolean;
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
     createTimelineEventAction,
     null,
   );
+  const notifiedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!state?.loggedAt || notifiedAt.current === state.loggedAt) return;
+    notifiedAt.current = state.loggedAt;
+    onSuccess?.();
+  }, [state?.loggedAt, onSuccess]);
 
   return (
     <form
       key={state?.loggedAt ?? "new"}
       action={formAction}
-      className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3"
+      className={
+        plain
+          ? "flex flex-col gap-3"
+          : "flex flex-col gap-3 rounded-md border border-border bg-surface p-3"
+      }
     >
       {dealId ? <input type="hidden" name="dealId" value={dealId} /> : null}
       {contactId ? (

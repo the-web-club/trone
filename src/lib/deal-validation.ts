@@ -34,8 +34,29 @@ export const dealSchema = z.object({
 
 export type DealInput = z.infer<typeof dealSchema>;
 
+export type DealPatch = {
+  title?: string;
+  companyId?: string | null;
+  contactId?: string | null;
+  stageId?: string;
+  sourceId?: string | null;
+  valueEstimate?: number | null;
+};
+
+function parseDealInput(data: unknown): DealInput {
+  const parsed = dealSchema.safeParse(data);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    throw new AppError(
+      first?.message ?? "Controleer het formulier.",
+      "VALIDATION",
+    );
+  }
+  return parsed.data;
+}
+
 export function parseDealForm(formData: FormData): DealInput {
-  const parsed = dealSchema.safeParse({
+  return parseDealInput({
     title: formData.get("title"),
     companyId: formData.get("companyId"),
     contactId: formData.get("contactId"),
@@ -43,13 +64,54 @@ export function parseDealForm(formData: FormData): DealInput {
     sourceId: formData.get("sourceId"),
     valueEstimate: formData.get("valueEstimate"),
   });
+}
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
+export function dealRecordToInput(deal: {
+  title: string;
+  companyId: string | null;
+  contactId: string | null;
+  stageId: string;
+  sourceId: string | null;
+  valueEstimate?: { toString(): string } | number | string | null;
+}): DealInput {
+  const raw = deal.valueEstimate;
+  let valueEstimate: number | undefined;
+  if (raw != null && raw !== "") {
+    const parsed = Number(typeof raw === "object" ? raw.toString() : raw);
+    if (!Number.isNaN(parsed)) valueEstimate = parsed;
   }
 
-  return parsed.data;
+  return parseDealInput({
+    title: deal.title,
+    companyId: deal.companyId ?? undefined,
+    contactId: deal.contactId ?? undefined,
+    stageId: deal.stageId,
+    sourceId: deal.sourceId ?? undefined,
+    valueEstimate,
+  });
+}
+
+export function mergeDealPatch(current: DealInput, patch: DealPatch): DealInput {
+  return parseDealInput({
+    title: patch.title ?? current.title,
+    companyId:
+      patch.companyId !== undefined
+        ? (patch.companyId ?? undefined)
+        : current.companyId,
+    contactId:
+      patch.contactId !== undefined
+        ? (patch.contactId ?? undefined)
+        : current.contactId,
+    stageId: patch.stageId ?? current.stageId,
+    sourceId:
+      patch.sourceId !== undefined
+        ? (patch.sourceId ?? undefined)
+        : current.sourceId,
+    valueEstimate:
+      patch.valueEstimate !== undefined
+        ? (patch.valueEstimate ?? undefined)
+        : current.valueEstimate,
+  });
 }
 
 const activityTypes = ["NOTE", "CALL", "EMAIL", "MEETING", "DEMO"] as const;

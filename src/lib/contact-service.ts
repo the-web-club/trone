@@ -12,6 +12,7 @@ import { paginateArgs } from "@/lib/list-query";
 
 export type ContactSelectOption = {
   id: string;
+  slug: string;
   firstName: string;
   lastName: string | null;
   companyId: string | null;
@@ -28,6 +29,7 @@ export async function listContactsForSelect(
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     select: {
       id: true,
+      slug: true,
       firstName: true,
       lastName: true,
       companyId: true,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CollapsibleTaskForm } from "@/components/task/collapsible-task-form";
 import { CompleteTaskButton } from "@/components/task/complete-task-button";
 import { TaskForm } from "@/components/task/task-form";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ export function TaskSection({
   dealId,
   contactId,
   companyId,
+  compact = false,
 }: {
   tasks: TaskRecord[];
   currentUserId: string;
@@ -28,7 +30,28 @@ export function TaskSection({
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
+  compact?: boolean;
 }) {
+  const form = compact ? (
+    <CollapsibleTaskForm
+      currentUserId={currentUserId}
+      assignees={assignees}
+      dealId={dealId}
+      contactId={contactId}
+      companyId={companyId}
+    />
+  ) : (
+    <div className="rounded-md border border-border bg-surface p-3">
+      <TaskForm
+        currentUserId={currentUserId}
+        assignees={assignees}
+        dealId={dealId}
+        contactId={contactId}
+        companyId={companyId}
+      />
+    </div>
+  );
+
   return (
     <section className="flex flex-col gap-4">
       <div className="page-header">
@@ -38,9 +61,11 @@ export function TaskSection({
         </Link>
       </div>
       {tasks.length === 0 ? (
-        <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
-          Geen openstaande taken.
-        </p>
+        compact ? null : (
+          <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
+            Geen openstaande taken.
+          </p>
+        )
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((task) => {
@@ -96,15 +121,7 @@ export function TaskSection({
           })}
         </ul>
       )}
-      <div className="rounded-md border border-border bg-surface p-3">
-        <TaskForm
-          currentUserId={currentUserId}
-          assignees={assignees}
-          dealId={dealId}
-          contactId={contactId}
-          companyId={companyId}
-        />
-      </div>
+      {form}
     </section>
   );
 }
