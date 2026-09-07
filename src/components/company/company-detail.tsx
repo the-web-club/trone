@@ -3,8 +3,12 @@
 import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { patchCompanyAction } from "@/app/(beveiligd)/actions/company-actions";
+import {
+  deleteCompanyAction,
+  patchCompanyAction,
+} from "@/app/(beveiligd)/actions/company-actions";
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
+import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
 import { DetailColumns, DetailSection } from "@/components/detail/detail-layout";
 import { InlineSelectField } from "@/components/detail/inline-select-field";
@@ -56,11 +60,13 @@ export function CompanyDetail({
   contacts,
   leads,
   activity,
+  isAdmin = false,
 }: {
   company: CompanyDetailRecord;
   contacts: CompanyDetailContact[];
   leads: ReactNode;
   activity: ReactNode;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
 
@@ -92,6 +98,16 @@ export function CompanyDetail({
             </Link>
           </div>
         </div>
+        {isAdmin ? (
+          <div className="page-actions">
+            <DeleteEntityButton
+              id={company.id}
+              action={deleteCompanyAction}
+              title="Bedrijf verwijderen"
+              description={`Weet je zeker dat je ${company.name} wilt verwijderen? Contacten en leads blijven bestaan, zonder koppeling naar dit bedrijf. Bedrijven met offertes, orders of facturen kunnen niet worden verwijderd.`}
+            />
+          </div>
+        ) : null}
       </header>
 
       <DetailColumns

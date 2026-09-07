@@ -1,15 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSession } from "@/lib/auth-session";
+import { redirect } from "next/navigation";
+import { requireAdmin, requireSession } from "@/lib/auth-session";
 import { parseContactForm } from "@/lib/contact-validation";
 import {
   createContact,
+  deleteContact,
   listContactsForSelect,
   updateContact,
 } from "@/lib/contact-service";
 import { toActionError } from "@/lib/errors";
-import { contactPath } from "@/lib/paths";
+import { companyPath, contactPath } from "@/lib/paths";
 
 export async function createContactAction(
   _prev: { error?: string } | null,
@@ -67,7 +69,36 @@ export async function updateContactAction(
   }
 }
 
+export async function deleteContactAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+    const id = String(formData.get("id") ?? "");
+    const contact = await deleteContact(id);
+    revalidatePath("/contacten", "layout");
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath("/leads", "layout");
+    revalidatePath("/overzicht");
+    redirect(contact.company ? companyPath(contact.company) : "/contacten");
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
+    return toActionError(error);
+  }
+}
+
 export async function listContactsForSelectAction(companyId?: string | null) {
   await requireSession();
   return listContactsForSelect(companyId);
+}
+
+function isNextRedirect(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    String((error as { digest: string }).digest).startsWith("NEXT_REDIRECT")
+  );
 }

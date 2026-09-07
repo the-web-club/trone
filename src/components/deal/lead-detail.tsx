@@ -3,8 +3,12 @@
 import { type ReactNode, Suspense, use, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { patchDealAction } from "@/app/(beveiligd)/actions/deal-actions";
+import {
+  deleteDealAction,
+  patchDealAction,
+} from "@/app/(beveiligd)/actions/deal-actions";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
+import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   COMPANY_SWITCH_WARNING,
   useCompanyContactFields,
@@ -83,12 +87,14 @@ export function LeadDetail({
   relationOptions,
   quotes,
   activity,
+  isAdmin = false,
 }: {
   deal: LeadDetailRecord;
   stages: LeadDetailStage[];
   relationOptions: Promise<LeadRelationOptions>;
   quotes: ReactNode;
   activity: ReactNode;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const company = deal.company;
@@ -172,6 +178,14 @@ export function LeadDetail({
         </div>
         <div className="page-actions">
           <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
+          {isAdmin ? (
+            <DeleteEntityButton
+              id={deal.id}
+              action={deleteDealAction}
+              title="Lead verwijderen"
+              description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
+            />
+          ) : null}
           <Link
             href={newQuotePath({ deal, company })}
             className={pageActionPrimaryClassName()}

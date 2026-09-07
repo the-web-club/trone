@@ -11,7 +11,7 @@ import {
   DetailTaskSkeleton,
   DetailTimelineSkeleton,
 } from "@/components/detail/detail-skeletons";
-import { requireSession } from "@/lib/auth-session";
+import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
@@ -98,6 +98,7 @@ export default async function LeadDetailPage({
         isLost: stage.isLost,
       }))}
       relationOptions={relationOptions}
+      isAdmin={isAdminSession(session)}
       quotes={
         <LeadQuotesTable
           quotes={deal.quotes.map((quote) => ({

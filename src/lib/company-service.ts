@@ -263,3 +263,41 @@ export async function updateCompany(id: string, input: CompanyInput) {
     },
   });
 }
+
+function countLabel(count: number, one: string, many: string): string | null {
+  if (count <= 0) return null;
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+function joinNlAnd(parts: string[]): string {
+  if (parts.length === 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} en ${parts.at(-1)}`;
+}
+
+export async function deleteCompany(id: string) {
+  const current = await getCompany(id);
+  const prisma = getPrismaClient();
+  const [quotes, orders, invoices] = await Promise.all([
+    prisma.quote.count({ where: { companyId: current.id } }),
+    prisma.order.count({ where: { companyId: current.id } }),
+    prisma.invoice.count({ where: { companyId: current.id } }),
+  ]);
+
+  const related = [
+    countLabel(quotes, "offerte", "offertes"),
+    countLabel(orders, "order", "orders"),
+    countLabel(invoices, "factuur", "facturen"),
+  ].filter((label): label is string => Boolean(label));
+
+  if (related.length > 0) {
+    const total = quotes + orders + invoices;
+    throw new AppError(
+      `Dit bedrijf kan niet worden verwijderd omdat er nog ${joinNlAnd(related)} aan gekoppeld ${total === 1 ? "is" : "zijn"}.`,
+      "CONFLICT",
+      409,
+    );
+  }
+
+  await prisma.company.delete({ where: { id: current.id } });
+  return current;
+}

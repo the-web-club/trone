@@ -688,3 +688,10 @@ export async function syncDealValueFromQuotes(
     data: { valueEstimate: sumActiveQuoteTotals(quotes) },
   });
 }
+
+export async function deleteDeal(id: string) {
+  const current = await getDeal(id);
+  const prisma = getPrismaClient();
+  await prisma.deal.delete({ where: { id: current.id } });
+  return current;
+}

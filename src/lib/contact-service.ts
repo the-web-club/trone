@@ -191,3 +191,10 @@ export async function updateContact(
     },
   });
 }
+
+export async function deleteContact(id: string) {
+  const current = await getContact(id);
+  const prisma = getPrismaClient();
+  await prisma.contact.delete({ where: { id: current.id } });
+  return current;
+}

@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { updateContactAction } from "@/app/(beveiligd)/actions/contact-actions";
+import {
+  deleteContactAction,
+  updateContactAction,
+} from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactForm } from "@/components/contact/contact-form";
+import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   ContactTimeline,
   EntityTasks,
@@ -25,7 +29,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { requireSession } from "@/lib/auth-session";
+import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
 import { contactPath } from "@/lib/paths";
@@ -62,6 +66,7 @@ export default async function ContactDetailPage({
   if (slug !== contact.slug) redirect(contactPath(contact));
   const companyId = getContactCompanyId(contact);
   const name = formatPersonName(contact.firstName, contact.lastName);
+  const isAdmin = isAdminSession(session);
 
   return (
     <div className="flex flex-col gap-8">
@@ -81,7 +86,19 @@ export default async function ContactDetailPage({
           </>
         }
         actions={
-          contact.isPrimary ? <Badge tone="info">Primair</Badge> : undefined
+          contact.isPrimary || isAdmin ? (
+            <>
+              {contact.isPrimary ? <Badge tone="info">Primair</Badge> : null}
+              {isAdmin ? (
+                <DeleteEntityButton
+                  id={contact.id}
+                  action={deleteContactAction}
+                  title="Contact verwijderen"
+                  description={`Weet je zeker dat je ${name} wilt verwijderen? Leads, offertes en orders blijven bestaan, zonder koppeling naar dit contact.`}
+                />
+              ) : null}
+            </>
+          ) : undefined
         }
       />
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth-session";
+import { requireAdmin, requireSession } from "@/lib/auth-session";
 import {
   companyRecordToInput,
   mergeCompanyPatch,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/company-validation";
 import {
   createCompany,
+  deleteCompany,
   getCompany,
   updateCompany,
   validateCompanyVat,
@@ -114,6 +115,27 @@ export type ValidateCompanyVatResult = {
   needsConfirmation?: boolean;
   appliedVatRate?: number | null;
 };
+
+export async function deleteCompanyAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+    const id = String(formData.get("id") ?? "");
+    await deleteCompany(id);
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath("/contacten", "layout");
+    revalidatePath("/leads", "layout");
+    revalidatePath("/overzicht");
+    revalidatePath("/kansen");
+    revalidatePath("/logboek");
+    redirect("/bedrijven");
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
+    return toActionError(error);
+  }
+}
 
 export async function validateCompanyVatAction(
   formData: FormData,

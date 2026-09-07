@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth-session";
+import { requireAdmin, requireSession } from "@/lib/auth-session";
 import {
   addDealActivity,
   createDeal,
+  deleteDeal,
   getDeal,
   listDealsForSelect,
   listDealStages,
@@ -145,6 +146,22 @@ export async function createDealActivityAction(
     revalidateDealPaths();
     return {};
   } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function deleteDealAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+    const id = String(formData.get("id") ?? "");
+    await deleteDeal(id);
+    revalidateDealPaths();
+    redirect("/leads");
+  } catch (error) {
+    if (isNextRedirect(error)) throw error;
     return toActionError(error);
   }
 }

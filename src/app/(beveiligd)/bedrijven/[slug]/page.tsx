@@ -80,6 +80,7 @@ export default async function BedrijfDetailPage({
         phone: contact.phone,
         isPrimary: contact.isPrimary,
       }))}
+      isAdmin={isAdminSession(session)}
       leads={
         <CompanyLeadsTable
           leads={company.deals.map((deal) => ({
