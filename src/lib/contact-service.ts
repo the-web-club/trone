@@ -8,7 +8,7 @@ import { getPrismaClient } from "@/lib/db";
 import { getCompany } from "@/lib/company-service";
 import { getContactCompanyId } from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
-import { paginateArgs } from "@/lib/list-query";
+import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
 
 export type ContactSelectOption = {
   id: string;
@@ -58,7 +58,7 @@ export async function listContactRows(filters: ContactListFilters = {}) {
     filters.page,
     filters.pageSize,
   );
-  const query = filters.query?.trim();
+  const query = effectiveSearchQuery(filters.query);
   const and: Prisma.ContactWhereInput[] = [];
   if (query) {
     and.push({

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildCompaniesHref, parseCompaniesSearchParams } from "@/lib/companies-query";
 import { buildContactsHref, parseContactsSearchParams } from "@/lib/contacts-query";
+import {
+  alphanumericLength,
+  effectiveSearchQuery,
+} from "@/lib/list-query";
 import { buildOrdersHref, parseOrdersSearchParams } from "@/lib/orders-query";
 import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
 import { buildStaffHref, parseStaffSearchParams } from "@/lib/staff-query";
@@ -88,6 +92,12 @@ describe("list query helpers", () => {
       bedrijf: "co-1",
       pagina: 1,
     });
+    expect(parseContactsSearchParams({ zoeken: "ab" }).zoeken).toBe("");
+    expect(parseContactsSearchParams({ zoeken: "jan" }).zoeken).toBe("jan");
+    expect(parseContactsSearchParams({ zoeken: "a1b" }).zoeken).toBe("a1b");
+    expect(buildContactsHref({ zoeken: "ab", bedrijf: "", pagina: 1 })).toBe(
+      "/contacten",
+    );
     expect(parseQuotesSearchParams({ status: "expired" }).status).toBe("EXPIRED");
     expect(parseQuotesSearchParams({ status: "foo" }).status).toBe("");
     expect(parseOrdersSearchParams({ status: "ready" }).status).toBe("READY");
@@ -97,5 +107,22 @@ describe("list query helpers", () => {
       status: "invited",
       pagina: 1,
     });
+  });
+});
+
+describe("list search minimum", () => {
+  it("counts letters and digits only", () => {
+    expect(alphanumericLength("ab")).toBe(2);
+    expect(alphanumericLength("J.A")).toBe(2);
+    expect(alphanumericLength("a 1 b")).toBe(3);
+    expect(alphanumericLength("één")).toBe(3);
+  });
+
+  it("requires at least 3 letters or digits before searching", () => {
+    expect(effectiveSearchQuery("ab")).toBe("");
+    expect(effectiveSearchQuery("12")).toBe("");
+    expect(effectiveSearchQuery("jan")).toBe("jan");
+    expect(effectiveSearchQuery("123")).toBe("123");
+    expect(effectiveSearchQuery("  jan  ")).toBe("jan");
   });
 });

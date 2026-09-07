@@ -17,7 +17,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { listCompanies } from "@/lib/company-service";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactRows } from "@/lib/contact-service";
 import {
   buildContactsHref,
@@ -42,7 +42,7 @@ export default async function ContactenPage({
       companyId: parsed.bedrijf || undefined,
       page: parsed.pagina,
     }),
-    listCompanies(),
+    listCompaniesForSelect(),
   ]);
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
@@ -66,13 +66,7 @@ export default async function ContactenPage({
           </Link>
         }
       />
-      <ContactsFilters
-        values={parsed}
-        companies={companies.map((company) => ({
-          id: company.id,
-          name: company.name,
-        }))}
-      />
+      <ContactsFilters values={parsed} companies={companies} />
       <ListBody>
         <TableContainer>
           <Table>

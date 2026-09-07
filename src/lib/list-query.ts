@@ -1,4 +1,21 @@
 export const LIST_PAGE_SIZE = 25;
+export const LIST_SEARCH_MIN_ALPHANUMERIC = 3;
+
+/** Letters and digits only; spaces and punctuation do not count toward the minimum. */
+export function alphanumericLength(value: string): number {
+  return value.replace(/[^\p{L}\p{N}]/gu, "").length;
+}
+
+/** Empty when the term is blank or has too few letters/digits to search. */
+export function effectiveSearchQuery(
+  value: string | null | undefined,
+  minAlphanumeric = LIST_SEARCH_MIN_ALPHANUMERIC,
+): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "";
+  if (alphanumericLength(trimmed) < minAlphanumeric) return "";
+  return trimmed;
+}
 
 export function firstSearchParam(
   params: Record<string, string | string[] | undefined>,

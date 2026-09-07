@@ -10,6 +10,10 @@ import {
   buildContactsHref,
   type ContactsFilterValues,
 } from "@/lib/contacts-query";
+import {
+  alphanumericLength,
+  LIST_SEARCH_MIN_ALPHANUMERIC,
+} from "@/lib/list-query";
 
 const ALL = "__alle__";
 
@@ -33,9 +37,16 @@ export function ContactsFilters({
     );
   }
 
-  const search = useDebouncedUrlSearch(values.zoeken, (zoeken) =>
-    navigate({ zoeken }),
+  const search = useDebouncedUrlSearch(
+    values.zoeken,
+    (zoeken) => navigate({ zoeken }),
+    { delay: 150, minAlphanumeric: LIST_SEARCH_MIN_ALPHANUMERIC },
   );
+  const typedAlphanumeric = alphanumericLength(search.value);
+  const searchHint =
+    typedAlphanumeric > 0 && typedAlphanumeric < LIST_SEARCH_MIN_ALPHANUMERIC
+      ? "Typ minstens 3 letters of cijfers"
+      : undefined;
 
   const companyOptions: SelectOption[] = [
     { value: ALL, label: "Alle bedrijven" },
@@ -60,10 +71,11 @@ export function ContactsFilters({
       searchValue={search.value}
       onSearchChange={search.onChange}
       onSearchClear={search.onClear}
-      searchPlaceholder="Zoek op naam of e-mail"
+      searchPlaceholder="Zoek op naam of e-mail (min. 3 tekens)"
       searchAriaLabel="Zoek contacten"
       chips={chips}
       hasActiveFilters={Boolean(values.zoeken || values.bedrijf)}
+      statusMessage={searchHint}
       onReset={() => replace(buildContactsHref({ zoeken: "", bedrijf: "", pagina: 1 }))}
       isPending={isPending}
     >

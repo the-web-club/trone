@@ -21,6 +21,16 @@ export async function listCompanies(query?: string) {
   });
 }
 
+export async function listCompaniesForSelect(): Promise<
+  Array<{ id: string; name: string }>
+> {
+  const prisma = getPrismaClient();
+  return prisma.company.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
 export type CompanyListFilters = {
   query?: string;
   city?: string;

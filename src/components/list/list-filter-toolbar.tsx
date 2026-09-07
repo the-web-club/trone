@@ -16,6 +16,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/cn";
+import {
+  alphanumericLength,
+  effectiveSearchQuery,
+} from "@/lib/list-query";
 
 export type ListFilterChip = {
   key: string;
@@ -37,6 +41,7 @@ export function ListFilterToolbar({
   hasActiveFilters,
   onReset,
   isPending,
+  statusMessage,
 }: {
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -50,6 +55,7 @@ export function ListFilterToolbar({
   hasActiveFilters: boolean;
   onReset: () => void;
   isPending: boolean;
+  statusMessage?: string;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -86,9 +92,9 @@ export function ListFilterToolbar({
           </PopoverRoot>
         ) : null}
         <FilterBarSpacer />
-        {isPending ? (
+        {isPending || statusMessage ? (
           <span className="text-xs text-fg-subtle" role="status">
-            Bijwerken…
+            {isPending ? "Bijwerken…" : statusMessage}
           </span>
         ) : null}
         {hasActiveFilters ? (
@@ -113,14 +119,23 @@ export function ListFilterToolbar({
   );
 }
 
+export type DebouncedUrlSearchOptions = {
+  delay?: number;
+  minAlphanumeric?: number;
+};
+
 export function useDebouncedUrlSearch(
   valueFromUrl: string,
   commit: (value: string) => void,
-  delay = 250,
+  options: DebouncedUrlSearchOptions = {},
 ) {
+  const delay = options.delay ?? 250;
+  const minAlphanumeric = options.minAlphanumeric ?? 0;
   const [value, setValue] = useState(valueFromUrl);
   const [fromUrl, setFromUrl] = useState(valueFromUrl);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlRef = useRef(valueFromUrl);
+  urlRef.current = valueFromUrl;
 
   if (valueFromUrl !== fromUrl) {
     setFromUrl(valueFromUrl);
@@ -133,16 +148,39 @@ export function useDebouncedUrlSearch(
     };
   }, []);
 
+  function resolvedCommitValue(next: string) {
+    if (minAlphanumeric <= 0) return next;
+    return effectiveSearchQuery(next, minAlphanumeric);
+  }
+
   function onChange(next: string) {
     setValue(next);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => commit(next), delay);
+
+    if (minAlphanumeric > 0) {
+      if (next.trim() && alphanumericLength(next) < minAlphanumeric) {
+        return;
+      }
+    }
+
+    const committed = resolvedCommitValue(next);
+    if (committed === urlRef.current) return;
+
+    const reachedMin =
+      minAlphanumeric > 0 && alphanumericLength(value) < minAlphanumeric;
+    debounceRef.current = setTimeout(
+      () => {
+        if (committed === urlRef.current) return;
+        commit(committed);
+      },
+      reachedMin ? 0 : delay,
+    );
   }
 
   function onClear() {
     setValue("");
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    commit("");
+    if (urlRef.current !== "") commit("");
   }
 
   return { value, onChange, onClear };
