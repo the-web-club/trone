@@ -1,5 +1,6 @@
+import { CollapsibleWorkLogForm } from "@/components/worklog/collapsible-work-log-form";
 import { WorkLogForm } from "@/components/worklog/work-log-form";
-import { WorkLogList } from "@/components/worklog/work-log-list";
+import { WorkLogList, type WorkLogListItem } from "@/components/worklog/work-log-list";
 import type { WorkLogCompanyOption, WorkLogOrderOption } from "@/components/worklog/work-log-link-fields";
 import type { WorkLogCategory } from "@/lib/worklog-validation";
 
@@ -12,7 +13,12 @@ type WorkLogRecord = {
   userId: string;
   companyId: string | null;
   orderId: string | null;
-  user: { id: string; name: string };
+  user: {
+    id: string;
+    name: string;
+    image?: string | null;
+    slug?: string | null;
+  };
   company: { id: string; slug: string; name: string } | null;
   order: { id: string; orderNumber: string } | null;
 };
@@ -28,6 +34,7 @@ export function WorkLogSection({
   lockCompany,
   lockOrder,
   title = "Werkzaamheden",
+  compact = false,
 }: {
   logs: WorkLogRecord[];
   companies: WorkLogCompanyOption[];
@@ -39,37 +46,63 @@ export function WorkLogSection({
   lockCompany?: boolean;
   lockOrder?: boolean;
   title?: string;
+  compact?: boolean;
 }) {
+  const form = compact ? (
+    <CollapsibleWorkLogForm
+      companies={companies}
+      orders={orders}
+      defaultCompanyId={defaultCompanyId}
+      defaultOrderId={defaultOrderId}
+      lockCompany={lockCompany}
+      lockOrder={lockOrder}
+    />
+  ) : (
+    <div className="rounded-md border border-border bg-surface p-3">
+      <WorkLogForm
+        companies={companies}
+        orders={orders}
+        defaultCompanyId={defaultCompanyId}
+        defaultOrderId={defaultOrderId}
+        lockCompany={lockCompany}
+        lockOrder={lockOrder}
+      />
+    </div>
+  );
+
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-md font-medium text-fg">{title}</h2>
-      <div className="rounded-md border border-border bg-surface p-3">
-        <WorkLogForm
-          companies={companies}
-          orders={orders}
-          defaultCompanyId={defaultCompanyId}
-          defaultOrderId={defaultOrderId}
-          lockCompany={lockCompany}
-          lockOrder={lockOrder}
+      {form}
+      {logs.length === 0 ? (
+        compact ? null : (
+          <WorkLogList
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+            logs={[]}
+          />
+        )
+      ) : (
+        <WorkLogList
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          logs={logs.map((log) => ({
+            id: log.id,
+            description: log.description,
+            occurredAt: log.occurredAt.toISOString(),
+            category: log.category,
+            durationMinutes: log.durationMinutes,
+            userId: log.userId,
+            userName: log.user.name,
+            userImage: log.user.image ?? null,
+            userSlug: log.user.slug ?? null,
+            companyId: log.companyId,
+            company: log.company,
+            orderId: log.orderId,
+            orderNumber: log.order?.orderNumber ?? null,
+          })) as WorkLogListItem[]}
         />
-      </div>
-      <WorkLogList
-        currentUserId={currentUserId}
-        isAdmin={isAdmin}
-        logs={logs.map((log) => ({
-          id: log.id,
-          description: log.description,
-          occurredAt: log.occurredAt.toISOString(),
-          category: log.category,
-          durationMinutes: log.durationMinutes,
-          userId: log.userId,
-          userName: log.user.name,
-          companyId: log.companyId,
-          company: log.company,
-          orderId: log.orderId,
-          orderNumber: log.order?.orderNumber ?? null,
-        }))}
-      />
+      )}
     </section>
   );
 }

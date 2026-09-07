@@ -18,14 +18,22 @@ const STATUS_LABELS: Record<ViesStatus, string> = {
 
 export function VatValidateControls({
   companyId,
+  vatNumber,
+  country,
   initialStatus,
   initialName,
   initialCheckedAt,
+  onAppliedVatRate,
+  onSuccess,
 }: {
   companyId: string;
+  vatNumber?: string | null;
+  country: string;
   initialStatus?: boolean | null;
   initialName?: string | null;
   initialCheckedAt?: Date | string | null;
+  onAppliedVatRate?: (rate: number) => void;
+  onSuccess?: () => void;
 }) {
   const [pending, setPending] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -41,19 +49,45 @@ export function VatValidateControls({
         : initialCheckedAt
       : null,
   );
+  const [fromServerStatus, setFromServerStatus] = useState(initialStatus);
+  const [fromServerName, setFromServerName] = useState(initialName ?? null);
+  const [fromServerCheckedAt, setFromServerCheckedAt] = useState(
+    initialCheckedAt
+      ? initialCheckedAt instanceof Date
+        ? initialCheckedAt.toISOString()
+        : initialCheckedAt
+      : null,
+  );
   const [warning, setWarning] = useState<string | null>(null);
   const [mention, setMention] = useState<string | null>(null);
   const [vatRegime, setVatRegime] = useState<VatRegime | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
+  if (initialStatus !== fromServerStatus) {
+    setFromServerStatus(initialStatus);
+    setStatus(
+      initialStatus === true ? "GELDIG" : initialStatus === false ? "ONGELDIG" : null,
+    );
+  }
+  if ((initialName ?? null) !== fromServerName) {
+    setFromServerName(initialName ?? null);
+    setName(initialName ?? null);
+  }
+  const nextCheckedAt = initialCheckedAt
+    ? initialCheckedAt instanceof Date
+      ? initialCheckedAt.toISOString()
+      : initialCheckedAt
+    : null;
+  if (nextCheckedAt !== fromServerCheckedAt) {
+    setFromServerCheckedAt(nextCheckedAt);
+    setCheckedAt(nextCheckedAt);
+  }
+
   async function run(applyProposedRate: boolean) {
-    const form = document.getElementById("company-form") as HTMLFormElement | null;
-    if (!form) {
-      setError("Formulier niet gevonden.");
-      return;
-    }
-    const data = new FormData(form);
+    const data = new FormData();
     data.set("id", companyId);
+    data.set("vatNumber", vatNumber ?? "");
+    data.set("country", country);
     data.set("applyProposedRate", applyProposedRate ? "true" : "false");
     setPending(true);
     setError(null);
@@ -71,9 +105,9 @@ export function VatValidateControls({
     setVatRegime(result.vatRegime ?? null);
     setNeedsConfirmation(Boolean(result.needsConfirmation));
     if (result.appliedVatRate != null) {
-      const vatInput = form.querySelector<HTMLInputElement>('input[name="vatRate"]');
-      if (vatInput) vatInput.value = String(result.appliedVatRate);
+      onAppliedVatRate?.(result.appliedVatRate);
     }
+    onSuccess?.();
   }
 
   return (
@@ -82,6 +116,7 @@ export function VatValidateControls({
         <Button
           type="button"
           variant="secondary"
+          size="sm"
           loading={pending && !confirming}
           onClick={() => {
             setConfirming(false);
@@ -93,6 +128,7 @@ export function VatValidateControls({
         {needsConfirmation ? (
           <Button
             type="button"
+            size="sm"
             loading={pending && confirming}
             onClick={() => {
               setConfirming(true);

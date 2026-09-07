@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createWorkLogAction } from "@/app/(beveiligd)/actions/worklog-actions";
 import { Pressable } from "@/components/motion";
 import { controlMotion } from "@/components/motion/styles";
@@ -29,6 +29,7 @@ export function WorkLogForm({
   defaultOrderId,
   lockCompany,
   lockOrder,
+  onSuccess,
 }: {
   companies: WorkLogCompanyOption[];
   orders: WorkLogOrderOption[];
@@ -36,8 +37,16 @@ export function WorkLogForm({
   defaultOrderId?: string;
   lockCompany?: boolean;
   lockOrder?: boolean;
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(createWorkLogAction, null);
+  const notifiedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!state?.loggedAt || notifiedAt.current === state.loggedAt) return;
+    notifiedAt.current = state.loggedAt;
+    onSuccess?.();
+  }, [state?.loggedAt, onSuccess]);
 
   return (
     <form

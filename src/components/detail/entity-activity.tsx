@@ -44,9 +44,17 @@ export async function EntityTasks({
   );
 }
 
-export async function CompanyTimeline({ companyId }: { companyId: string }) {
+export async function CompanyTimeline({
+  companyId,
+  compact = false,
+}: {
+  companyId: string;
+  compact?: boolean;
+}) {
   const events = await listTimelineForCompany(companyId);
-  return <Timeline events={events} companyId={companyId} />;
+  return (
+    <Timeline compact={compact} events={events} companyId={companyId} />
+  );
 }
 
 export async function ContactTimeline({
@@ -90,11 +98,13 @@ export async function CompanyWorkLogs({
   companyName,
   currentUserId,
   isAdmin,
+  compact = false,
 }: {
   companyId: string;
   companyName: string;
   currentUserId: string;
   isAdmin: boolean;
+  compact?: boolean;
 }) {
   const [logs, orders] = await Promise.all([
     listWorkLogs({ companyId }),
@@ -103,6 +113,7 @@ export async function CompanyWorkLogs({
 
   return (
     <WorkLogSection
+      compact={compact}
       title="Werkzaamheden"
       currentUserId={currentUserId}
       isAdmin={isAdmin}

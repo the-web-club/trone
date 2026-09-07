@@ -4,10 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import {
+  companyRecordToInput,
+  mergeCompanyPatch,
   parseCompanyForm,
   parseComposerCompanyForm,
+  type CompanyPatch,
 } from "@/lib/company-validation";
-import { createCompany, updateCompany, validateCompanyVat } from "@/lib/company-service";
+import {
+  createCompany,
+  getCompany,
+  updateCompany,
+  validateCompanyVat,
+} from "@/lib/company-service";
 import { toActionError } from "@/lib/errors";
 import { companyPath } from "@/lib/paths";
 import type { VatRegime, ViesStatus } from "@/lib/vat";
@@ -71,6 +79,24 @@ export async function updateCompanyAction(
     revalidatePath(companyPath(company));
     revalidatePath("/overzicht");
     return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function patchCompanyAction(
+  companyId: string,
+  patch: CompanyPatch,
+): Promise<{ error?: string; slug?: string }> {
+  try {
+    await requireSession();
+    const current = await getCompany(companyId);
+    const input = mergeCompanyPatch(companyRecordToInput(current), patch);
+    const company = await updateCompany(current.id, input);
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath(companyPath(company));
+    revalidatePath("/overzicht");
+    return { slug: company.slug };
   } catch (error) {
     return toActionError(error);
   }

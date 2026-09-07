@@ -123,15 +123,21 @@ export function DetailTimelineSkeleton({
   );
 }
 
-export function DetailWorkLogSkeleton() {
+export function DetailWorkLogSkeleton({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
   return (
     <section className="flex flex-col gap-4" aria-hidden>
       <h2 className="text-md font-medium text-fg">Werkzaamheden</h2>
-      <SkeletonPulse className="h-36 w-full rounded-md" />
-      <div className="flex flex-col gap-2">
-        <SkeletonPulse className="h-16 w-full rounded-md" />
-        <SkeletonPulse className="h-16 w-full rounded-md" />
-      </div>
+      <SkeletonPulse className={cn("w-full rounded-md", compact ? "h-10" : "h-36")} />
+      {compact ? null : (
+        <div className="flex flex-col gap-2">
+          <SkeletonPulse className="h-16 w-full rounded-md" />
+          <SkeletonPulse className="h-16 w-full rounded-md" />
+        </div>
+      )}
     </section>
   );
 }
@@ -151,25 +157,45 @@ export function LeadFieldsSkeleton() {
   );
 }
 
+export function CompanyFieldsSkeleton() {
+  return (
+    <DetailSection title="Gegevens">
+      <div className="flex flex-col gap-3" aria-hidden>
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className="flex flex-col gap-1">
+            <SkeletonPulse className="h-3 w-24" />
+            <SkeletonPulse className="h-8 w-full" />
+          </div>
+        ))}
+      </div>
+    </DetailSection>
+  );
+}
+
 export function CompanyDetailSkeleton() {
   return (
     <div className="flex flex-col gap-8" aria-busy="true">
       <DetailPageHeaderSkeleton />
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Gegevens</h2>
-        <DetailFormSkeleton rows={8} />
-      </section>
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Contacten</h2>
-        <DetailTableSkeleton columns={["Naam", "Functie", "E-mail", "Telefoon"]} />
-      </section>
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Leads</h2>
-        <DetailTableSkeleton columns={["Lead", "Contact", "Fase"]} rows={3} />
-      </section>
-      <DetailTaskSkeleton />
-      <DetailTimelineSkeleton />
-      <DetailWorkLogSkeleton />
+      <DetailColumns
+        left={
+          <>
+            <CompanyFieldsSkeleton />
+            <DetailSection title="Contacten">
+              <DetailTableSkeleton
+                columns={["Naam", "Functie", "E-mail", "Telefoon"]}
+                rows={3}
+              />
+            </DetailSection>
+          </>
+        }
+        right={
+          <>
+            <DetailTimelineSkeleton compact />
+            <DetailTaskSkeleton compact />
+            <DetailWorkLogSkeleton compact />
+          </>
+        }
+      />
     </div>
   );
 }

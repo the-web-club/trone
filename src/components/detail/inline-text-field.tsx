@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { SavedIndicator } from "@/components/detail/saved-indicator";
 import { useSavedFlash } from "@/components/detail/use-saved-flash";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { focusRingOutline } from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
@@ -12,9 +21,11 @@ export function InlineTextField({
   value,
   displayValue,
   placeholder = "—",
+  inputPlaceholder,
   type = "text",
   required = false,
   variant = "body",
+  multiline = false,
   inputMode,
   min,
   step,
@@ -22,18 +33,21 @@ export function InlineTextField({
 }: {
   label: string;
   value: string;
-  displayValue?: React.ReactNode;
+  displayValue?: ReactNode;
   placeholder?: string;
+  inputPlaceholder?: string;
   type?: "text" | "number" | "email" | "tel" | "url";
   required?: boolean;
   variant?: "body" | "title";
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  multiline?: boolean;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: number | string;
   step?: number | string;
   onSave: (next: string) => Promise<string | false | null>;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cancelledRef = useRef(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -50,11 +64,11 @@ export function InlineTextField({
 
   useEffect(() => {
     if (!editing) return;
-    const input = inputRef.current;
+    const input = multiline ? textareaRef.current : inputRef.current;
     if (!input) return;
     input.focus();
-    input.select();
-  }, [editing]);
+    if (!multiline && "select" in input) input.select();
+  }, [editing, multiline]);
 
   function startEditing() {
     setDraft(committed);
@@ -97,16 +111,20 @@ export function InlineTextField({
     flash();
   }
 
-  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+  function cancel() {
+    cancelledRef.current = true;
+    setDraft(committed);
+    setError(null);
+    setEditing(false);
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
-      cancelledRef.current = true;
-      setDraft(committed);
-      setError(null);
-      setEditing(false);
+      cancel();
       return;
     }
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && (!multiline || event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void commit(draft);
     }
@@ -130,25 +148,40 @@ export function InlineTextField({
   const isEmpty = committed === "";
 
   const control = editing ? (
-    <Input
-      ref={inputRef}
-      id={id}
-      type={type}
-      inputMode={inputMode}
-      min={min}
-      step={step}
-      value={draft}
-      aria-invalid={error ? true : undefined}
-      aria-describedby={error ? `${id}-error` : undefined}
-      onChange={(event) => setDraft(event.target.value)}
-      onKeyDown={onKeyDown}
-      onBlur={onBlur}
-      className={
-        isTitle
-          ? "h-auto border-transparent bg-transparent px-1 py-0 text-[length:inherit] leading-[inherit] tracking-[inherit] shadow-none"
-          : undefined
-      }
-    />
+    multiline ? (
+      <Textarea
+        ref={textareaRef}
+        id={id}
+        value={draft}
+        placeholder={inputPlaceholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={onBlur}
+      />
+    ) : (
+      <Input
+        ref={inputRef}
+        id={id}
+        type={type}
+        inputMode={inputMode}
+        min={min}
+        step={step}
+        value={draft}
+        placeholder={inputPlaceholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={onBlur}
+        className={
+          isTitle
+            ? "h-auto border-transparent bg-transparent px-1 py-0 text-[length:inherit] leading-[inherit] tracking-[inherit] shadow-none"
+            : undefined
+        }
+      />
+    )
   ) : (
     <button
       type="button"
@@ -158,6 +191,7 @@ export function InlineTextField({
       className={cn(
         "max-w-full rounded-sm text-left",
         isTitle ? "-mx-1 px-1" : "min-h-8 w-full px-1.5 py-1 text-sm",
+        multiline && !isEmpty && "whitespace-pre-wrap",
         isEmpty ? "text-fg-muted" : "text-fg",
         "hover:bg-hover",
         focusRingOutline,

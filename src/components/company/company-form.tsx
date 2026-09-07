@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { CountrySelect } from "@/components/company/country-select";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
+import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
+import { resolveVatTreatment, viesStatusFromCache } from "@/lib/vat";
 
 export type CompanyFormValues = {
   id?: string;
@@ -39,6 +42,15 @@ export function CompanyForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const [country, setCountry] = useState(company?.country ?? "NL");
+  const [vatNumber, setVatNumber] = useState(company?.vatNumber ?? "");
+  const vies = viesStatusFromCache({
+    country,
+    vatNumber,
+    viesValid: company?.viesValid,
+    viesValidatedAt: company?.viesValidatedAt,
+  });
+  const treatment = resolveVatTreatment(country, vies.status);
 
   return (
     <form id="company-form" action={formAction} className="flex max-w-xl flex-col gap-4">
@@ -59,15 +71,28 @@ export function CompanyForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="vatNumber" label="Btw-nummer">
-          <Input name="vatNumber" defaultValue={company?.vatNumber ?? ""} />
+          <Input
+            name="vatNumber"
+            defaultValue={company?.vatNumber ?? ""}
+            autoComplete="off"
+            placeholder="Inclusief landcode, bv. FI12345678"
+            onChange={(event) => setVatNumber(event.target.value)}
+          />
         </FormField>
-        <FormField id="cocNumber" label="KvK-nummer">
-          <Input name="cocNumber" defaultValue={company?.cocNumber ?? ""} />
+        <FormField id="cocNumber" label="Registratienummer">
+          <Input
+            name="cocNumber"
+            defaultValue={company?.cocNumber ?? ""}
+            autoComplete="off"
+            placeholder="KvK, Y-tunnus, Companies House…"
+          />
         </FormField>
       </div>
       {company?.id ? (
         <VatValidateControls
           companyId={company.id}
+          vatNumber={vatNumber}
+          country={country}
           initialStatus={company.viesValid}
           initialName={company.viesCheckedName}
           initialCheckedAt={company.viesValidatedAt}
@@ -75,24 +100,30 @@ export function CompanyForm({
       ) : null}
 
       <FormField id="website" label="Website">
-        <Input name="website" defaultValue={company?.website ?? ""} />
+        <Input name="website" defaultValue={company?.website ?? ""} autoComplete="url" />
       </FormField>
 
       <FormField id="addressLine" label="Adres">
         <Input name="addressLine" defaultValue={company?.addressLine ?? ""} autoComplete="street-address" />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="postalCode" label="Postcode">
           <Input name="postalCode" defaultValue={company?.postalCode ?? ""} autoComplete="postal-code" />
         </FormField>
         <FormField id="city" label="Plaats">
           <Input name="city" defaultValue={company?.city ?? ""} autoComplete="address-level2" />
         </FormField>
-        <FormField id="country" label="Land">
-          <Input name="country" defaultValue={company?.country ?? "NL"} maxLength={2} />
-        </FormField>
       </div>
+
+      <FormField id="country" label="Land">
+        <CountrySelect
+          name="country"
+          value={country}
+          onValueChange={setCountry}
+          required
+        />
+      </FormField>
 
       <FormField
         id="vatRate"
@@ -107,6 +138,12 @@ export function CompanyForm({
           defaultValue={company?.vatRate ?? 21}
         />
       </FormField>
+      <VatTreatmentNotice
+        vatRate={treatment.vatRate}
+        vatRegime={treatment.vatRegime}
+        warning={treatment.warning}
+        stale={vies.stale}
+      />
       <p className="text-xs text-fg-muted">
         Offertes en facturen bepalen het tarief via land + VIES, niet via dit veld alleen.
       </p>
