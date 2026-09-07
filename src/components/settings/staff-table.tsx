@@ -102,6 +102,7 @@ function StaffRowActions({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
   const roleFormRef = useRef<HTMLFormElement>(null);
   const status = statusCopy[user.status];
   const role = isUserRole(user.role) ? user.role : "user";
@@ -113,9 +114,25 @@ function StaffRowActions({
   ) {
     setPending(key);
     setError(null);
-    const result = await action(formData);
-    setPending(null);
-    if (result.error) setError(result.error);
+    if (key === "resend") setResent(false);
+    try {
+      const result = await action(formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (key === "resend") setResent(true);
+    } catch {
+      setError("Er ging iets mis. Probeer het opnieuw.");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function resendInvitation() {
+    const formData = new FormData();
+    formData.set("userId", user.id);
+    await run("resend", (data) => resendInvitationAction(null, data), formData);
   }
 
   return (
@@ -184,26 +201,18 @@ function StaffRowActions({
         <TableCell align="right">
           <div className="flex flex-wrap justify-end gap-1">
             {user.status === "invited" ? (
-              <form
-                action={(formData) =>
-                  run(
-                    "resend",
-                    (data) => resendInvitationAction(null, data),
-                    formData,
-                  )
-                }
-              >
-                <input type="hidden" name="userId" value={user.id} />
+              <div className="flex flex-col items-end gap-1">
                 <Button
-                  type="submit"
+                  type="button"
                   variant="ghost"
                   size="sm"
                   loading={pending === "resend"}
                   disabled={pending !== null && pending !== "resend"}
+                  onClick={() => void resendInvitation()}
                 >
-                  Opnieuw uitnodigen
+                  {resent ? "Verstuurd" : "Opnieuw uitnodigen"}
                 </Button>
-              </form>
+              </div>
             ) : null}
             <form
               action={(formData) =>

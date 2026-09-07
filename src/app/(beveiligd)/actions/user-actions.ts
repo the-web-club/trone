@@ -81,7 +81,6 @@ export async function resendInvitationAction(
     await requireAdmin();
     const userId = parseUserId(formData);
     await sendInvitation(userId);
-    revalidateStaffPaths();
     return {};
   } catch (error) {
     return toActionError(error);

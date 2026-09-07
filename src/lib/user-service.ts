@@ -214,14 +214,6 @@ async function countActiveAdmins(exceptUserId?: string) {
   });
 }
 
-async function requestHeaders() {
-  try {
-    return await headers();
-  } catch {
-    return undefined;
-  }
-}
-
 export async function inviteUser(input: InviteUserInput) {
   const prisma = getPrismaClient();
   const existing = await prisma.user.findUnique({
@@ -259,13 +251,13 @@ export async function sendInvitation(userId: string) {
   }
 
   try {
-    const requestHeadersValue = await requestHeaders();
+    // Geen request-headers meegeven: Better Auth ziet die als browser-POST en
+    // weigert ze (geen Origin), terwijl de uitnodiging dan stil faalt.
     const request = await getAuth().api.requestPasswordReset({
       body: {
         email: user.email,
         redirectTo: "/wachtwoord-instellen",
       },
-      ...(requestHeadersValue ? { headers: requestHeadersValue } : {}),
     });
 
     if (!request.status) {
