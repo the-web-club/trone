@@ -1,12 +1,15 @@
 import { countryLabel } from "@/lib/countries";
 import { AppError } from "@/lib/errors";
 import { formatDate, formatPersonName } from "@/lib/format";
+import {
+  EMPTY_LETTERHEAD,
+  type Letterhead,
+} from "@/lib/letterhead";
 import { vatOnNet } from "@/lib/pricing";
 import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
 import { quoteStatusLabels } from "@/lib/quote-validation";
-import { SELLER } from "@/lib/seller";
-import { VAT_REGIME_LABELS, type VatRegime } from "@/lib/vat";
+import type { VatRegime } from "@/lib/vat";
 
 export type QuotePdfItemSource = {
   description: string | null;
@@ -62,13 +65,19 @@ export type QuotePdfSource = {
   }>;
 };
 
+export type QuotePdfSelection = {
+  name: string;
+  value: string;
+  priceDelta: number;
+  priceOnRequest: boolean;
+};
+
 export type QuotePdfLine = {
   title: string;
-  sku: string | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
-  selections: { name: string; value: string; priceDelta: number; priceOnRequest: boolean }[];
+  selections: QuotePdfSelection[];
   hasOnRequest: boolean;
 };
 
@@ -77,8 +86,6 @@ export type QuotePdfView = {
   documentTitle: string;
   quoteNumber: string;
   versionNumber: number;
-  versionLabel: string;
-  statusLabel: string;
   createdAt: string;
   validUntil: string | null;
   notes: string | null;
@@ -87,18 +94,17 @@ export type QuotePdfView = {
     addressLines: string[];
     vatNumber: string | null;
     contactName: string | null;
-    contactMeta: string | null;
   };
-  seller: typeof SELLER;
+  letterhead: Letterhead;
   items: QuotePdfLine[];
   subtotal: number;
   discountTotal: number;
   totalExVat: number;
   vatRate: number;
   vatAmount: number;
-  vatRegimeLabel: string | null;
-  vatNotice: string | null;
+  vatLabel: string;
   totalInclVat: number;
+  hasOnRequest: boolean;
 };
 
 function num(value: { toString(): string } | number | null | undefined): number {
@@ -123,30 +129,47 @@ function customerAddressLines(company: QuotePdfSource["company"]): string[] {
   ]);
 }
 
+function selectionRank(selection: QuotePdfSelection): number {
+  if (selection.priceOnRequest) return 0;
+  if (selection.priceDelta > 0) return 1;
+  return 2;
+}
+
+export function vatPdfLabel(
+  vatRate: number,
+  vatRegime: VatRegime | null,
+): string {
+  if (vatRegime === "VERLEGD") return "Btw verlegd";
+  if (vatRegime === "EXPORT") return "0% export";
+  return `Btw ${vatRate}%`;
+}
+
 function toPdfLine(item: QuotePdfItemSource): QuotePdfLine {
   const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
     ? item.configSnapshot
     : null;
+  const selections =
+    snapshot?.selections.map((selection) => ({
+      name: selection.optionName,
+      value: selection.value,
+      priceDelta: selection.priceDelta,
+      priceOnRequest: selection.priceOnRequest,
+    })) ?? [];
   return {
     title: snapshot?.productName ?? item.description ?? "Product",
-    sku: snapshot?.productSku ?? null,
     quantity: item.quantity,
     unitPrice: num(item.unitPrice),
     lineTotal: num(item.lineTotal),
-    selections:
-      snapshot?.selections.map((selection) => ({
-        name: selection.optionName,
-        value: selection.value,
-        priceDelta: selection.priceDelta,
-        priceOnRequest: selection.priceOnRequest,
-      })) ?? [],
+    selections: [...selections].sort(
+      (a, b) => selectionRank(a) - selectionRank(b),
+    ),
     hasOnRequest: snapshot?.price.hasOnRequest ?? false,
   };
 }
 
 export function toQuotePdfView(
   quote: QuotePdfSource,
-  opts?: { versionNumber?: number },
+  opts?: { versionNumber?: number; letterhead?: Letterhead },
 ): QuotePdfView {
   const requested = opts?.versionNumber;
   const version =
@@ -170,21 +193,12 @@ export function toQuotePdfView(
   const contactName = quote.contact
     ? formatPersonName(quote.contact.firstName, quote.contact.lastName)
     : null;
-  const contactMeta = quote.contact
-    ? compactLines([
-        quote.contact.jobTitle,
-        quote.contact.email,
-        quote.contact.phone,
-      ]).join(" · ") || null
-    : null;
 
   return {
     filename: `TRONE-${versionLabel}.pdf`,
-    documentTitle: `Offerte ${versionLabel}`,
+    documentTitle: `Offerte ${quote.quoteNumber}`,
     quoteNumber: quote.quoteNumber,
     versionNumber,
-    versionLabel,
-    statusLabel: quoteStatusLabels[version?.status ?? quote.status],
     createdAt: formatDate(quote.createdAt),
     validUntil: quote.validUntil ? formatDate(quote.validUntil) : null,
     notes: quote.notes?.trim() || null,
@@ -193,17 +207,16 @@ export function toQuotePdfView(
       addressLines: customerAddressLines(quote.company),
       vatNumber: quote.company.vatNumber,
       contactName,
-      contactMeta,
     },
-    seller: SELLER,
+    letterhead: opts?.letterhead ?? { ...EMPTY_LETTERHEAD },
     items,
     subtotal,
     discountTotal,
     totalExVat,
     vatRate,
     vatAmount,
-    vatRegimeLabel: vatRegime ? VAT_REGIME_LABELS[vatRegime] : null,
-    vatNotice: version?.vatNotice ?? quote.vatNotice,
+    vatLabel: vatPdfLabel(vatRate, vatRegime),
     totalInclVat: grossTotal,
+    hasOnRequest: items.some((item) => item.hasOnRequest),
   };
 }

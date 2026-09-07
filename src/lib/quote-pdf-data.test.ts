@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { toQuotePdfView, type QuotePdfSource } from "@/lib/quote-pdf-data";
+import { EMPTY_LETTERHEAD } from "@/lib/letterhead";
+import {
+  toQuotePdfView,
+  vatPdfLabel,
+  type QuotePdfSource,
+} from "@/lib/quote-pdf-data";
 
 function quote(overrides: Partial<QuotePdfSource> = {}): QuotePdfSource {
   return {
@@ -49,6 +54,15 @@ function quote(overrides: Partial<QuotePdfSource> = {}): QuotePdfSource {
               optionValueId: "v1",
               value: "Zwart",
               priceDelta: 0,
+              priceOnRequest: false,
+            },
+            {
+              optionId: "o3",
+              optionCode: "armrest",
+              optionName: "Armleuningen",
+              optionValueId: "v3",
+              value: "10-direction",
+              priceDelta: 540,
               priceOnRequest: false,
             },
             {
@@ -107,11 +121,23 @@ function quote(overrides: Partial<QuotePdfSource> = {}): QuotePdfSource {
   };
 }
 
+describe("vatPdfLabel", () => {
+  it("houdt binnenlands bij het percentage", () => {
+    expect(vatPdfLabel(21, "BINNENLANDS")).toBe("Btw 21%");
+    expect(vatPdfLabel(21, null)).toBe("Btw 21%");
+  });
+
+  it("benoemt verlegd en export kort", () => {
+    expect(vatPdfLabel(0, "VERLEGD")).toBe("Btw verlegd");
+    expect(vatPdfLabel(0, "EXPORT")).toBe("0% export");
+  });
+});
+
 describe("toQuotePdfView", () => {
-  it("zet de huidige versie om tot één document met alle regels", () => {
+  it("zet de huidige versie om zonder verzonnen briefpapier", () => {
     const view = toQuotePdfView(quote());
     expect(view.filename).toBe("TRONE-OFF202600012-v2.pdf");
-    expect(view.versionLabel).toBe("OFF202600012-v2");
+    expect(view.quoteNumber).toBe("OFF202600012");
     expect(view.customer.name).toBe("Acme BV");
     expect(view.customer.addressLines).toEqual([
       "Kade 1",
@@ -119,20 +145,34 @@ describe("toQuotePdfView", () => {
       "Nederland",
     ]);
     expect(view.customer.contactName).toBe("Anna de Vries");
-    expect(view.customer.contactMeta).toBe("Inkoper · anna@acme.test · 06 12345678");
+    expect(view.letterhead).toEqual(EMPTY_LETTERHEAD);
     expect(view.items).toHaveLength(1);
     expect(view.items[0]?.title).toBe("ECS High Back");
-    expect(view.items[0]?.sku).toBe("ECS");
-    expect(view.items[0]?.selections).toEqual([
-      { name: "Stof", value: "Zwart", priceDelta: 0, priceOnRequest: false },
-      { name: "Draaitafel", value: "Ja", priceDelta: 0, priceOnRequest: true },
+    expect(view.items[0]?.selections.map((row) => row.name)).toEqual([
+      "Draaitafel",
+      "Armleuningen",
+      "Stof",
     ]);
-    expect(view.items[0]?.hasOnRequest).toBe(true);
+    expect(view.hasOnRequest).toBe(true);
     expect(view.totalExVat).toBe(2900);
     expect(view.vatAmount).toBe(609);
     expect(view.totalInclVat).toBe(3509);
+    expect(view.vatLabel).toBe("Btw 21%");
     expect(view.notes).toBe("Levertijd 6 weken");
-    expect(view.seller.name).toBe("TRÔNE Seating BV");
+  });
+
+  it("neemt ingevulde bedrijfsgegevens over", () => {
+    const view = toQuotePdfView(quote(), {
+      letterhead: {
+        ...EMPTY_LETTERHEAD,
+        name: "Voorbeeld BV",
+        cocNumber: "123",
+        iban: "NL00TEST",
+      },
+    });
+    expect(view.letterhead.name).toBe("Voorbeeld BV");
+    expect(view.letterhead.cocNumber).toBe("123");
+    expect(view.letterhead.iban).toBe("NL00TEST");
   });
 
   it("kan een eerdere versie als bron nemen", () => {

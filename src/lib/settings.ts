@@ -2,6 +2,7 @@ export const SETTING_KEYS = {
   stilDagen: "stil_dagen",
   opvolgingMaanden: "opvolging_maanden",
   hotWaarde: "hot_waarde",
+  letterhead: "letterhead",
 } as const;
 
 export const DEFAULT_THRESHOLDS = {

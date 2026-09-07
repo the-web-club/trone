@@ -5,6 +5,7 @@ import { renderQuotePdf } from "@/lib/quote-pdf";
 import { toQuotePdfView } from "@/lib/quote-pdf-data";
 import { getQuoteWithVersions } from "@/lib/quote-service";
 import { parseQuoteVersionNumber } from "@/lib/quote-validation";
+import { getLetterhead } from "@/lib/settings-service";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export async function GET(
     const quote = await getQuoteWithVersions(slug);
     const versie = new URL(request.url).searchParams.get("versie");
     const versionNumber = versie ? parseQuoteVersionNumber(versie) : undefined;
-    const view = toQuotePdfView(quote, { versionNumber });
+    const letterhead = await getLetterhead();
+    const view = toQuotePdfView(quote, { versionNumber, letterhead });
     const pdf = await renderQuotePdf(view);
 
     return new NextResponse(new Uint8Array(pdf), {

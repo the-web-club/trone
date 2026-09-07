@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SlidersHorizontal, Users } from "lucide-react";
+import { Building2, SlidersHorizontal, Users } from "lucide-react";
 import { Lift } from "@/components/motion";
 import { controlMotion } from "@/components/motion/styles";
 import { PageHeader } from "@/components/shell/page-header";
@@ -22,6 +22,23 @@ export default async function InstellingenPage() {
       />
 
       <div className="flex max-w-lg flex-col gap-3">
+      <Link href="/instellingen/bedrijfsgegevens" className="block">
+        <Lift>
+        <Panel className={cn("hover:bg-hover-subtle", controlMotion)}>
+          <div className="flex items-start gap-3">
+            <Building2 className="mt-0.5 size-4 text-fg-muted" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-fg">Bedrijfsgegevens</p>
+              <p className="mt-0.5 text-sm text-fg-muted">
+                {canManage
+                  ? "Naam, adres en KvK voor briefpapier op offertes."
+                  : "Bekijk de gegevens die op offertes staan."}
+              </p>
+            </div>
+          </div>
+        </Panel>
+        </Lift>
+      </Link>
       <Link href="/instellingen/medewerkers" className="block">
         <Lift>
         <Panel className={cn("hover:bg-hover-subtle", controlMotion)}>

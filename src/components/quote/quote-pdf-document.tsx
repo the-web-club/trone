@@ -7,161 +7,181 @@ import {
 } from "@react-pdf/renderer";
 import { QuotePdfLogo } from "@/components/quote/quote-pdf-logo";
 import { formatEuroExact } from "@/lib/format";
-import type { QuotePdfView } from "@/lib/quote-pdf-data";
+import {
+  letterheadAddressLines,
+  letterheadContactLines,
+  letterheadLegalParts,
+} from "@/lib/letterhead";
+import type { QuotePdfSelection, QuotePdfView } from "@/lib/quote-pdf-data";
 
 const colors = {
   brand: "#35353c",
   accent: "#ed7845",
   ink: "#0a0a0a",
-  muted: "#525252",
+  muted: "#737373",
+  faint: "#a3a3a3",
   line: "#e5e5e5",
   paper: "#ffffff",
-  sunk: "#fafafa",
 };
+
+const COL_QTY = 48;
+const COL_AMT = 88;
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Inter Tight",
     fontSize: 9,
+    fontWeight: 400,
     color: colors.ink,
     backgroundColor: colors.paper,
-    paddingBottom: 48,
+    paddingTop: 0,
+    paddingBottom: 40,
+    paddingHorizontal: 0,
   },
   header: {
     backgroundColor: colors.brand,
-    paddingTop: 18,
+    paddingTop: 20,
     paddingBottom: 16,
-    paddingHorizontal: 28,
+    paddingHorizontal: 36,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  headerMeta: {
+  headerRight: {
     alignItems: "flex-end",
   },
-  kicker: {
+  docKind: {
     color: colors.accent,
-    fontSize: 8,
-    fontWeight: 600,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    marginBottom: 4,
+    fontSize: 10,
+    fontWeight: 400,
+    marginBottom: 2,
   },
-  headerTitle: {
+  docNumber: {
     color: colors.paper,
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 500,
-    letterSpacing: -0.3,
-  },
-  headerSub: {
-    color: "#d0d0d4",
-    fontSize: 8,
-    marginTop: 3,
   },
   accent: {
-    height: 3,
+    height: 2,
     backgroundColor: colors.accent,
   },
   body: {
-    paddingHorizontal: 28,
-    paddingTop: 18,
+    paddingHorizontal: 36,
+    paddingTop: 22,
   },
   parties: {
     flexDirection: "row",
-    gap: 24,
-    marginBottom: 16,
+    gap: 28,
+    marginBottom: 18,
   },
   party: {
     flex: 1,
   },
-  label: {
-    fontSize: 7.5,
-    fontWeight: 600,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: colors.muted,
-    marginBottom: 4,
-  },
   partyName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 500,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   partyLine: {
     color: colors.muted,
-    lineHeight: 1.4,
+    fontSize: 9,
+    lineHeight: 1.45,
   },
   meta: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.line,
-    paddingVertical: 8,
     marginBottom: 16,
   },
-  metaCell: {
-    flex: 1,
+  metaRow: {
+    flexDirection: "row",
+    marginBottom: 2,
+  },
+  metaLabel: {
+    width: 88,
+    color: colors.muted,
+  },
+  metaValue: {
+    flexGrow: 1,
+  },
+  tableHead: {
+    flexDirection: "row",
+    borderBottomWidth: 0.75,
+    borderBottomColor: colors.ink,
+    paddingBottom: 4,
+    marginBottom: 6,
+  },
+  thDesc: {
+    flexGrow: 1,
+    flexShrink: 1,
+    color: colors.muted,
+  },
+  thQty: {
+    width: COL_QTY,
+    textAlign: "right",
+    color: colors.muted,
+  },
+  thAmt: {
+    width: COL_AMT,
+    textAlign: "right",
+    color: colors.muted,
   },
   item: {
     marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderColor: colors.line,
   },
-  itemHead: {
+  itemRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 6,
+    marginBottom: 3,
   },
   itemTitle: {
-    fontSize: 10,
-    fontWeight: 500,
     flexGrow: 1,
     flexShrink: 1,
+    fontSize: 10,
+    fontWeight: 500,
+    paddingRight: 8,
   },
-  itemSku: {
+  qty: {
+    width: COL_QTY,
+    textAlign: "right",
+  },
+  amt: {
+    width: COL_AMT,
+    textAlign: "right",
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingLeft: 10,
+    marginBottom: 1,
+  },
+  optionTextPaid: {
+    flexGrow: 1,
+    flexShrink: 1,
     color: colors.muted,
     fontSize: 8,
-    marginTop: 1,
+    paddingRight: 8,
   },
-  itemPrice: {
-    fontSize: 9,
+  optionTextIncluded: {
+    flexGrow: 1,
+    flexShrink: 1,
+    color: colors.faint,
+    fontSize: 8,
+    paddingRight: 8,
+  },
+  optionAmt: {
+    width: COL_AMT,
     textAlign: "right",
-  },
-  selections: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 2,
-  },
-  selection: {
-    width: "49%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 6,
-    paddingVertical: 1,
-  },
-  selectionName: {
     color: colors.muted,
-    flexShrink: 1,
+    fontSize: 8,
   },
-  selectionValue: {
-    fontWeight: 500,
+  optionAmtFaint: {
+    width: COL_AMT,
     textAlign: "right",
-    flexShrink: 1,
-  },
-  onRequest: {
-    marginTop: 4,
-    color: colors.accent,
+    color: colors.faint,
     fontSize: 8,
   },
   totals: {
     marginTop: 8,
     marginLeft: "auto",
-    width: 220,
-    backgroundColor: colors.sunk,
-    padding: 10,
+    width: 230,
   },
   totalRow: {
     flexDirection: "row",
@@ -169,74 +189,68 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     color: colors.muted,
   },
-  totalStrong: {
+  totalGrand: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    marginTop: 5,
+    paddingTop: 5,
+    borderTopWidth: 0.75,
+    borderTopColor: colors.ink,
     fontSize: 10,
     fontWeight: 500,
     color: colors.ink,
   },
-  vatNote: {
-    marginTop: 8,
-    color: colors.muted,
-    fontSize: 8,
-  },
   notes: {
-    marginTop: 14,
-  },
-  notesBody: {
+    marginTop: 16,
     color: colors.muted,
     lineHeight: 1.45,
   },
+  footnote: {
+    marginTop: 14,
+    color: colors.muted,
+    fontSize: 8,
+  },
   footer: {
     position: "absolute",
-    left: 28,
-    right: 28,
+    left: 36,
+    right: 36,
     bottom: 16,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.line,
     paddingTop: 8,
     flexDirection: "row",
     justifyContent: "space-between",
-    color: colors.muted,
-    fontSize: 7.5,
+    color: colors.faint,
+    fontSize: 8,
   },
 });
 
-function MetaCell({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metaCell}>
-      <Text style={styles.label}>{label}</Text>
-      <Text>{value}</Text>
-    </View>
-  );
+function optionAmount(selection: QuotePdfSelection): string | null {
+  if (selection.priceOnRequest) return "op aanvraag *";
+  if (selection.priceDelta > 0) return formatEuroExact(selection.priceDelta);
+  return null;
 }
 
 export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
-  const sellerLines = [
-    view.seller.addressLine,
-    `${view.seller.postalCode} ${view.seller.city}`,
-    view.seller.email,
-    view.seller.phone,
-  ];
+  const sellerName = view.letterhead.name;
+  const sellerAddress = letterheadAddressLines(view.letterhead);
+  const sellerContact = letterheadContactLines(view.letterhead);
+  const legal = letterheadLegalParts(view.letterhead);
+  const hasSeller =
+    Boolean(sellerName) || sellerAddress.length > 0 || sellerContact.length > 0;
 
   return (
     <Document
       title={view.documentTitle}
-      author={view.seller.name}
+      author={sellerName || undefined}
       subject={view.documentTitle}
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.header} fixed>
-          <QuotePdfLogo width={128} />
-          <View style={styles.headerMeta}>
-            <Text style={styles.kicker}>Offerte</Text>
-            <Text style={styles.headerTitle}>{view.versionLabel}</Text>
-            <Text style={styles.headerSub}>{view.statusLabel}</Text>
+          <QuotePdfLogo width={118} />
+          <View style={styles.headerRight}>
+            <Text style={styles.docKind}>Offerte</Text>
+            <Text style={styles.docNumber}>{view.quoteNumber}</Text>
           </View>
         </View>
         <View style={styles.accent} fixed />
@@ -244,17 +258,31 @@ export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
         <View style={styles.body}>
           <View style={styles.parties}>
             <View style={styles.party}>
-              <Text style={styles.label}>Van</Text>
-              <Text style={styles.partyName}>{view.seller.name}</Text>
-              {sellerLines.map((line) => (
-                <Text key={line} style={styles.partyLine}>
-                  {line}
-                </Text>
-              ))}
+              {hasSeller ? (
+                <>
+                  {sellerName ? (
+                    <Text style={styles.partyName}>{sellerName}</Text>
+                  ) : null}
+                  {sellerAddress.map((line) => (
+                    <Text key={line} style={styles.partyLine}>
+                      {line}
+                    </Text>
+                  ))}
+                  {sellerContact.map((line) => (
+                    <Text key={line} style={styles.partyLine}>
+                      {line}
+                    </Text>
+                  ))}
+                </>
+              ) : null}
             </View>
             <View style={styles.party}>
-              <Text style={styles.label}>Aan</Text>
               <Text style={styles.partyName}>{view.customer.name}</Text>
+              {view.customer.contactName ? (
+                <Text style={styles.partyLine}>
+                  t.a.v. {view.customer.contactName}
+                </Text>
+              ) : null}
               {view.customer.addressLines.map((line) => (
                 <Text key={line} style={styles.partyLine}>
                   {line}
@@ -265,75 +293,70 @@ export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
                   Btw {view.customer.vatNumber}
                 </Text>
               ) : null}
-              {view.customer.contactName ? (
-                <Text style={styles.partyLine}>
-                  T.a.v. {view.customer.contactName}
-                </Text>
-              ) : null}
-              {view.customer.contactMeta ? (
-                <Text style={styles.partyLine}>
-                  {view.customer.contactMeta}
-                </Text>
-              ) : null}
             </View>
           </View>
 
           <View style={styles.meta}>
-            <MetaCell label="Datum" value={view.createdAt} />
-            <MetaCell label="Offertenummer" value={view.quoteNumber} />
-            <MetaCell
-              label="Versie"
-              value={view.versionNumber > 0 ? `v${view.versionNumber}` : "—"}
-            />
-            <MetaCell label="Geldig tot" value={view.validUntil ?? "—"} />
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Offertenummer</Text>
+              <Text style={styles.metaValue}>{view.quoteNumber}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Datum</Text>
+              <Text style={styles.metaValue}>{view.createdAt}</Text>
+            </View>
+            {view.validUntil ? (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Geldig tot</Text>
+                <Text style={styles.metaValue}>{view.validUntil}</Text>
+              </View>
+            ) : null}
+            {view.versionNumber > 1 ? (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Versie</Text>
+                <Text style={styles.metaValue}>{view.versionNumber}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.tableHead}>
+            <Text style={styles.thDesc}>Omschrijving</Text>
+            <Text style={styles.thQty}>Aantal</Text>
+            <Text style={styles.thAmt}>Bedrag</Text>
           </View>
 
           {view.items.map((item, index) => (
             <View key={`${item.title}-${index}`} style={styles.item} wrap={false}>
-              <View style={styles.itemHead}>
-                <View>
-                  <Text style={styles.itemTitle}>
-                    {index + 1}. {item.title}
-                  </Text>
-                  {item.sku ? (
-                    <Text style={styles.itemSku}>{item.sku}</Text>
-                  ) : null}
-                </View>
-                <View>
-                  <Text style={styles.itemPrice}>
-                    {item.quantity} × {formatEuroExact(item.unitPrice)}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {formatEuroExact(item.lineTotal)}
-                  </Text>
-                </View>
+              <View style={styles.itemRow}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.qty}>{item.quantity}</Text>
+                <Text style={styles.amt}>{formatEuroExact(item.lineTotal)}</Text>
               </View>
-              {item.selections.length > 0 ? (
-                <View style={styles.selections}>
-                  {item.selections.map((selection) => (
-                    <View
-                      key={`${selection.name}-${selection.value}`}
-                      style={styles.selection}
+              {item.selections.map((selection) => {
+                const paid =
+                  selection.priceOnRequest || selection.priceDelta > 0;
+                const amount = optionAmount(selection);
+                return (
+                  <View
+                    key={`${selection.name}-${selection.value}`}
+                    style={styles.optionRow}
+                  >
+                    <Text
+                      style={
+                        paid ? styles.optionTextPaid : styles.optionTextIncluded
+                      }
                     >
-                      <Text style={styles.selectionName}>{selection.name}</Text>
-                      <Text style={styles.selectionValue}>
-                        {selection.value}
-                        {selection.priceOnRequest
-                          ? " · prijs op aanvraag"
-                          : selection.priceDelta
-                            ? ` · ${formatEuroExact(selection.priceDelta)}`
-                            : ""}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {item.hasOnRequest ? (
-                <Text style={styles.onRequest}>
-                  Bevat opties met prijs op aanvraag (n.t.b. door
-                  productspecialist).
-                </Text>
-              ) : null}
+                      {selection.name}: {selection.value}
+                    </Text>
+                    <Text style={styles.qty} />
+                    <Text
+                      style={paid ? styles.optionAmt : styles.optionAmtFaint}
+                    >
+                      {amount ?? ""}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ))}
 
@@ -353,38 +376,27 @@ export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
               <Text>{formatEuroExact(view.totalExVat)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text>
-                Btw {view.vatRate}%
-                {view.vatRegimeLabel ? ` · ${view.vatRegimeLabel}` : ""}
-              </Text>
+              <Text>{view.vatLabel}</Text>
               <Text>{formatEuroExact(view.vatAmount)}</Text>
             </View>
-            <View style={styles.totalStrong}>
+            <View style={styles.totalGrand}>
               <Text>Totaal incl. btw</Text>
               <Text>{formatEuroExact(view.totalInclVat)}</Text>
             </View>
-            {view.vatNotice ? (
-              <Text style={styles.vatNote}>{view.vatNotice}</Text>
-            ) : null}
           </View>
 
-          {view.notes ? (
-            <View style={styles.notes}>
-              <Text style={styles.label}>Opmerkingen</Text>
-              <Text style={styles.notesBody}>{view.notes}</Text>
-            </View>
+          {view.notes ? <Text style={styles.notes}>{view.notes}</Text> : null}
+
+          {view.hasOnRequest ? (
+            <Text style={styles.footnote}>* Prijs op aanvraag.</Text>
           ) : null}
         </View>
 
         <View style={styles.footer} fixed>
-          <Text>
-            {view.seller.name} · {view.seller.addressLine},{" "}
-            {view.seller.postalCode} {view.seller.city} · KvK{" "}
-            {view.seller.cocNumber} · {view.seller.website}
-          </Text>
+          <Text>{legal.join("  ·  ")}</Text>
           <Text
             render={({ pageNumber, totalPages }) =>
-              `${pageNumber} / ${totalPages}`
+              totalPages > 1 ? `${pageNumber} / ${totalPages}` : ""
             }
           />
         </View>

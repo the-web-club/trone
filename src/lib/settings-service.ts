@@ -3,6 +3,10 @@ import "server-only";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import {
+  parseLetterheadJson,
+  type Letterhead,
+} from "@/lib/letterhead";
+import {
   SETTING_KEYS,
   thresholdsFromRows,
   type Thresholds,
@@ -13,6 +17,28 @@ export async function getThresholds(): Promise<Thresholds> {
   const prisma = getPrismaClient();
   const rows = await prisma.appSetting.findMany();
   return thresholdsFromRows(rows);
+}
+
+export async function getLetterhead(): Promise<Letterhead> {
+  const prisma = getPrismaClient();
+  const row = await prisma.appSetting.findUnique({
+    where: { key: SETTING_KEYS.letterhead },
+  });
+  return parseLetterheadJson(row?.value);
+}
+
+export async function updateLetterhead(input: Letterhead) {
+  const prisma = getPrismaClient();
+  await prisma.appSetting.upsert({
+    where: { key: SETTING_KEYS.letterhead },
+    update: { value: JSON.stringify(input) },
+    create: {
+      id: createId(),
+      key: SETTING_KEYS.letterhead,
+      value: JSON.stringify(input),
+    },
+  });
+  return getLetterhead();
 }
 
 export async function updateThresholds(input: ThresholdsInput) {
