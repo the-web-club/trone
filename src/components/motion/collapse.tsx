@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { useEnterInitial } from "@/components/motion/motion-ready";
 import {
   useMotionEnabled,
   useMotionTransition,
@@ -23,22 +24,51 @@ export function Collapse({
   return (
     <AnimatePresence initial={false}>
       {open ? (
-        <motion.div
-          className={cn("overflow-hidden", className)}
-          initial={enabled ? { height: 0, opacity: 0 } : false}
-          animate={{ height: "auto", opacity: 1 }}
-          exit={
-            enabled
-              ? { height: 0, opacity: 0, transition: exit }
-              : undefined
-          }
-          transition={enter}
-          style={{ transformOrigin: "center top" }}
+        <CollapsePanel
+          className={className}
+          enabled={enabled}
+          enter={enter}
+          exit={exit}
         >
           {children}
-        </motion.div>
+        </CollapsePanel>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+function CollapsePanel({
+  children,
+  className,
+  enabled,
+  enter,
+  exit,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  enabled: boolean;
+  enter: ReturnType<typeof useMotionTransition>;
+  exit: ReturnType<typeof useMotionTransition>;
+}) {
+  const initial = useEnterInitial(
+    enabled ? { height: 0, opacity: 0 } : false,
+  );
+
+  return (
+    <motion.div
+      className={cn("overflow-hidden", className)}
+      initial={initial}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={
+        enabled
+          ? { height: 0, opacity: 0, transition: exit }
+          : undefined
+      }
+      transition={enter}
+      style={{ transformOrigin: "center top" }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -52,11 +82,14 @@ export function Expand({
   const enabled = useMotionEnabled();
   const enter = useMotionTransition("enter");
   const exit = useMotionTransition("exit");
+  const initial = useEnterInitial(
+    enabled ? { opacity: 0, scale: 0.98 } : false,
+  );
 
   return (
     <motion.div
       className={cn(className)}
-      initial={enabled ? { opacity: 0, scale: 0.98 } : false}
+      initial={initial}
       animate={{ opacity: 1, scale: 1 }}
       exit={
         enabled

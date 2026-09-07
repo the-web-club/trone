@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
+import { MotionReadyProvider } from "@/components/motion";
 import "./globals.css";
 
 const interTight = Inter_Tight({
@@ -24,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="nl" className={`${interTight.variable} h-full antialiased`}>
       <body className="flex h-full flex-col overflow-hidden bg-bg font-sans text-fg">
-        {children}
+        <MotionReadyProvider>{children}</MotionReadyProvider>
       </body>
     </html>
   );

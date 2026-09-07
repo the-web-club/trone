@@ -3,6 +3,7 @@ export { Collapse, Expand } from "@/components/motion/collapse";
 export { CrossFadeImage } from "@/components/motion/cross-fade-image";
 export { FadeIn, SlideFade } from "@/components/motion/fade-in";
 export { Lift } from "@/components/motion/lift";
+export { MotionReadyProvider } from "@/components/motion/motion-ready";
 export { PageTransition } from "@/components/motion/page-transition";
 export { Pressable } from "@/components/motion/pressable";
 export { Stagger, StaggerItem } from "@/components/motion/stagger";

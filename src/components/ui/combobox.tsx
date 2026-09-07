@@ -90,6 +90,8 @@ export function ComboboxMenu<Value extends string = string>({
       onInputValueChange={setQuery}
       autoHighlight
       locale="nl"
+      itemToStringLabel={(item) => item.label}
+      itemToStringValue={(item) => item.value}
       isItemEqualToValue={(a, b) => a.value === b.value}
       disabled={disabled}
       id={id}

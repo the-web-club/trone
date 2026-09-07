@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { MOTION } from "@/lib/motion";
+import { useEnterInitial } from "@/components/motion/motion-ready";
 import {
   useMotionEnabled,
   useMotionTransition,
@@ -18,11 +19,12 @@ export function FadeIn({
   const enabled = useMotionEnabled();
   const enter = useMotionTransition("enter");
   const exit = useMotionTransition("exit");
+  const initial = useEnterInitial(enabled ? { opacity: 0 } : false);
 
   return (
     <motion.div
       className={cn(className)}
-      initial={enabled ? { opacity: 0 } : false}
+      initial={initial}
       animate={{ opacity: 1 }}
       exit={enabled ? { opacity: 0, transition: exit } : undefined}
       transition={enter}
@@ -43,11 +45,14 @@ export function SlideFade({
   const enabled = useMotionEnabled();
   const enter = useMotionTransition("enter");
   const exit = useMotionTransition("exit");
+  const initial = useEnterInitial(
+    enabled ? { opacity: 0, y: MOTION.fadeY } : false,
+  );
 
   return (
     <motion.div
       className={cn(className)}
-      initial={enabled ? { opacity: 0, y: MOTION.fadeY } : false}
+      initial={initial}
       animate={{ opacity: 1, y: 0 }}
       exit={enabled ? { opacity: 0, y: MOTION.exitY, transition: exit } : undefined}
       transition={enter}

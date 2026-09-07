@@ -1,8 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { useStaggerVariants } from "@/components/motion/use-motion-enabled";
+import {
+  useEnterInitial,
+  useMotionReady,
+} from "@/components/motion/motion-ready";
+import {
+  useMotionEnabled,
+  useStaggerVariants,
+} from "@/components/motion/use-motion-enabled";
 
 const motionTags = {
   div: motion.div,
@@ -26,13 +34,15 @@ export function Stagger({
   as?: MotionTag;
 }) {
   const { container } = useStaggerVariants();
+  const enabled = useMotionEnabled();
   const Comp = motionTags[as];
+  const initial = useEnterInitial(enabled ? "hidden" : false);
 
   return (
     <Comp
       className={cn(className)}
       variants={container}
-      initial="hidden"
+      initial={initial}
       animate="show"
     >
       <AnimatePresence initial={false}>{children}</AnimatePresence>
@@ -52,12 +62,14 @@ export function StaggerItem({
 } & Record<string, unknown>) {
   const { item } = useStaggerVariants();
   const Comp = motionTags[as];
+  const ready = useMotionReady();
+  const [layout] = useState(() => (ready ? ("position" as const) : false));
 
   return (
     <Comp
       className={cn(className)}
       variants={item}
-      layout="position"
+      layout={layout}
       {...props}
     >
       {children}
