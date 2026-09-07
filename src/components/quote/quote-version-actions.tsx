@@ -8,9 +8,9 @@ import {
   updateQuoteStatusAction,
 } from "@/app/(beveiligd)/actions/quote-actions";
 import { Button } from "@/components/ui/button";
+import { pageActionSecondaryClassName } from "@/components/shell/page-header";
 import type { QuoteStatus } from "@/generated/prisma/client";
 import { quoteEditPath } from "@/lib/paths";
-import { pageActionSecondaryClassName } from "@/components/shell/page-header";
 
 export function QuoteVersionActions({
   quoteId,
