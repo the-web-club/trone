@@ -26,11 +26,20 @@ import {
   type QuoteCatalog,
 } from "@/lib/quote-catalog";
 import type { QuoteItemInput } from "@/lib/quote-validation";
+import {
+  resolveVatTreatment,
+  viesStatusFromCache,
+} from "@/lib/vat";
+import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
 
 export type QuoteFormCompany = {
   id: string;
   name: string;
   vatRate: number;
+  country: string;
+  vatNumber: string | null;
+  viesValid: boolean | null;
+  viesValidatedAt: string | null;
   discounts: { productId: string | null; discountPercent: number }[];
 };
 
@@ -115,7 +124,14 @@ export function QuoteForm({
   const [leadQuery, setLeadQuery] = useState("");
 
   const company = companyList.find((row) => row.id === companyId);
-  const vatRate = company?.vatRate ?? 21;
+  const vies = viesStatusFromCache({
+    country: company?.country,
+    vatNumber: company?.vatNumber,
+    viesValid: company?.viesValid,
+    viesValidatedAt: company?.viesValidatedAt,
+  });
+  const treatment = resolveVatTreatment(company?.country, vies.status);
+  const vatRate = treatment.vatRate;
   const ctx = useMemo(() => toPricingContext(catalog), [catalog]);
 
   function loadDeals(nextCompanyId: string) {
@@ -360,6 +376,15 @@ export function QuoteForm({
           </Button>
         </div>
       </section>
+
+      {companyId ? (
+        <VatTreatmentNotice
+          vatRate={treatment.vatRate}
+          vatRegime={treatment.vatRegime}
+          warning={treatment.warning}
+          stale={vies.stale}
+        />
+      ) : null}
 
       {items.length > 1 ? (
         <nav aria-label="Stoelen op deze offerte" className="mb-6 flex flex-wrap gap-1.5">

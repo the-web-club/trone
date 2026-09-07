@@ -18,6 +18,10 @@ export type ComposerCreatedCompany = {
   id: string;
   name: string;
   vatRate: number;
+  country: string;
+  vatNumber: string | null;
+  viesValid: boolean | null;
+  viesValidatedAt: string | null;
   discounts: { productId: string | null; discountPercent: number }[];
 };
 
@@ -115,6 +119,10 @@ export async function createComposerCustomerAction(
         id: company.id,
         name: company.name,
         vatRate: Number(company.vatRate),
+        country: company.country,
+        vatNumber: company.vatNumber,
+        viesValid: company.viesValid,
+        viesValidatedAt: company.viesValidatedAt?.toISOString() ?? null,
         discounts: [],
       },
       contact,

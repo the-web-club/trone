@@ -30,6 +30,11 @@ import {
   toQuoteVersionLine,
 } from "@/lib/quote-version";
 import { logEvent } from "@/lib/timeline-service";
+import {
+  resolveAndRefreshCompanyVat,
+  vatWriteData,
+  type FrozenVat,
+} from "@/lib/company-vat";
 
 export async function loadQuoteCatalog(): Promise<QuoteCatalog> {
   const prisma = getPrismaClient();
@@ -140,6 +145,10 @@ export async function getQuoteComposerData(opts?: { companyId?: string }) {
       id: company.id,
       name: company.name,
       vatRate: Number(company.vatRate),
+      country: company.country,
+      vatNumber: company.vatNumber,
+      viesValid: company.viesValid,
+      viesValidatedAt: company.viesValidatedAt?.toISOString() ?? null,
       discounts: company.pricing
         .filter(isPricingActive)
         .map((row) => ({
@@ -240,7 +249,19 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
 }
 
 const quoteHeaderInclude = {
-  company: { select: { id: true, slug: true, name: true, vatRate: true } },
+  company: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      vatRate: true,
+      country: true,
+      vatNumber: true,
+      viesValid: true,
+      viesValidatedAt: true,
+      viesCheckedName: true,
+    },
+  },
   contact: {
     select: {
       id: true,
@@ -565,11 +586,26 @@ async function storedQuoteItems(tx: Prisma.TransactionClient, quoteId: string) {
   });
 }
 
+async function resolveQuoteVat(company: {
+  id: string;
+  country: string;
+  vatNumber: string | null;
+  viesValid: boolean | null;
+  viesValidatedAt: Date | null;
+}) {
+  const { treatment, frozen } = await resolveAndRefreshCompanyVat(company);
+  return { vatRate: treatment.vatRate, frozen };
+}
+
+function quoteVatWrite(frozen: FrozenVat) {
+  return vatWriteData(frozen);
+}
+
 export async function createQuote(input: QuoteInput, userId?: string) {
   const company = await assertQuoteRelations(input);
   const prisma = getPrismaClient();
   const ctx = await loadPricingContext(prisma);
-  const vatRate = Number(company.vatRate);
+  const { vatRate, frozen } = await resolveQuoteVat(company);
   const discounts = company.pricing
     .filter(isPricingActive)
     .map((row) => ({
@@ -614,7 +650,7 @@ export async function createQuote(input: QuoteInput, userId?: string) {
 
     await tx.quote.update({
       where: { id: quoteId },
-      data: totals,
+      data: { ...totals, ...quoteVatWrite(frozen) },
     });
   });
 
@@ -630,7 +666,7 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
   const company = await assertQuoteRelations(input);
   const prisma = getPrismaClient();
   const ctx = await loadPricingContext(prisma);
-  const vatRate = Number(company.vatRate);
+  const { vatRate, frozen } = await resolveQuoteVat(company);
   const discounts = company.pricing
     .filter(isPricingActive)
     .map((row) => ({
@@ -665,6 +701,7 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
         contactId: input.contactId ?? null,
         dealId: input.dealId ?? null,
         ...totals,
+        ...quoteVatWrite(frozen),
       },
     });
 
@@ -676,7 +713,7 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
       await replaceVersionItems(tx, draftVersion.id, items);
       await tx.quoteVersion.update({
         where: { id: draftVersion.id },
-        data: totals,
+        data: { ...totals, ...quoteVatWrite(frozen) },
       });
     }
   });
@@ -720,7 +757,7 @@ export async function sendQuote(id: string, userId?: string) {
   });
   const prisma = getPrismaClient();
   const ctx = await loadPricingContext(prisma);
-  const vatRate = Number(company.vatRate);
+  const { vatRate, frozen } = await resolveQuoteVat(company);
   const discounts = company.pricing
     .filter(isPricingActive)
     .map((row) => ({
@@ -764,7 +801,7 @@ export async function sendQuote(id: string, userId?: string) {
       await replaceVersionItems(tx, versionId, stored);
       await tx.quoteVersion.update({
         where: { id: versionId },
-        data: { status: "SENT", sentAt, ...totals },
+        data: { status: "SENT", sentAt, ...totals, ...quoteVatWrite(frozen) },
       });
     } else {
       await tx.quoteVersion.create({
@@ -775,6 +812,7 @@ export async function sendQuote(id: string, userId?: string) {
           status: "SENT",
           sentAt,
           ...totals,
+          ...quoteVatWrite(frozen),
         },
       });
       await replaceVersionItems(tx, versionId, stored);
@@ -787,6 +825,7 @@ export async function sendQuote(id: string, userId?: string) {
         currentVersionId: versionId,
         currentVersionNumber: versionNumber,
         ...totals,
+        ...quoteVatWrite(frozen),
       },
     });
   });
@@ -840,6 +879,9 @@ export async function createRevision(id: string) {
         subtotal: last.subtotal,
         discountTotal: last.discountTotal,
         total: last.total,
+        vatRate: last.vatRate,
+        vatRegime: last.vatRegime,
+        vatNotice: last.vatNotice,
       },
     });
     await replaceVersionItems(tx, versionId, last.items);
@@ -851,6 +893,9 @@ export async function createRevision(id: string) {
         subtotal: last.subtotal,
         discountTotal: last.discountTotal,
         total: last.total,
+        vatRate: last.vatRate,
+        vatRegime: last.vatRegime,
+        vatNotice: last.vatNotice,
         currentVersionId: versionId,
         currentVersionNumber: nextNumber,
       },

@@ -7,9 +7,10 @@ import {
   parseCompanyForm,
   parseComposerCompanyForm,
 } from "@/lib/company-validation";
-import { createCompany, updateCompany } from "@/lib/company-service";
+import { createCompany, updateCompany, validateCompanyVat } from "@/lib/company-service";
 import { toActionError } from "@/lib/errors";
 import { companyPath } from "@/lib/paths";
+import type { VatRegime, ViesStatus } from "@/lib/vat";
 
 export type CreatedCompanyOption = {
   id: string;
@@ -70,6 +71,59 @@ export async function updateCompanyAction(
     revalidatePath(companyPath(company));
     revalidatePath("/overzicht");
     return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export type ValidateCompanyVatResult = {
+  error?: string;
+  status?: ViesStatus;
+  name?: string | null;
+  checkedAt?: string | null;
+  vatRate?: number;
+  vatRegime?: VatRegime;
+  warning?: string | null;
+  mention?: string | null;
+  needsConfirmation?: boolean;
+  appliedVatRate?: number | null;
+};
+
+export async function validateCompanyVatAction(
+  formData: FormData,
+): Promise<ValidateCompanyVatResult> {
+  try {
+    await requireSession();
+    const id = String(formData.get("id") ?? "").trim();
+    if (!id) {
+      return { error: "Bedrijf ontbreekt." };
+    }
+    const applyProposedRate =
+      formData.get("applyProposedRate") === "true" ||
+      formData.get("applyProposedRate") === "1";
+    const vatNumber = String(formData.get("vatNumber") ?? "").trim() || null;
+    const country =
+      String(formData.get("country") ?? "").trim().toUpperCase() || null;
+    const { company, result, treatment, needsConfirmation, appliedVatRate } =
+      await validateCompanyVat(id, {
+        vatNumber,
+        country,
+        applyProposedRate,
+      });
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath(companyPath(company));
+    revalidatePath("/offertes", "layout");
+    return {
+      status: result.status,
+      name: result.name,
+      checkedAt: result.checkedAt,
+      vatRate: treatment.vatRate,
+      vatRegime: treatment.vatRegime,
+      warning: treatment.warning,
+      mention: treatment.mention,
+      needsConfirmation,
+      appliedVatRate,
+    };
   } catch (error) {
     return toActionError(error);
   }

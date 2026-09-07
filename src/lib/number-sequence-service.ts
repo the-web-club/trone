@@ -39,3 +39,4 @@ export async function nextNumber(
 
 export const SEQ_ORDER_2026 = "order-2026";
 export const SEQ_QUOTE_2026 = "quote-2026";
+export const SEQ_INVOICE_2026 = "invoice-2026";

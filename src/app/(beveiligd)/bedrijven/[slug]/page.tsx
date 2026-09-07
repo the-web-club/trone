@@ -94,6 +94,9 @@ export default async function BedrijfDetailPage({
             city: company.city,
             country: company.country,
             vatRate: Number(company.vatRate),
+            viesValid: company.viesValid,
+            viesValidatedAt: company.viesValidatedAt,
+            viesCheckedName: company.viesCheckedName,
             notes: company.notes,
           }}
         />

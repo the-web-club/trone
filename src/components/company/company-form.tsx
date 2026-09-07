@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { VatValidateControls } from "@/components/company/vat-validate-controls";
 
 export type CompanyFormValues = {
   id?: string;
@@ -19,6 +20,9 @@ export type CompanyFormValues = {
   city?: string | null;
   country: string;
   vatRate: number;
+  viesValid?: boolean | null;
+  viesValidatedAt?: Date | string | null;
+  viesCheckedName?: string | null;
   notes?: string | null;
 };
 
@@ -37,7 +41,7 @@ export function CompanyForm({
   const [state, formAction, pending] = useActionState(action, null);
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form id="company-form" action={formAction} className="flex max-w-xl flex-col gap-4">
       {company?.id ? <input type="hidden" name="id" value={company.id} /> : null}
 
       <FormField id="name" label="Naam">
@@ -61,6 +65,14 @@ export function CompanyForm({
           <Input name="cocNumber" defaultValue={company?.cocNumber ?? ""} />
         </FormField>
       </div>
+      {company?.id ? (
+        <VatValidateControls
+          companyId={company.id}
+          initialStatus={company.viesValid}
+          initialName={company.viesCheckedName}
+          initialCheckedAt={company.viesValidatedAt}
+        />
+      ) : null}
 
       <FormField id="website" label="Website">
         <Input name="website" defaultValue={company?.website ?? ""} />
@@ -82,7 +94,10 @@ export function CompanyForm({
         </FormField>
       </div>
 
-      <FormField id="vatRate" label="Btw-tarief (%)">
+      <FormField
+        id="vatRate"
+        label="Btw-tarief (%)"
+      >
         <Input
           name="vatRate"
           type="number"
@@ -92,6 +107,9 @@ export function CompanyForm({
           defaultValue={company?.vatRate ?? 21}
         />
       </FormField>
+      <p className="text-xs text-fg-muted">
+        Offertes en facturen bepalen het tarief via land + VIES, niet via dit veld alleen.
+      </p>
 
       <FormField id="notes" label="Notities">
         <Textarea name="notes" defaultValue={company?.notes ?? ""} />

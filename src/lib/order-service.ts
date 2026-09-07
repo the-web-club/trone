@@ -16,6 +16,11 @@ import { orderStatusLabels } from "@/lib/orders-query";
 import { getQuote } from "@/lib/quote-service";
 import { assertContactBelongsToCompany } from "@/lib/contact-company";
 import { logEvent } from "@/lib/timeline-service";
+import {
+  frozenVatFromDocument,
+  resolveAndRefreshCompanyVat,
+  vatWriteData,
+} from "@/lib/company-vat";
 
 export type OrderListFilters = {
   query?: string;
@@ -87,11 +92,24 @@ export async function listOrders(
 }
 
 const orderDetailInclude = {
-  company: { select: { id: true, slug: true, name: true, vatRate: true } },
+  company: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      vatRate: true,
+      country: true,
+      vatNumber: true,
+      viesValid: true,
+      viesValidatedAt: true,
+      viesCheckedName: true,
+    },
+  },
   contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   quote: { select: { id: true, quoteNumber: true, status: true } },
   deal: { select: { id: true, slug: true, title: true } },
   items: { orderBy: { sortOrder: "asc" as const } },
+  invoices: { orderBy: { createdAt: "desc" as const } },
 } as const;
 
 export async function getOrder(id: string) {
@@ -180,6 +198,17 @@ export async function createOrderFromQuote(
   }
 
   const totals = totalsFromFrozenLines(selected);
+  const frozen =
+    frozenVatFromDocument(quote) ??
+    (
+      await resolveAndRefreshCompanyVat({
+        id: quote.company.id,
+        country: quote.company.country,
+        vatNumber: quote.company.vatNumber,
+        viesValid: quote.company.viesValid,
+        viesValidatedAt: quote.company.viesValidatedAt,
+      })
+    ).frozen;
   const prisma = getPrismaClient();
   const orderNumber = await nextNumber(prisma, SEQ_ORDER_2026);
   const orderId = createId();
@@ -197,6 +226,7 @@ export async function createOrderFromQuote(
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
         total: totals.total,
+        ...vatWriteData(frozen),
         createdBy: userId ?? null,
         items: {
           create: selected.map((item, index) => ({

@@ -183,7 +183,11 @@ export default async function OfferteDetailPage({
 
       <QuoteLines
         items={displayItems}
-        vatRate={Number(quote.company.vatRate)}
+        vatRate={Number(
+          displayVersion?.vatRate ?? quote.vatRate ?? quote.company.vatRate,
+        )}
+        vatRegime={displayVersion?.vatRegime ?? quote.vatRegime}
+        vatNotice={displayVersion?.vatNotice ?? quote.vatNotice}
         subtotal={displaySubtotal}
         discountTotal={displayDiscount}
         total={displayTotal}

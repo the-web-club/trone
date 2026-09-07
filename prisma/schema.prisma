@@ -112,9 +112,12 @@ model Company {
   addressLine     String?
   postalCode      String?
   city            String?
-  country         String    @default("NL")
-  vatRate         Decimal   @default(21.00) @db.Decimal(5, 2)
-  notes           String?   @db.Text
+  country          String    @default("NL")
+  vatRate          Decimal   @default(21.00) @db.Decimal(5, 2)
+  viesValidatedAt  DateTime?
+  viesValid        Boolean?
+  viesCheckedName  String?
+  notes            String?   @db.Text
   ownerUserId     String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -518,6 +521,12 @@ enum QuoteStatus {
   EXPIRED
 }
 
+enum VatRegime {
+  BINNENLANDS
+  VERLEGD
+  EXPORT
+}
+
 model Quote {
   id                   String      @id
   quoteNumber          String      @unique
@@ -528,6 +537,9 @@ model Quote {
   subtotal             Decimal     @default(0.00) @db.Decimal(12, 2)
   discountTotal        Decimal     @default(0.00) @db.Decimal(12, 2)
   total                Decimal     @default(0.00) @db.Decimal(12, 2)
+  vatRate              Decimal?    @db.Decimal(5, 2)
+  vatRegime            VatRegime?
+  vatNotice            String?     @db.Text
   validUntil           DateTime?   @db.Date
   notes                String?     @db.Text
   createdBy            String?
@@ -580,6 +592,9 @@ model QuoteVersion {
   subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
   discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
   total         Decimal     @default(0.00) @db.Decimal(12, 2)
+  vatRate       Decimal?    @db.Decimal(5, 2)
+  vatRegime     VatRegime?
+  vatNotice     String?     @db.Text
   createdAt     DateTime    @default(now())
   sentAt        DateTime?
 
@@ -635,6 +650,9 @@ model Order {
   subtotal      Decimal     @default(0.00) @db.Decimal(12, 2)
   discountTotal Decimal     @default(0.00) @db.Decimal(12, 2)
   total         Decimal     @default(0.00) @db.Decimal(12, 2)
+  vatRate       Decimal?    @db.Decimal(5, 2)
+  vatRegime     VatRegime?
+  vatNotice     String?     @db.Text
   orderedAt     DateTime    @default(now())
   expectedReady DateTime?   @db.Date
   notes         String?     @db.Text
@@ -699,6 +717,9 @@ model Invoice {
   invoiceNumber   String?
   status          InvoiceStatus @default(DRAFT)
   amount          Decimal       @default(0.00) @db.Decimal(12, 2)
+  vatRate         Decimal?      @db.Decimal(5, 2)
+  vatRegime       VatRegime?
+  vatNotice       String?       @db.Text
   currency        String        @default("EUR")
   pdfUrl          String?       @db.VarChar(500)
   issuedAt        DateTime?     @db.Date

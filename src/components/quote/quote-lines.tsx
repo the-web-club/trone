@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui/card";
+import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
 import { formatEuroExact } from "@/lib/format";
 import { vatOnNet } from "@/lib/pricing";
 import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
+import type { VatRegime } from "@/lib/vat";
 
 export type QuoteLineView = {
   id: string;
@@ -15,12 +17,16 @@ export type QuoteLineView = {
 export function QuoteLines({
   items,
   vatRate,
+  vatRegime,
+  vatNotice,
   subtotal,
   discountTotal,
   total,
 }: {
   items: QuoteLineView[];
   vatRate: number;
+  vatRegime?: VatRegime | null;
+  vatNotice?: string | null;
   subtotal: number;
   discountTotal: number;
   total: number;
@@ -79,6 +85,13 @@ export function QuoteLines({
       </section>
 
       <section className="rounded-md border border-border bg-surface px-4 py-3">
+        <div className="mb-3">
+          <VatTreatmentNotice
+            vatRate={vatRate}
+            vatRegime={vatRegime}
+            warning={vatNotice}
+          />
+        </div>
         <div className="flex justify-between text-sm text-fg-muted">
           <span>Subtotaal</span>
           <span>{formatEuroExact(subtotal)}</span>

@@ -8,6 +8,8 @@ import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
+import { checkViesVatNumber } from "@/lib/vies-service";
+import { resolveVatTreatment } from "@/lib/vat";
 
 export async function listCompanies(query?: string) {
   const prisma = getPrismaClient();
@@ -171,6 +173,58 @@ function toCompanyData(input: CompanyInput) {
   };
 }
 
+export async function validateCompanyVat(
+  id: string,
+  input: {
+    vatNumber?: string | null;
+    country?: string | null;
+    applyProposedRate?: boolean;
+  },
+) {
+  const current = await getCompany(id);
+  const vatNumber = input.vatNumber ?? current.vatNumber;
+  const country = input.country ?? current.country;
+  const result = await checkViesVatNumber(vatNumber, {
+    fallbackCountry: country,
+  });
+  const treatment = resolveVatTreatment(country, result.status);
+  const needsConfirmation = treatment.vatRegime === "VERLEGD";
+  const applyRate =
+    input.applyProposedRate === true || !needsConfirmation;
+
+  const prisma = getPrismaClient();
+  const updated = await prisma.company.update({
+    where: { id: current.id },
+    data: {
+      vatNumber: vatNumber ?? null,
+      country,
+      viesValid:
+        result.status === "GELDIG"
+          ? true
+          : result.status === "ONGELDIG"
+            ? false
+            : current.viesValid,
+      viesValidatedAt:
+        result.status === "GELDIG" || result.status === "ONGELDIG"
+          ? new Date()
+          : current.viesValidatedAt,
+      viesCheckedName:
+        result.status === "GELDIG" || result.status === "ONGELDIG"
+          ? result.name
+          : current.viesCheckedName,
+      ...(applyRate ? { vatRate: treatment.vatRate } : {}),
+    },
+  });
+
+  return {
+    company: updated,
+    result,
+    treatment,
+    needsConfirmation: needsConfirmation && !input.applyProposedRate,
+    appliedVatRate: applyRate ? treatment.vatRate : null,
+  };
+}
+
 export async function createCompany(
   input: CompanyInput,
   ownerUserId?: string,
@@ -191,11 +245,21 @@ export async function updateCompany(id: string, input: CompanyInput) {
   const current = await getCompany(id);
   const prisma = getPrismaClient();
   const slug = await nextCompanySlug(prisma, input.name, current.id);
+  const vatIdentityChanged =
+    (input.vatNumber ?? null) !== (current.vatNumber ?? null) ||
+    input.country !== current.country;
   return prisma.company.update({
     where: { id: current.id },
     data: {
       ...toCompanyData(input),
       slug,
+      ...(vatIdentityChanged
+        ? {
+            viesValidatedAt: null,
+            viesValid: null,
+            viesCheckedName: null,
+          }
+        : {}),
     },
   });
 }

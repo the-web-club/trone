@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { OrderStatusForm } from "@/components/order/order-status-form";
 import { QuoteLines } from "@/components/quote/quote-lines";
+import { OrderInvoices } from "@/components/order/order-invoices";
 import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
@@ -94,10 +95,17 @@ export default async function OrderDetailPage({
 
       <QuoteLines
         items={order.items}
-        vatRate={Number(order.company.vatRate)}
+        vatRate={Number(order.vatRate ?? order.company.vatRate)}
+        vatRegime={order.vatRegime}
+        vatNotice={order.vatNotice}
         subtotal={Number(order.subtotal)}
         discountTotal={Number(order.discountTotal)}
         total={Number(order.total)}
+      />
+
+      <OrderInvoices
+        orderId={order.id}
+        invoices={order.invoices}
       />
 
       <WorkLogSection
