@@ -9,19 +9,29 @@ import { SelectMenu, type SelectOption } from "@/components/ui/select";
 import {
   buildCompaniesHref,
   type CompaniesFilterValues,
+  type CompanyOwnerFacets,
 } from "@/lib/companies-query";
+import type { DealTeamMember } from "@/lib/deal-service";
 import { countryLabel } from "@/lib/list-copy";
 
 const ALL = "__alle__";
+
+function count(value: number | undefined): string {
+  return String(typeof value === "number" ? value : 0);
+}
 
 export function CompaniesFilters({
   values,
   cities,
   countries,
+  members,
+  facets,
 }: {
   values: CompaniesFilterValues;
   cities: string[];
   countries: string[];
+  members: DealTeamMember[];
+  facets: CompanyOwnerFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
@@ -32,6 +42,7 @@ export function CompaniesFilters({
         zoeken: next.zoeken ?? values.zoeken,
         plaats: next.plaats ?? values.plaats,
         land: next.land ?? values.land,
+        eigenaar: next.eigenaar ?? values.eigenaar,
         pagina: 1,
       }),
     );
@@ -39,6 +50,11 @@ export function CompaniesFilters({
 
   const search = useDebouncedUrlSearch(values.zoeken, (zoeken) =>
     navigate({ zoeken }),
+  );
+
+  const ownerCount = new Map(facets.byOwner.map((item) => [item.userId, item.count]));
+  const memberLabel = new Map(
+    members.map((member) => [member.id, member.name || member.email]),
   );
 
   const cityOptions: SelectOption[] = [
@@ -52,6 +68,30 @@ export function CompaniesFilters({
       label: countryLabel(country),
     })),
   ];
+  const ownerOptions: SelectOption[] = [
+    { value: "alle", label: "Alle", hint: count(facets.ownerTotal) },
+    {
+      value: "niet-toegewezen",
+      label: "Niet toegewezen",
+      hint: count(facets.unassignedOwner),
+    },
+    { value: "aan-mij", label: "Aan mij", hint: count(facets.assignedToMe) },
+    ...members.map((member) => ({
+      value: member.id,
+      label: member.name || member.email,
+      hint: count(ownerCount.get(member.id)),
+      image: member.image,
+    })),
+  ];
+
+  const ownerLabel =
+    values.eigenaar === "alle"
+      ? "Alle"
+      : values.eigenaar === "niet-toegewezen"
+        ? "Niet toegewezen"
+        : values.eigenaar === "aan-mij"
+          ? "Aan mij"
+          : (memberLabel.get(values.eigenaar) ?? values.eigenaar);
 
   const chips = [
     values.plaats
@@ -70,6 +110,14 @@ export function CompaniesFilters({
           onRemove: () => navigate({ land: "" }),
         }
       : null,
+    values.eigenaar !== "alle"
+      ? {
+          key: "eigenaar",
+          label: "Eigenaar",
+          value: ownerLabel,
+          onRemove: () => navigate({ eigenaar: "alle" }),
+        }
+      : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
@@ -85,8 +133,20 @@ export function CompaniesFilters({
       searchPlaceholder="Zoek op naam"
       searchAriaLabel="Zoek bedrijven"
       chips={chips}
-      hasActiveFilters={Boolean(values.zoeken || values.plaats || values.land)}
-      onReset={() => replace(buildCompaniesHref({ zoeken: "", plaats: "", land: "", pagina: 1 }))}
+      hasActiveFilters={Boolean(
+        values.zoeken || values.plaats || values.land || values.eigenaar !== "alle",
+      )}
+      onReset={() =>
+        replace(
+          buildCompaniesHref({
+            zoeken: "",
+            plaats: "",
+            land: "",
+            eigenaar: "alle",
+            pagina: 1,
+          }),
+        )
+      }
       isPending={isPending}
     >
       <SelectMenu
@@ -104,6 +164,15 @@ export function CompaniesFilters({
         onValueChange={(next) => navigate({ land: next === ALL ? "" : next })}
         items={countryOptions}
         className="w-auto"
+      />
+      <SelectMenu
+        prefix="Eigenaar"
+        aria-label="Filter op eigenaar"
+        value={values.eigenaar}
+        onValueChange={(next) => navigate({ eigenaar: next })}
+        items={ownerOptions}
+        contentClassName="min-w-[16rem]"
+        className="w-auto max-w-[16rem]"
       />
     </ListFilterToolbar>
   );

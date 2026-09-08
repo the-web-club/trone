@@ -49,6 +49,7 @@ export default async function OfferteBewerkenPage({
       toQuoteItemInput({
         productId: item.productId,
         quantity: item.quantity,
+        unitPrice: item.unitPrice,
         configSnapshot: item.configSnapshot,
       }),
     )

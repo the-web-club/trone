@@ -7,6 +7,10 @@ import { getPrismaClient } from "@/lib/db";
 import { ACTIVITY_FEED_CAP } from "@/lib/list-query";
 import { getContactCompanyId } from "@/lib/contact-company";
 import {
+  isManualTimelineType,
+  type ManualTimelineType,
+} from "@/lib/timeline-validation";
+import {
   timelineWhereForCompany,
   timelineWhereForContact,
   timelineWhereForDeal,
@@ -136,6 +140,54 @@ export async function logEvent(input: LogEventInput) {
     },
     include: timelineInclude,
   });
+}
+
+export async function getTimelineEvent(id: string) {
+  const prisma = getPrismaClient();
+  const event = await prisma.timelineEvent.findUnique({
+    where: { id },
+    include: timelineInclude,
+  });
+
+  if (!event) {
+    throw new AppError("Gebeurtenis niet gevonden.", "NOT_FOUND", 404);
+  }
+
+  return event;
+}
+
+function assertManualEvent(event: TimelineEventRecord) {
+  if (!isManualTimelineType(event.type)) {
+    throw new AppError(
+      "Systeemgebeurtenissen kun je niet wijzigen.",
+      "FORBIDDEN",
+      403,
+    );
+  }
+}
+
+export async function updateTimelineEvent(
+  id: string,
+  input: { type: ManualTimelineType; body?: string },
+) {
+  const current = await getTimelineEvent(id);
+  assertManualEvent(current);
+  const prisma = getPrismaClient();
+
+  return prisma.timelineEvent.update({
+    where: { id },
+    data: {
+      type: input.type,
+      body: input.body?.trim() ? input.body.trim() : null,
+    },
+    include: timelineInclude,
+  });
+}
+
+export async function deleteTimelineEvent(id: string) {
+  await getTimelineEvent(id);
+  const prisma = getPrismaClient();
+  await prisma.timelineEvent.delete({ where: { id } });
 }
 
 async function listTimeline(where: Prisma.TimelineEventWhereInput) {

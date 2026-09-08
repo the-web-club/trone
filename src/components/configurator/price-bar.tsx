@@ -16,8 +16,11 @@ export function PriceBar({
   submitDisabledReason,
   pending,
   onAddLine,
+  onAddCustomLine,
   hasMultipleLines,
   quoteNetTotal,
+  displayTotal,
+  showPriceDetails = true,
   submitLabel = "Toevoegen aan offerte",
 }: {
   price: PriceResult | null;
@@ -26,8 +29,11 @@ export function PriceBar({
   submitDisabledReason?: string;
   pending: boolean;
   onAddLine: () => void;
+  onAddCustomLine: () => void;
   hasMultipleLines: boolean;
   quoteNetTotal?: number;
+  displayTotal?: number | null;
+  showPriceDetails?: boolean;
   submitLabel?: string;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -38,8 +44,8 @@ export function PriceBar({
         "isolate w-full border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)] lg:rounded-b-xl",
       )}
     >
-      <Collapse open={detailsOpen && Boolean(price)}>
-        {price ? (
+      <Collapse open={detailsOpen && showPriceDetails && Boolean(price)}>
+        {price && showPriceDetails ? (
         <div className="mb-4 flex flex-col gap-1.5">
           <p className="text-label font-medium tracking-wide text-fg-muted uppercase">
             Prijsdetails
@@ -93,25 +99,43 @@ export function PriceBar({
           <p className="text-label text-fg-muted">Totaal excl. btw</p>
           <p className="text-2xl font-medium tracking-tight text-fg">
             <AnimatedPrice
-              value={price?.netTotal ?? null}
-              suffix={price?.hasOnRequest ? " + n.t.b." : undefined}
+              value={
+                displayTotal !== undefined
+                  ? displayTotal
+                  : (price?.netTotal ?? null)
+              }
+              suffix={
+                showPriceDetails && price?.hasOnRequest
+                  ? " + n.t.b."
+                  : undefined
+              }
             />
           </p>
-          <button
-            type="button"
-            aria-expanded={detailsOpen}
-            onClick={() => setDetailsOpen((open) => !open)}
-            className={cn(
-              "w-fit text-label text-fg-muted underline-offset-2 hover:text-fg hover:underline",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
-            )}
-          >
-            {detailsOpen ? "Prijsdetails verbergen" : "Prijsdetails"}
-          </button>
+          {showPriceDetails && price ? (
+            <button
+              type="button"
+              aria-expanded={detailsOpen}
+              onClick={() => setDetailsOpen((open) => !open)}
+              className={cn(
+                "w-fit text-label text-fg-muted underline-offset-2 hover:text-fg hover:underline",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+              )}
+            >
+              {detailsOpen ? "Prijsdetails verbergen" : "Prijsdetails"}
+            </button>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-col items-stretch gap-1.5 sm:max-w-sm sm:items-end">
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={!canAddLine}
+              onClick={onAddCustomLine}
+            >
+              Handmatige regel
+            </Button>
             <Button
               type="button"
               variant="ghost"

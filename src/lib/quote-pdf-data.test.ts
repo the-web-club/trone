@@ -183,4 +183,49 @@ describe("toQuotePdfView", () => {
     expect(view.totalExVat).toBe(2555);
     expect(view.totalInclVat).toBe(3091.55);
   });
+
+  it("zet een handmatige regel als titel plus niet-vette omschrijving", () => {
+    const view = toQuotePdfView(
+      quote({
+        items: [
+          {
+            description: "Montage",
+            quantity: 1,
+            unitPrice: 250,
+            lineTotal: 250,
+            configSnapshot: {
+              kind: "custom",
+              title: "Montage op locatie",
+              description: "Inclusief afvoer van de oude stoelen.",
+              hasPrice: true,
+            },
+          },
+          {
+            description: "Toelichting",
+            quantity: 1,
+            unitPrice: 0,
+            lineTotal: 0,
+            configSnapshot: {
+              kind: "custom",
+              title: "Levertijd",
+              description: "Circa zes weken na akkoord.",
+              hasPrice: false,
+            },
+          },
+        ],
+      }),
+    );
+    expect(view.items).toHaveLength(2);
+    expect(view.items[0]).toMatchObject({
+      title: "Montage op locatie",
+      body: "Inclusief afvoer van de oude stoelen.",
+      hasPrice: true,
+      lineTotal: 250,
+    });
+    expect(view.items[1]).toMatchObject({
+      title: "Levertijd",
+      body: "Circa zes weken na akkoord.",
+      hasPrice: false,
+    });
+  });
 });

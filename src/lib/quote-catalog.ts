@@ -22,6 +22,7 @@ export function isQuoteConfigSnapshot(
   value: unknown,
 ): value is QuoteConfigSnapshot {
   if (!value || typeof value !== "object") return false;
+  if (isCustomQuoteSnapshot(value)) return false;
   const snapshot = value as QuoteConfigSnapshot;
   return (
     typeof snapshot.productName === "string" &&
@@ -29,6 +30,61 @@ export function isQuoteConfigSnapshot(
     snapshot.price != null &&
     typeof snapshot.price.unitNet === "number"
   );
+}
+
+export type CustomQuoteSnapshot = {
+  kind: "custom";
+  title: string;
+  description: string;
+  hasPrice: boolean;
+};
+
+export function isCustomQuoteSnapshot(
+  value: unknown,
+): value is CustomQuoteSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const snapshot = value as CustomQuoteSnapshot;
+  return (
+    snapshot.kind === "custom" &&
+    typeof snapshot.title === "string" &&
+    typeof snapshot.description === "string" &&
+    typeof snapshot.hasPrice === "boolean"
+  );
+}
+
+export type QuoteLinePresentation = {
+  title: string;
+  body: string | null;
+  hasPrice: boolean;
+  isCustom: boolean;
+};
+
+export function quoteLinePresentation(item: {
+  description: string | null;
+  configSnapshot: unknown;
+}): QuoteLinePresentation {
+  if (isCustomQuoteSnapshot(item.configSnapshot)) {
+    const body = item.configSnapshot.description.trim();
+    return {
+      title:
+        item.configSnapshot.title.trim() ||
+        item.description?.trim() ||
+        "Handmatige regel",
+      body: body || null,
+      hasPrice: item.configSnapshot.hasPrice,
+      isCustom: true,
+    };
+  }
+
+  const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
+    ? item.configSnapshot
+    : null;
+  return {
+    title: snapshot?.productName ?? item.description ?? "Product",
+    body: null,
+    hasPrice: true,
+    isCustom: false,
+  };
 }
 
 export type CatalogValue = {

@@ -30,7 +30,7 @@ import {
 } from "@/lib/quote-catalog";
 import { formatEuroExact } from "@/lib/format";
 import { isSwatchOption, resolveImage } from "@/lib/product-visuals";
-import type { QuoteItemInput } from "@/lib/quote-validation";
+import type { ProductQuoteItemInput } from "@/lib/quote-validation";
 
 export function QuoteLineEditor({
   catalog,
@@ -44,12 +44,12 @@ export function QuoteLineEditor({
   priceBar,
 }: {
   catalog: QuoteCatalog;
-  item: QuoteItemInput;
+  item: ProductQuoteItemInput;
   vatRate: number;
   discountPercent: number;
   index: number;
   canRemove: boolean;
-  onChange: (item: QuoteItemInput) => void;
+  onChange: (item: ProductQuoteItemInput) => void;
   onRemove: () => void;
   priceBar?: ReactNode;
 }) {

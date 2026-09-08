@@ -178,6 +178,17 @@ const styles = StyleSheet.create({
     color: colors.faint,
     fontSize: 8,
   },
+  itemBody: {
+    flexGrow: 1,
+    flexShrink: 1,
+    color: colors.muted,
+    fontSize: 8,
+    fontWeight: 400,
+    lineHeight: 1.4,
+    paddingRight: 8,
+    paddingLeft: 0,
+    marginBottom: 2,
+  },
   totals: {
     marginTop: 8,
     marginLeft: "auto",
@@ -329,9 +340,20 @@ export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
             <View key={`${item.title}-${index}`} style={styles.item} wrap={false}>
               <View style={styles.itemRow}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.qty}>{item.quantity}</Text>
-                <Text style={styles.amt}>{formatEuroExact(item.lineTotal)}</Text>
+                <Text style={styles.qty}>
+                  {item.isCustom ? "" : item.quantity}
+                </Text>
+                <Text style={styles.amt}>
+                  {item.hasPrice ? formatEuroExact(item.lineTotal) : ""}
+                </Text>
               </View>
+              {item.body ? (
+                <View style={styles.itemRow}>
+                  <Text style={styles.itemBody}>{item.body}</Text>
+                  <Text style={styles.qty} />
+                  <Text style={styles.amt} />
+                </View>
+              ) : null}
               {item.selections.map((selection) => {
                 const paid =
                   selection.priceOnRequest || selection.priceDelta > 0;

@@ -6,7 +6,7 @@ import {
   type Letterhead,
 } from "@/lib/letterhead";
 import { vatOnNet } from "@/lib/pricing";
-import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
+import { isQuoteConfigSnapshot, quoteLinePresentation } from "@/lib/quote-catalog";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
 import { quoteStatusLabels } from "@/lib/quote-validation";
 import type { VatRegime } from "@/lib/vat";
@@ -74,9 +74,12 @@ export type QuotePdfSelection = {
 
 export type QuotePdfLine = {
   title: string;
+  body: string | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  isCustom: boolean;
+  hasPrice: boolean;
   selections: QuotePdfSelection[];
   hasOnRequest: boolean;
 };
@@ -145,6 +148,7 @@ export function vatPdfLabel(
 }
 
 function toPdfLine(item: QuotePdfItemSource): QuotePdfLine {
+  const presentation = quoteLinePresentation(item);
   const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
     ? item.configSnapshot
     : null;
@@ -156,10 +160,13 @@ function toPdfLine(item: QuotePdfItemSource): QuotePdfLine {
       priceOnRequest: selection.priceOnRequest,
     })) ?? [];
   return {
-    title: snapshot?.productName ?? item.description ?? "Product",
+    title: presentation.title,
+    body: presentation.body,
     quantity: item.quantity,
     unitPrice: num(item.unitPrice),
     lineTotal: num(item.lineTotal),
+    isCustom: presentation.isCustom,
+    hasPrice: presentation.hasPrice,
     selections: [...selections].sort(
       (a, b) => selectionRank(a) - selectionRank(b),
     ),

@@ -12,11 +12,52 @@ export const quoteSelectionSchema = z.object({
   optionValueId: z.string().trim().min(1, "Optiewaarde ontbreekt"),
 });
 
-export const quoteItemSchema = z.object({
+export const productQuoteItemSchema = z.object({
+  kind: z.literal("product"),
   productId: z.string().trim().min(1, "Product is verplicht"),
   quantity: z.coerce.number().int().min(1, "Aantal moet 1 of hoger zijn"),
   selections: z.array(quoteSelectionSchema),
 });
+
+const optionalUnitPriceSchema = z.preprocess((value) => {
+  if (value == null || value === "") return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const normalized = trimmed.includes(",")
+      ? trimmed.replace(/\./g, "").replace(",", ".")
+      : trimmed;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+}, z
+  .number({ error: "Prijs is ongeldig" })
+  .min(0, "Prijs moet 0 of hoger zijn")
+  .nullable()
+  .refine(
+    (value) =>
+      value == null ||
+      Math.abs(value * 100 - Math.round(value * 100)) < 1e-6,
+    "Maximaal 2 decimalen",
+  ));
+
+export const customQuoteItemSchema = z.object({
+  kind: z.literal("custom"),
+  title: z.string().trim().min(1, "Titel is verplicht").max(191, "Titel is te lang"),
+  description: z.preprocess((value) => {
+    if (typeof value !== "string") return "";
+    return value;
+  }, z.string().max(5000, "Omschrijving is te lang")),
+  unitPrice: optionalUnitPriceSchema,
+});
+
+export const quoteItemSchema = z.preprocess((value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const row = value as { kind?: unknown };
+  if (row.kind == null) return { ...row, kind: "product" };
+  return value;
+}, z.discriminatedUnion("kind", [productQuoteItemSchema, customQuoteItemSchema]));
 
 export const quoteSchema = z.object({
   companyId: z.string().trim().min(1, "Klant is verplicht"),
@@ -26,8 +67,16 @@ export const quoteSchema = z.object({
 });
 
 export type QuoteSelectionInput = z.infer<typeof quoteSelectionSchema>;
+export type ProductQuoteItemInput = z.infer<typeof productQuoteItemSchema>;
+export type CustomQuoteItemInput = z.infer<typeof customQuoteItemSchema>;
 export type QuoteItemInput = z.infer<typeof quoteItemSchema>;
 export type QuoteInput = z.infer<typeof quoteSchema>;
+
+export function isCustomQuoteItem(
+  item: QuoteItemInput,
+): item is CustomQuoteItemInput {
+  return item.kind === "custom";
+}
 
 export function parseQuoteForm(formData: FormData): QuoteInput {
   const raw = formData.get("payload");

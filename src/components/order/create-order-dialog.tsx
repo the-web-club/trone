@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatEuroExact } from "@/lib/format";
-import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
+import { quoteLinePresentation } from "@/lib/quote-catalog";
 
 export type CreateOrderLine = {
   id: string;
@@ -72,9 +72,7 @@ export function CreateOrderDialog({
           <input type="hidden" name="quoteId" value={quoteId} />
           <DialogBody className="flex flex-col gap-3">
             {items.map((item) => {
-              const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
-                ? item.configSnapshot
-                : null;
+              const presentation = quoteLinePresentation(item);
               const checked = selected.has(item.id);
               return (
                 <label
@@ -92,14 +90,26 @@ export function CreateOrderDialog({
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="text-sm font-medium text-fg">
-                        {snapshot?.productName ?? item.description ?? "Product"}
+                        {presentation.title}
                       </span>
                       <span className="text-sm text-fg-muted">
-                        {item.quantity} × {formatEuroExact(item.unitPrice)}
+                        {presentation.isCustom
+                          ? formatEuroExact(
+                              presentation.hasPrice ? item.unitPrice : null,
+                            )
+                          : `${item.quantity} × ${formatEuroExact(item.unitPrice)}`}
                       </span>
                     </span>
+                    {presentation.body ? (
+                      <span className="mt-0.5 block text-sm font-normal text-fg-muted">
+                        {presentation.body}
+                      </span>
+                    ) : null}
                     <span className="mt-0.5 block text-sm text-fg-muted">
-                      {formatEuroExact(item.lineTotal)} excl. btw
+                      {formatEuroExact(
+                        presentation.hasPrice ? item.lineTotal : null,
+                      )}{" "}
+                      excl. btw
                     </span>
                   </span>
                 </label>

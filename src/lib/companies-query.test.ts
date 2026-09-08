@@ -12,7 +12,13 @@ import { buildStaffHref, parseStaffSearchParams } from "@/lib/staff-query";
 describe("list query helpers", () => {
   it("omits defaults from the URL", () => {
     expect(
-      buildCompaniesHref({ zoeken: "", plaats: "", land: "", pagina: 1 }),
+      buildCompaniesHref({
+        zoeken: "",
+        plaats: "",
+        land: "",
+        eigenaar: "alle",
+        pagina: 1,
+      }),
     ).toBe("/bedrijven");
     expect(buildContactsHref({ zoeken: "", bedrijf: "", pagina: 1 })).toBe(
       "/contacten",
@@ -48,9 +54,12 @@ describe("list query helpers", () => {
         zoeken: "trone",
         plaats: "Amsterdam",
         land: "NL",
+        eigenaar: "niet-toegewezen",
         pagina: 2,
       }),
-    ).toBe("/bedrijven?zoeken=trone&plaats=Amsterdam&land=NL&pagina=2");
+    ).toBe(
+      "/bedrijven?zoeken=trone&plaats=Amsterdam&land=NL&eigenaar=niet-toegewezen&pagina=2",
+    );
     expect(
       buildContactsHref({ zoeken: "jan", bedrijf: "co-1", pagina: 3 }),
     ).toBe("/contacten?zoeken=jan&bedrijf=co-1&pagina=3");
@@ -85,8 +94,12 @@ describe("list query helpers", () => {
       zoeken: "a",
       plaats: "Breda",
       land: "",
+      eigenaar: "alle",
       pagina: 1,
     });
+    expect(
+      parseCompaniesSearchParams({ eigenaar: "aan-mij" }).eigenaar,
+    ).toBe("aan-mij");
     expect(parseContactsSearchParams({ bedrijf: "co-1" })).toEqual({
       zoeken: "",
       bedrijf: "co-1",

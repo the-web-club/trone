@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CompaniesFilters } from "@/components/company/companies-filters";
+import { CompanyOwnerSelect } from "@/components/company/company-owner-select";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import {
@@ -17,7 +18,9 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { requireSession } from "@/lib/auth-session";
 import {
+  getCompanyOwnerFacets,
   listCompanyCities,
   listCompanyCountries,
   listCompanyRows,
@@ -26,6 +29,7 @@ import {
   buildCompaniesHref,
   parseCompaniesSearchParams,
 } from "@/lib/companies-query";
+import { listDealTeamMembers } from "@/lib/deal-service";
 import { countryLabel, listSummary } from "@/lib/list-copy";
 import { CompanyLink } from "@/components/entity-links";
 
@@ -36,24 +40,49 @@ export default async function BedrijvenPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const session = await requireSession();
   const parsed = parseCompaniesSearchParams(await searchParams);
-  const hasFilters = Boolean(parsed.zoeken || parsed.plaats || parsed.land);
+  const currentUserId = session.user.id;
+  const listFilters = {
+    query: parsed.zoeken || undefined,
+    city: parsed.plaats || undefined,
+    country: parsed.land || undefined,
+    eigenaar: parsed.eigenaar,
+    page: parsed.pagina,
+  };
+  const hasFilters = Boolean(
+    parsed.zoeken || parsed.plaats || parsed.land || parsed.eigenaar !== "alle",
+  );
 
-  const [result, cities, countries] = await Promise.all([
-    listCompanyRows({
-      query: parsed.zoeken || undefined,
-      city: parsed.plaats || undefined,
-      country: parsed.land || undefined,
-      page: parsed.pagina,
-    }),
+  const [result, cities, countries, members, facets] = await Promise.all([
+    listCompanyRows(listFilters, currentUserId),
     listCompanyCities(),
     listCompanyCountries(),
+    listDealTeamMembers(),
+    getCompanyOwnerFacets(listFilters, currentUserId),
   ]);
 
+  const ownerNames = new Map(
+    members.map((member) => [member.id, member.name || member.email]),
+  );
+  const ownerImages = new Map(
+    members.map((member) => [member.id, member.image]),
+  );
+
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
-  const emptyMessage = hasFilters
-    ? "Geen bedrijven gevonden voor deze filters."
-    : "Nog geen bedrijven. Voeg het eerste bedrijf toe.";
+  let emptyMessage = "Nog geen bedrijven. Voeg het eerste bedrijf toe.";
+  if (result.total === 0 && hasFilters) {
+    if (
+      parsed.eigenaar === "aan-mij" &&
+      !parsed.zoeken &&
+      !parsed.plaats &&
+      !parsed.land
+    ) {
+      emptyMessage = "Geen bedrijven aan jou toegewezen.";
+    } else {
+      emptyMessage = "Geen bedrijven gevonden voor deze filters.";
+    }
+  }
 
   return (
     <ListBrowser>
@@ -75,6 +104,8 @@ export default async function BedrijvenPage({
         values={parsed}
         cities={cities}
         countries={countries}
+        members={members}
+        facets={facets}
       />
       <ListBody>
         <TableContainer>
@@ -84,12 +115,13 @@ export default async function BedrijvenPage({
                 <TableHeaderCell>Naam</TableHeaderCell>
                 <TableHeaderCell>Plaats</TableHeaderCell>
                 <TableHeaderCell>Land</TableHeaderCell>
+                <TableHeaderCell>Eigenaar</TableHeaderCell>
                 <TableHeaderCell align="right">Contacten</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {result.items.length === 0 ? (
-                <TableEmptyRow colSpan={4}>
+                <TableEmptyRow colSpan={5}>
                   {emptyMessage}
                   {!hasFilters ? (
                     <>
@@ -111,6 +143,23 @@ export default async function BedrijvenPage({
                     </TableCell>
                     <TableCell className="text-fg-muted">
                       {countryLabel(company.country)}
+                    </TableCell>
+                    <TableCell>
+                      <CompanyOwnerSelect
+                        companyId={company.id}
+                        ownerUserId={company.ownerUserId}
+                        ownerName={
+                          company.ownerUserId
+                            ? (ownerNames.get(company.ownerUserId) ?? null)
+                            : null
+                        }
+                        ownerImage={
+                          company.ownerUserId
+                            ? (ownerImages.get(company.ownerUserId) ?? null)
+                            : null
+                        }
+                        members={members}
+                      />
                     </TableCell>
                     <TableCell align="right" className="text-fg-muted">
                       {company._count.contacts}

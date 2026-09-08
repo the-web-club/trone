@@ -1,4 +1,10 @@
-import { isQuoteConfigSnapshot, type QuoteConfigSnapshot } from "@/lib/quote-catalog";
+import {
+  isCustomQuoteSnapshot,
+  isQuoteConfigSnapshot,
+  quoteLinePresentation,
+  type CustomQuoteSnapshot,
+  type QuoteConfigSnapshot,
+} from "@/lib/quote-catalog";
 import type { QuoteItemInput } from "@/lib/quote-validation";
 
 export type QuoteVersionLine = {
@@ -8,6 +14,7 @@ export type QuoteVersionLine = {
   unitPrice: number;
   lineTotal: number;
   configSnapshot: QuoteConfigSnapshot | null;
+  customSnapshot: CustomQuoteSnapshot | null;
 };
 
 export type VersionLineChange = {
@@ -43,13 +50,25 @@ export function formatQuoteVersionNumber(
 export function toQuoteItemInput(item: {
   productId: string;
   quantity: number;
+  unitPrice?: { toString(): string } | number;
   configSnapshot: unknown;
 }): QuoteItemInput | null {
+  if (isCustomQuoteSnapshot(item.configSnapshot)) {
+    return {
+      kind: "custom",
+      title: item.configSnapshot.title,
+      description: item.configSnapshot.description,
+      unitPrice: item.configSnapshot.hasPrice
+        ? Number(item.unitPrice ?? 0)
+        : null,
+    };
+  }
   const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
     ? item.configSnapshot
     : null;
   if (!snapshot) return null;
   return {
+    kind: "product",
     productId: item.productId,
     quantity: item.quantity,
     selections: snapshot.selections.map((selection) => ({
@@ -76,10 +95,14 @@ export function toQuoteVersionLine(item: {
     configSnapshot: isQuoteConfigSnapshot(item.configSnapshot)
       ? item.configSnapshot
       : null,
+    customSnapshot: isCustomQuoteSnapshot(item.configSnapshot)
+      ? item.configSnapshot
+      : null,
   };
 }
 
 function fingerprint(line: QuoteVersionLine): string {
+  if (line.customSnapshot) return "custom";
   const ids = (line.configSnapshot?.selections ?? [])
     .map((selection) => selection.optionValueId)
     .sort()
@@ -113,7 +136,10 @@ function formatExact(value: number): string {
 }
 
 function optionLabel(line: QuoteVersionLine): string {
-  return line.configSnapshot?.productName ?? line.description ?? "Product";
+  return quoteLinePresentation({
+    description: line.description,
+    configSnapshot: line.customSnapshot ?? line.configSnapshot,
+  }).title;
 }
 
 function diffLine(
@@ -121,6 +147,27 @@ function diffLine(
   after: QuoteVersionLine,
 ): VersionLineChange[] {
   const changes: VersionLineChange[] = [];
+
+  if (before.customSnapshot || after.customSnapshot) {
+    if (before.customSnapshot?.title !== after.customSnapshot?.title) {
+      changes.push({
+        field: "title",
+        label: "Titel",
+        before: before.customSnapshot?.title ?? "—",
+        after: after.customSnapshot?.title ?? "—",
+      });
+    }
+    if (
+      before.customSnapshot?.description !== after.customSnapshot?.description
+    ) {
+      changes.push({
+        field: "description",
+        label: "Omschrijving",
+        before: before.customSnapshot?.description?.trim() || "—",
+        after: after.customSnapshot?.description?.trim() || "—",
+      });
+    }
+  }
 
   if (before.quantity !== after.quantity) {
     changes.push({

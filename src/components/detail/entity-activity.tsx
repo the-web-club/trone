@@ -1,6 +1,11 @@
 import { TaskSection } from "@/components/task/task-section";
 import { Timeline } from "@/components/timeline/timeline";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
+import {
+  isAdminSession,
+  isViewerSession,
+  requireSession,
+} from "@/lib/auth-session";
 import { listActiveAssignees, listOpenTasksForEntity } from "@/lib/task-service";
 import {
   listTimelineForCompany,
@@ -8,6 +13,14 @@ import {
   listTimelineForDeal,
 } from "@/lib/timeline-service";
 import { listOrdersForWorkLog, listWorkLogs } from "@/lib/worklog-service";
+
+async function timelinePermissions() {
+  const session = await requireSession();
+  return {
+    canEdit: !isViewerSession(session),
+    canDelete: isAdminSession(session),
+  };
+}
 
 export async function EntityTasks({
   currentUserId,
@@ -51,9 +64,17 @@ export async function CompanyTimeline({
   companyId: string;
   compact?: boolean;
 }) {
-  const events = await listTimelineForCompany(companyId);
+  const [events, permissions] = await Promise.all([
+    listTimelineForCompany(companyId),
+    timelinePermissions(),
+  ]);
   return (
-    <Timeline compact={compact} events={events} companyId={companyId} />
+    <Timeline
+      compact={compact}
+      events={events}
+      companyId={companyId}
+      {...permissions}
+    />
   );
 }
 
@@ -66,13 +87,17 @@ export async function ContactTimeline({
   companyId?: string | null;
   compact?: boolean;
 }) {
-  const events = await listTimelineForContact(contactId);
+  const [events, permissions] = await Promise.all([
+    listTimelineForContact(contactId),
+    timelinePermissions(),
+  ]);
   return (
     <Timeline
       compact={compact}
       events={events}
       contactId={contactId}
       companyId={companyId}
+      {...permissions}
     />
   );
 }
@@ -88,7 +113,10 @@ export async function DealTimeline({
   companyId?: string | null;
   compact?: boolean;
 }) {
-  const events = await listTimelineForDeal(dealId);
+  const [events, permissions] = await Promise.all([
+    listTimelineForDeal(dealId),
+    timelinePermissions(),
+  ]);
   return (
     <Timeline
       compact={compact}
@@ -96,6 +124,7 @@ export async function DealTimeline({
       dealId={dealId}
       contactId={contactId}
       companyId={companyId}
+      {...permissions}
     />
   );
 }

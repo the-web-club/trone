@@ -14,15 +14,21 @@ import { loadPricingContext } from "@/lib/pricing-context";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
 import { nextNumber, SEQ_QUOTE_2026 } from "@/lib/number-sequence-service";
 import type { QuoteCatalog } from "@/lib/quote-catalog";
-import { resolveDiscountPercent, type QuoteConfigSnapshot } from "@/lib/quote-catalog";
+import {
+  resolveDiscountPercent,
+  type CustomQuoteSnapshot,
+  type QuoteConfigSnapshot,
+} from "@/lib/quote-catalog";
 import { assertContactBelongsToCompany } from "@/lib/contact-company";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { listDealsForSelect, syncDealValueFromQuotes } from "@/lib/deal-service";
-import type {
-  QuoteInput,
-  QuoteItemInput,
-  QuoteOutcomeInput,
-  QuoteStatusInput,
+import {
+  isCustomQuoteItem,
+  type ProductQuoteItemInput,
+  type QuoteInput,
+  type QuoteItemInput,
+  type QuoteOutcomeInput,
+  type QuoteStatusInput,
 } from "@/lib/quote-validation";
 import {
   compareVersionLines,
@@ -413,7 +419,7 @@ async function assertQuoteRelations(input: QuoteInput) {
 }
 
 function pricedLine(
-  item: QuoteItemInput,
+  item: ProductQuoteItemInput,
   ctx: Awaited<ReturnType<typeof loadPricingContext>>,
   vatRate: number,
   discountPercent: number,
@@ -477,6 +483,36 @@ async function persistQuoteItems(
   let total = 0;
 
   for (const [index, item] of items.entries()) {
+    if (isCustomQuoteItem(item)) {
+      const unitPrice = item.unitPrice == null ? 0 : round2(item.unitPrice);
+      const snapshot: CustomQuoteSnapshot = {
+        kind: "custom",
+        title: item.title.trim(),
+        description: item.description.trim(),
+        hasPrice: item.unitPrice != null,
+      };
+
+      await tx.quoteItem.create({
+        data: {
+          id: createId(),
+          quoteId,
+          productId: "",
+          configurationId: null,
+          description: snapshot.title,
+          quantity: 1,
+          unitPrice,
+          lineDiscountPct: 0,
+          lineTotal: unitPrice,
+          configSnapshot: snapshot as unknown as Prisma.InputJsonValue,
+          sortOrder: index + 1,
+        },
+      });
+
+      subtotal = round2(subtotal + unitPrice);
+      total = round2(total + unitPrice);
+      continue;
+    }
+
     const discountPercent = resolveDiscountPercent(discounts, item.productId);
     const { price, snapshot } = pricedLine(item, ctx, vatRate, discountPercent);
     const configurationId = createId();
@@ -623,6 +659,7 @@ export async function createQuote(input: QuoteInput, userId?: string) {
     }));
 
   for (const item of input.items) {
+    if (isCustomQuoteItem(item)) continue;
     pricedLine(
       item,
       ctx,
@@ -685,6 +722,7 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
     }));
 
   for (const item of input.items) {
+    if (isCustomQuoteItem(item)) continue;
     pricedLine(
       item,
       ctx,
@@ -753,6 +791,7 @@ export async function sendQuote(id: string, userId?: string) {
     const input = toQuoteItemInput({
       productId: item.productId,
       quantity: item.quantity,
+      unitPrice: item.unitPrice,
       configSnapshot: item.configSnapshot,
     });
     if (!input) {
@@ -781,6 +820,7 @@ export async function sendQuote(id: string, userId?: string) {
     }));
 
   for (const item of items) {
+    if (isCustomQuoteItem(item)) continue;
     pricedLine(
       item,
       ctx,

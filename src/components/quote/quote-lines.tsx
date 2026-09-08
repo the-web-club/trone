@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
 import { formatEuroExact } from "@/lib/format";
 import { vatOnNet } from "@/lib/pricing";
-import { isQuoteConfigSnapshot } from "@/lib/quote-catalog";
+import { isQuoteConfigSnapshot, quoteLinePresentation } from "@/lib/quote-catalog";
 import type { VatRegime } from "@/lib/vat";
 
 export type QuoteLineView = {
@@ -41,16 +41,30 @@ export function QuoteLines({
           const snapshot = isQuoteConfigSnapshot(item.configSnapshot)
             ? item.configSnapshot
             : null;
+          const presentation = quoteLinePresentation(item);
+          const linePrice = presentation.hasPrice
+            ? Number(item.unitPrice)
+            : null;
+          const lineTotal = presentation.hasPrice
+            ? Number(item.lineTotal)
+            : null;
           return (
             <Card key={item.id} className="flex flex-col gap-3 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="text-sm font-medium text-fg">
-                  {index + 1}. {snapshot?.productName ?? item.description ?? "Product"}
+                  {index + 1}. {presentation.title}
                 </h3>
                 <p className="text-sm text-fg-muted">
-                  {item.quantity} × {formatEuroExact(Number(item.unitPrice))}
+                  {presentation.isCustom
+                    ? formatEuroExact(linePrice)
+                    : `${item.quantity} × ${formatEuroExact(linePrice)}`}
                 </p>
               </div>
+              {presentation.body ? (
+                <p className="text-sm font-normal text-fg-muted whitespace-pre-wrap">
+                  {presentation.body}
+                </p>
+              ) : null}
               {snapshot ? (
                 <ul className="flex flex-col gap-1">
                   {snapshot.selections.map((selection) => (
@@ -72,7 +86,7 @@ export function QuoteLines({
               ) : null}
               <div className="flex justify-between text-sm font-medium text-fg">
                 <span>Bevroren regeltotaal excl. btw</span>
-                <span>{formatEuroExact(Number(item.lineTotal))}</span>
+                <span>{formatEuroExact(lineTotal)}</span>
               </div>
               {snapshot?.price.hasOnRequest ? (
                 <p className="text-xs text-warning">

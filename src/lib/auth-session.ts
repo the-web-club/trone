@@ -36,10 +36,26 @@ export function isAdminSession(session: AppSession): boolean {
   return getSessionRole(session) === "admin";
 }
 
+export function isViewerSession(session: AppSession): boolean {
+  return getSessionRole(session) === "viewer";
+}
+
 export async function requireAdmin(): Promise<AppSession> {
   const session = await requireSession();
   if (!isAdminSession(session)) {
     throw new AppError("Alleen een beheerder mag dit doen.", "FORBIDDEN", 403);
+  }
+  return session;
+}
+
+export async function requireWritableSession(): Promise<AppSession> {
+  const session = await requireSession();
+  if (isViewerSession(session)) {
+    throw new AppError(
+      "Een alleen-lezen account mag dit niet wijzigen.",
+      "FORBIDDEN",
+      403,
+    );
   }
   return session;
 }

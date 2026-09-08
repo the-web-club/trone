@@ -14,6 +14,7 @@ import {
   createCompany,
   deleteCompany,
   getCompany,
+  setCompanyOwner,
   updateCompany,
   validateCompanyVat,
 } from "@/lib/company-service";
@@ -76,6 +77,22 @@ export async function updateCompanyAction(
     const id = String(formData.get("id") ?? "");
     const input = parseCompanyForm(formData);
     const company = await updateCompany(id, input);
+    revalidatePath("/bedrijven", "layout");
+    revalidatePath(companyPath(company));
+    revalidatePath("/overzicht");
+    return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function setCompanyOwnerAction(
+  companyId: string,
+  ownerUserId: string | null,
+): Promise<{ error?: string }> {
+  try {
+    await requireSession();
+    const company = await setCompanyOwner(companyId, ownerUserId);
     revalidatePath("/bedrijven", "layout");
     revalidatePath(companyPath(company));
     revalidatePath("/overzicht");

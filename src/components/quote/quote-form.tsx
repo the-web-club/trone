@@ -13,6 +13,7 @@ import { ComboboxMenu } from "@/components/ui/combobox";
 import { CreateCustomerDialog } from "@/components/quote/create-customer-dialog";
 import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
 import { CreateLeadDialog } from "@/components/quote/create-lead-dialog";
+import { QuoteCustomLineEditor } from "@/components/quote/quote-custom-line-editor";
 import { QuoteLineEditor } from "@/components/quote/quote-line-editor";
 import { Button } from "@/components/ui/button";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
@@ -25,7 +26,12 @@ import {
   toPricingContext,
   type QuoteCatalog,
 } from "@/lib/quote-catalog";
-import type { QuoteItemInput } from "@/lib/quote-validation";
+import {
+  isCustomQuoteItem,
+  type CustomQuoteItemInput,
+  type ProductQuoteItemInput,
+  type QuoteItemInput,
+} from "@/lib/quote-validation";
 import {
   resolveVatTreatment,
   viesStatusFromCache,
@@ -56,15 +62,25 @@ export type QuoteFormDeal = {
   companyId: string | null;
 };
 
-function emptyLine(catalog: QuoteCatalog): QuoteItemInput {
+function emptyLine(catalog: QuoteCatalog): ProductQuoteItemInput {
   const productId = catalog.products[0]?.id ?? "";
   const selections = productId ? defaultSelections(catalog, productId) : [];
   return {
+    kind: "product",
     productId,
     quantity: 1,
     selections: productId
       ? ensurePreferredSelections(catalog, productId, selections)
       : selections,
+  };
+}
+
+function emptyCustomLine(): CustomQuoteItemInput {
+  return {
+    kind: "custom",
+    title: "",
+    description: "",
+    unitPrice: null,
   };
 }
 
@@ -162,6 +178,15 @@ export function QuoteForm({
   }
 
   const pricedItems = items.map((item) => {
+    if (isCustomQuoteItem(item)) {
+      const titleMissing = item.title.trim().length === 0;
+      return {
+        kind: "custom" as const,
+        price: null,
+        displayTotal: item.unitPrice,
+        errors: titleMissing ? ["Titel is verplicht"] : [],
+      };
+    }
     const discountPercent = resolveDiscountPercent(
       company?.discounts ?? [],
       item.productId,
@@ -173,13 +198,19 @@ export function QuoteForm({
       vatRate,
       discountPercent,
     };
+    const price = calculatePrice(input, ctx);
     return {
-      price: calculatePrice(input, ctx),
-      errors: validateConfiguration(input, ctx),
+      kind: "product" as const,
+      price,
+      displayTotal: price.netTotal,
+      errors: validateConfiguration(input, ctx).map((error) => error.message),
     };
   });
 
-  const netTotal = pricedItems.reduce((sum, row) => sum + row.price.netTotal, 0);
+  const netTotal = pricedItems.reduce(
+    (sum, row) => sum + (row.displayTotal ?? 0),
+    0,
+  );
   const active = pricedItems[activeIndex];
   const activeValid = (active?.errors.length ?? 1) === 0;
   const allValid = pricedItems.every((row) => row.errors.length === 0);
@@ -187,7 +218,9 @@ export function QuoteForm({
   const submitDisabledReason = !companyId
     ? "Kies eerst een klant."
     : !allValid
-      ? "Maak de configuratie compleet om toe te voegen."
+      ? active?.kind === "custom"
+        ? "Vul een titel in voor de handmatige regel."
+        : "Maak de configuratie compleet om toe te voegen."
       : undefined;
 
   const payload = {
@@ -201,6 +234,41 @@ export function QuoteForm({
     if (!activeValid) return;
     setItems((list) => [...list, emptyLine(catalog)]);
     setActiveIndex(items.length);
+  }
+
+  function addCustomLine() {
+    if (!activeValid) return;
+    setItems((list) => [...list, emptyCustomLine()]);
+    setActiveIndex(items.length);
+  }
+
+  function removeLine(index: number) {
+    setItems((list) => list.filter((_, rowIndex) => rowIndex !== index));
+    setActiveIndex((current) => {
+      if (index < current) return current - 1;
+      return Math.min(current, items.length - 2);
+    });
+  }
+
+  function lineBar(index: number) {
+    if (index !== activeIndex) return null;
+    const isCustom = active?.kind === "custom";
+    return (
+      <PriceBar
+        price={active?.price ?? null}
+        displayTotal={isCustom ? (active?.displayTotal ?? null) : undefined}
+        showPriceDetails={!isCustom}
+        canSubmit={canSubmit}
+        canAddLine={activeValid}
+        submitDisabledReason={submitDisabledReason}
+        pending={pending}
+        onAddLine={addLine}
+        onAddCustomLine={addCustomLine}
+        hasMultipleLines={items.length > 1}
+        quoteNetTotal={netTotal}
+        submitLabel={isEdit ? "Wijzigingen opslaan" : "Toevoegen aan offerte"}
+      />
+    );
   }
 
   function handleCreatedCustomer(result: {
@@ -387,14 +455,17 @@ export function QuoteForm({
       ) : null}
 
       {items.length > 1 ? (
-        <nav aria-label="Stoelen op deze offerte" className="mb-6 flex flex-wrap gap-1.5">
+        <nav aria-label="Regels op deze offerte" className="mb-6 flex flex-wrap gap-1.5">
           {items.map((item, index) => {
-            const product = catalog.products.find((row) => row.id === item.productId);
             const selected = index === activeIndex;
             const valid = pricedItems[index]?.errors.length === 0;
+            const label = isCustomQuoteItem(item)
+              ? item.title.trim() || "Handmatige regel"
+              : (catalog.products.find((row) => row.id === item.productId)?.name ??
+                "Stoel");
             return (
               <button
-                key={`${item.productId}-${index}`}
+                key={`${isCustomQuoteItem(item) ? "custom" : item.productId}-${index}`}
                 type="button"
                 aria-current={selected ? "true" : undefined}
                 onClick={() => setActiveIndex(index)}
@@ -407,7 +478,7 @@ export function QuoteForm({
                   !valid && "text-warning",
                 )}
               >
-                {product?.name ?? "Stoel"} {items.length > 1 ? index + 1 : ""}
+                {label} {items.length > 1 ? index + 1 : ""}
               </button>
             );
           })}
@@ -415,58 +486,57 @@ export function QuoteForm({
       ) : null}
 
       {items.map((item, index) => (
-        <div key={`${item.productId}-${index}`} hidden={index !== activeIndex}>
-          <QuoteLineEditor
-            catalog={catalog}
-            item={item}
-            index={index}
-            vatRate={vatRate}
-            discountPercent={resolveDiscountPercent(
-              company?.discounts ?? [],
-              item.productId,
-            )}
-            canRemove={items.length > 1}
-            onChange={(next) =>
-              setItems((list) =>
-                list.map((row, rowIndex) =>
-                  rowIndex === index
-                    ? {
-                        ...next,
-                        selections: ensurePreferredSelections(
-                          catalog,
-                          next.productId,
-                          next.selections,
-                        ),
-                      }
-                    : row,
-                ),
-              )
-            }
-            onRemove={() => {
-              setItems((list) => list.filter((_, rowIndex) => rowIndex !== index));
-              setActiveIndex((current) => {
-                if (index < current) return current - 1;
-                return Math.min(current, items.length - 2);
-              });
-            }}
-            priceBar={
-              index === activeIndex ? (
-                <PriceBar
-                  price={active?.price ?? null}
-                  canSubmit={canSubmit}
-                  canAddLine={activeValid}
-                  submitDisabledReason={submitDisabledReason}
-                  pending={pending}
-                  onAddLine={addLine}
-                  hasMultipleLines={items.length > 1}
-                  quoteNetTotal={netTotal}
-                  submitLabel={
-                    isEdit ? "Wijzigingen opslaan" : "Toevoegen aan offerte"
-                  }
-                />
-              ) : null
-            }
-          />
+        <div
+          key={`${isCustomQuoteItem(item) ? "custom" : item.productId}-${index}`}
+          hidden={index !== activeIndex}
+        >
+          {isCustomQuoteItem(item) ? (
+            <QuoteCustomLineEditor
+              item={item}
+              index={index}
+              canRemove={items.length > 1}
+              onChange={(next) =>
+                setItems((list) =>
+                  list.map((row, rowIndex) =>
+                    rowIndex === index ? next : row,
+                  ),
+                )
+              }
+              onRemove={() => removeLine(index)}
+              priceBar={lineBar(index)}
+            />
+          ) : (
+            <QuoteLineEditor
+              catalog={catalog}
+              item={item}
+              index={index}
+              vatRate={vatRate}
+              discountPercent={resolveDiscountPercent(
+                company?.discounts ?? [],
+                item.productId,
+              )}
+              canRemove={items.length > 1}
+              onChange={(next) =>
+                setItems((list) =>
+                  list.map((row, rowIndex) =>
+                    rowIndex === index
+                      ? {
+                          ...next,
+                          kind: "product",
+                          selections: ensurePreferredSelections(
+                            catalog,
+                            next.productId,
+                            next.selections,
+                          ),
+                        }
+                      : row,
+                  ),
+                )
+              }
+              onRemove={() => removeLine(index)}
+              priceBar={lineBar(index)}
+            />
+          )}
         </div>
       ))}
 

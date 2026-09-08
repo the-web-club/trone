@@ -1,3 +1,6 @@
+"use client";
+
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CheckSquare,
@@ -12,7 +15,15 @@ import {
   Users,
   Workflow,
 } from "lucide-react";
+import {
+  deleteTimelineEventAction,
+  updateTimelineEventAction,
+} from "@/app/(beveiligd)/actions/timeline-actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { SelectMenu } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { UserName } from "@/components/user/user-name";
 import { formatDateTime, formatPersonName } from "@/lib/format";
 import {
@@ -22,8 +33,12 @@ import {
   orderPath,
   quotePath,
 } from "@/lib/paths";
-import type { TimelineEventRecord } from "@/lib/timeline-service";
-import { timelineEventTypeLabels } from "@/lib/timeline-validation";
+import {
+  isManualTimelineType,
+  timelineEventTypeLabels,
+  type ManualTimelineType,
+  type TimelineEventView,
+} from "@/lib/timeline-validation";
 
 const typeIcons = {
   NOTE: StickyNote,
@@ -57,11 +72,35 @@ const typeTones = {
   SYSTEM: "default",
 } as const;
 
-export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
+const manualTypeItems = [
+  { value: "NOTE" as const, label: timelineEventTypeLabels.NOTE },
+  { value: "CALL" as const, label: timelineEventTypeLabels.CALL },
+  { value: "EMAIL" as const, label: timelineEventTypeLabels.EMAIL },
+  { value: "MEETING" as const, label: timelineEventTypeLabels.MEETING },
+  { value: "DEMO" as const, label: timelineEventTypeLabels.DEMO },
+];
+
+function asDate(value: Date | string) {
+  return value instanceof Date ? value : new Date(value);
+}
+
+export function TimelineEventItem({
+  event,
+  canEdit = false,
+  canDelete = false,
+}: {
+  event: TimelineEventView;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const Icon = typeIcons[event.type];
   const contactName = event.contact
     ? formatPersonName(event.contact.firstName, event.contact.lastName)
     : null;
+  const manual = isManualTimelineType(event.type);
+  const showEdit = canEdit && manual;
+  const showDelete = canDelete;
+  const [editing, setEditing] = useState(false);
 
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2">
@@ -81,10 +120,34 @@ export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
             "Systeem"
           )}
           <span aria-hidden>·</span>
-          {formatDateTime(event.occurredAt)}
+          {formatDateTime(asDate(event.occurredAt))}
         </span>
+        {showEdit || showDelete ? (
+          <div className="ml-auto flex items-center gap-1">
+            {showEdit && !editing ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => setEditing(true)}
+              >
+                Bewerken
+              </Button>
+            ) : null}
+            {showDelete && !editing ? (
+              <DeleteTimelineEventButton eventId={event.id} />
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      {event.body ? (
+      {editing && isManualTimelineType(event.type) ? (
+        <TimelineEventEditor
+          eventId={event.id}
+          type={event.type}
+          body={event.body}
+          onCancel={() => setEditing(false)}
+        />
+      ) : event.body ? (
         <p className="mt-1 text-sm text-fg">{event.body}</p>
       ) : null}
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-muted">
@@ -121,5 +184,93 @@ export function TimelineEventItem({ event }: { event: TimelineEventRecord }) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function TimelineEventEditor({
+  eventId,
+  type,
+  body,
+  onCancel,
+}: {
+  eventId: string;
+  type: ManualTimelineType;
+  body: string | null;
+  onCancel: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    updateTimelineEventAction,
+    null,
+  );
+
+  useEffect(() => {
+    if (state?.savedAt) onCancel();
+  }, [state?.savedAt, onCancel]);
+
+  return (
+    <form action={formAction} className="mt-2 flex flex-col gap-2">
+      <input type="hidden" name="id" value={eventId} />
+      <FormField id={`type-${eventId}`} label="Type">
+        <SelectMenu
+          name="type"
+          defaultValue={type}
+          items={manualTypeItems}
+          searchPlaceholder="Zoek een type…"
+        />
+      </FormField>
+      <FormField id={`body-${eventId}`} label="Toelichting">
+        <Textarea
+          name="body"
+          defaultValue={body ?? ""}
+          placeholder="Wat is er gebeurd?"
+        />
+      </FormField>
+      {state?.error ? (
+        <p className="text-sm text-danger" role="alert">
+          {state.error}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" loading={pending}>
+          Opslaan
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={onCancel}
+        >
+          Annuleren
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DeleteTimelineEventButton({ eventId }: { eventId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onDelete(formData: FormData) {
+    if (!window.confirm("Deze gebeurtenis verwijderen?")) return;
+    setPending(true);
+    setError(null);
+    const result = await deleteTimelineEventAction(null, formData);
+    setPending(false);
+    if (result.error) setError(result.error);
+  }
+
+  return (
+    <form action={onDelete}>
+      <input type="hidden" name="id" value={eventId} />
+      <Button type="submit" variant="ghost" size="xs" loading={pending}>
+        Verwijderen
+      </Button>
+      {error ? (
+        <p className="mt-1 text-xs text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </form>
   );
 }

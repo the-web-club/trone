@@ -11,6 +11,8 @@ export function Timeline({
   companyId,
   title = "Tijdlijn",
   compact = false,
+  canEdit = false,
+  canDelete = false,
 }: {
   events: TimelineEventRecord[];
   dealId?: string | null;
@@ -18,8 +20,10 @@ export function Timeline({
   companyId?: string | null;
   title?: string;
   compact?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
-  const composer = compact ? (
+  const composer = !canEdit ? null : compact ? (
     <CollapsibleTimelineComposer
       dealId={dealId}
       contactId={contactId}
@@ -47,7 +51,11 @@ export function Timeline({
         <Stagger as="ul" className="flex flex-col gap-2">
           {events.map((event) => (
             <StaggerItem key={event.id} as="li">
-              <TimelineEventItem event={event} />
+              <TimelineEventItem
+                event={event}
+                canEdit={canEdit}
+                canDelete={canDelete}
+              />
             </StaggerItem>
           ))}
         </Stagger>

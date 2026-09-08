@@ -136,6 +136,7 @@ model Company {
 
   @@index([city])
   @@index([country])
+  @@index([ownerUserId])
   @@map("company")
 }
 

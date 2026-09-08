@@ -7,6 +7,7 @@ import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
+import type { CompanyOwnerFacets } from "@/lib/companies-query";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { checkViesVatNumber } from "@/lib/vies-service";
 import { resolveVatTreatment } from "@/lib/vat";
@@ -38,14 +39,26 @@ export type CompanyListFilters = {
   query?: string;
   city?: string;
   country?: string;
+  eigenaar?: string;
   page?: number;
   pageSize?: number;
 };
 
-function buildCompanyListWhere(
+export function buildCompanyListWhere(
   filters: CompanyListFilters,
+  currentUserId?: string,
 ): Prisma.CompanyWhereInput {
   const and: Prisma.CompanyWhereInput[] = [];
+
+  const eigenaar = filters.eigenaar?.trim() || "alle";
+  if (eigenaar === "aan-mij") {
+    and.push({ ownerUserId: currentUserId ?? "__no_match__" });
+  } else if (eigenaar === "niet-toegewezen") {
+    and.push({ ownerUserId: null });
+  } else if (eigenaar !== "alle") {
+    and.push({ ownerUserId: eigenaar });
+  }
+
   const query = filters.query?.trim();
   if (query) and.push({ name: { contains: query } });
   if (filters.city?.trim()) and.push({ city: filters.city.trim() });
@@ -55,6 +68,7 @@ function buildCompanyListWhere(
 
 export async function listCompanyRows(
   filters: CompanyListFilters = {},
+  currentUserId?: string,
 ): Promise<
   PagedList<{
     id: string;
@@ -62,11 +76,12 @@ export async function listCompanyRows(
     name: string;
     city: string | null;
     country: string;
+    ownerUserId: string | null;
     _count: { contacts: number };
   }>
 > {
   const prisma = getPrismaClient();
-  const where = buildCompanyListWhere(filters);
+  const where = buildCompanyListWhere(filters, currentUserId);
   const { page, pageSize, skip, take } = paginateArgs(
     filters.page,
     filters.pageSize,
@@ -83,6 +98,7 @@ export async function listCompanyRows(
         name: true,
         city: true,
         country: true,
+        ownerUserId: true,
         _count: { select: { contacts: true } },
       },
       skip,
@@ -91,6 +107,43 @@ export async function listCompanyRows(
   ]);
 
   return { items, total, page, pageSize };
+}
+
+export async function getCompanyOwnerFacets(
+  filters: CompanyListFilters = {},
+  currentUserId?: string,
+): Promise<CompanyOwnerFacets> {
+  const prisma = getPrismaClient();
+  const ownerWhere = buildCompanyListWhere(
+    { ...filters, eigenaar: "alle" },
+    currentUserId,
+  );
+  const ownerGroups = await prisma.company.groupBy({
+    by: ["ownerUserId"],
+    where: ownerWhere,
+    _count: { _all: true },
+  });
+
+  const ownerTotal = ownerGroups.reduce(
+    (sum, group) => sum + group._count._all,
+    0,
+  );
+  const unassignedOwner =
+    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
+
+  return {
+    ownerTotal,
+    unassignedOwner,
+    assignedToMe: currentUserId
+      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
+          ?._count._all ?? 0)
+      : 0,
+    byOwner: ownerGroups.flatMap((group) =>
+      group.ownerUserId
+        ? [{ userId: group.ownerUserId, count: group._count._all }]
+        : [],
+    ),
+  };
 }
 
 export async function listCompanyCities() {
@@ -238,6 +291,28 @@ export async function createCompany(
       ...toCompanyData(input),
       ownerUserId: ownerUserId ?? null,
     },
+  });
+}
+
+export async function setCompanyOwner(id: string, ownerUserId: string | null) {
+  const company = await getCompany(id);
+  const nextOwnerId = ownerUserId?.trim() || null;
+  if (company.ownerUserId === nextOwnerId) return company;
+
+  const prisma = getPrismaClient();
+  if (nextOwnerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: nextOwnerId },
+      select: { id: true, banned: true },
+    });
+    if (!user || user.banned === true) {
+      throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+    }
+  }
+
+  return prisma.company.update({
+    where: { id: company.id },
+    data: { ownerUserId: nextOwnerId },
   });
 }
 
