@@ -12,7 +12,7 @@ import { buildStaffHref, parseStaffSearchParams } from "@/lib/staff-query";
 import { listStaffRows, staffStatus } from "@/lib/user-service";
 import type { StaffStatus, UserRole } from "@/lib/user-validation";
 
-export const metadata: Metadata = { title: "Medewerkers" };
+export const metadata: Metadata = { title: "Teamleden" };
 
 export default async function MedewerkersPage({
   searchParams,
@@ -33,18 +33,18 @@ export default async function MedewerkersPage({
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
   const emptyMessage = hasFilters
-    ? "Geen medewerkers gevonden voor deze filters."
-    : "Nog geen medewerkers.";
+    ? "Geen teamleden gevonden voor deze filters."
+    : "Nog geen teamleden.";
 
   return (
     <ListBrowser>
       <PageHeader
-        title="Medewerkers"
-        description="Interne accounts voor het team. Nieuwe medewerkers stellen zelf een wachtwoord in via de uitnodigingsmail."
+        title="Teamleden"
+        description="Interne accounts voor het team. Nieuwe teamleden stellen zelf een wachtwoord in via de uitnodigingsmail."
         meta={[
           result.total === 0 && hasFilters
             ? "Geen resultaten"
-            : listSummary(result.total, "medewerker", "medewerkers"),
+            : listSummary(result.total, "teamlid", "teamleden"),
         ]}
         actions={canManage ? <InviteUserForm /> : undefined}
       />

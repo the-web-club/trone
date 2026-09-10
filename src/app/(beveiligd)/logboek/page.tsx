@@ -67,15 +67,15 @@ export default async function LogboekPage({
         />
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-2">
+      <form method="get" className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-end">
         <SelectMenu
           name="userId"
           defaultValue={filters.userId ?? ""}
-          className="max-w-48"
-          aria-label="Filter op medewerker"
-          searchPlaceholder="Zoek een medewerker…"
+          className="w-full sm:max-w-48"
+          aria-label="Filter op teamlid"
+          searchPlaceholder="Zoek een teamlid…"
           items={[
-            { value: "", label: "Alle medewerkers" },
+            { value: "", label: "Alle teamleden" },
             ...users.map((user) => ({
               value: user.id,
               label: user.name,
@@ -86,7 +86,7 @@ export default async function LogboekPage({
         <SelectMenu
           name="category"
           defaultValue={filters.category ?? ""}
-          className="max-w-44"
+          className="w-full sm:max-w-44"
           aria-label="Filter op categorie"
           searchPlaceholder="Zoek een categorie…"
           items={[
@@ -103,7 +103,7 @@ export default async function LogboekPage({
           defaultValue={params.from ?? ""}
           inputSize="sm"
           aria-label="Van"
-          className="w-36"
+          className="w-full sm:w-36"
         />
         <Input
           name="to"
@@ -111,9 +111,9 @@ export default async function LogboekPage({
           defaultValue={params.to ?? ""}
           inputSize="sm"
           aria-label="Tot"
-          className="w-36"
+          className="w-full sm:w-36"
         />
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="secondary" className="w-full sm:w-auto">
           Filteren
         </Button>
       </form>

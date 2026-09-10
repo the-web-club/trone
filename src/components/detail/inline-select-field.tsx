@@ -16,6 +16,7 @@ export function InlineSelectField({
   disabled,
   hideLabel = false,
   compact = false,
+  layout = "stack",
   searchPlaceholder,
   triggerClassName,
   onSave,
@@ -29,6 +30,7 @@ export function InlineSelectField({
   disabled?: boolean;
   hideLabel?: boolean;
   compact?: boolean;
+  layout?: "stack" | "row";
   searchPlaceholder?: string;
   triggerClassName?: string;
   onSave: (next: string) => Promise<string | false | null>;
@@ -69,18 +71,26 @@ export function InlineSelectField({
   }
 
   const status = error ? (
-    <p className="text-xs text-danger" role="alert">
+    <p className="inline-field-status text-xs text-danger" role="alert">
       {error}
     </p>
   ) : (
-    <SavedIndicator visible={saved} />
+    <span className="inline-field-status">
+      <SavedIndicator visible={saved} />
+    </span>
   );
+
+  const isRow = layout === "row" && !compact && !hideLabel;
 
   return (
     <div
       className={cn(
-        "flex min-w-0",
-        compact ? "flex-row items-center gap-2" : "flex-col gap-1",
+        "min-w-0",
+        compact
+          ? "flex flex-row items-center gap-2"
+          : isRow
+            ? "inline-field-row"
+            : "flex flex-col gap-1",
       )}
     >
       {hideLabel ? (
@@ -88,10 +98,17 @@ export function InlineSelectField({
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className="text-label font-medium text-fg-muted">
+        <label
+          htmlFor={id}
+          className={cn(
+            "text-label font-medium text-fg-muted",
+            isRow && "pt-1.5 sm:pt-1",
+          )}
+        >
           {label}
         </label>
       )}
+      <div className="min-w-0">
       <ComboboxMenu
         id={id}
         value={current || INLINE_SELECT_EMPTY}
@@ -112,6 +129,7 @@ export function InlineSelectField({
         createLabel={createLabel}
         createDisabled={createDisabled}
       />
+      </div>
       {error || saved ? status : null}
     </div>
   );

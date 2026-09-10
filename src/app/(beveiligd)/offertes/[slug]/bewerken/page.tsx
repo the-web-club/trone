@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QuoteForm } from "@/components/quote/quote-form";
-import { PageHeader } from "@/components/shell/page-header";
+import {
+  DetailBackLink,
+  DetailHeader,
+  DetailPage,
+} from "@/components/detail/detail-layout";
 import { isAppError } from "@/lib/errors";
 import { quotePath } from "@/lib/paths";
 import { getQuote, getQuoteComposerData } from "@/lib/quote-service";
@@ -61,18 +64,26 @@ export default async function OfferteBewerkenPage({
 
   const data = await getQuoteComposerData({ companyId: quote.companyId });
 
+  const versionLabel = formatQuoteVersionNumber(
+    quote.quoteNumber,
+    quote.currentVersionNumber,
+  );
+
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={`${formatQuoteVersionNumber(quote.quoteNumber, quote.currentVersionNumber)} bewerken`}
-        description={
-          <>
-            <Link href={quotePath(quote)} className="hover:underline">
-              Terug naar offerte
-            </Link>
-            {" · "}
+    <DetailPage>
+      <DetailHeader
+        back={
+          <DetailBackLink href={quotePath(quote)}>
+            {versionLabel}
+          </DetailBackLink>
+        }
+        title={
+          <h1 className="page-header-title">{versionLabel} bewerken</h1>
+        }
+        meta={
+          <p className="text-sm text-fg-muted">
             Concept. Bij versturen wordt de huidige staat vastgelegd.
-          </>
+          </p>
         }
       />
       <QuoteForm
@@ -86,6 +97,6 @@ export default async function OfferteBewerkenPage({
         initialDealId={quote.dealId ?? undefined}
         initialItems={items}
       />
-    </div>
+    </DetailPage>
   );
 }

@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { OrderStatus } from "@/generated/prisma/client";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { OrdersFilters } from "@/components/order/orders-filters";
+import { OrdersList } from "@/components/order/orders-list";
 import { PageHeader } from "@/components/shell/page-header";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmptyRow,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
 import { listCompaniesForSelect } from "@/lib/company-service";
-import { formatDate } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
-import { CompanyLink } from "@/components/entity-links";
-import { orderPath } from "@/lib/paths";
 import { listOrders } from "@/lib/order-service";
-import {
-  buildOrdersHref,
-  orderStatusLabels,
-  orderStatusTones,
-  parseOrdersSearchParams,
-} from "@/lib/orders-query";
+import { buildOrdersHref, parseOrdersSearchParams } from "@/lib/orders-query";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -77,47 +58,7 @@ export default async function OrdersPage({
         }))}
       />
       <ListBody>
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Nummer</TableHeaderCell>
-                <TableHeaderCell>Klant</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Datum</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {result.items.length === 0 ? (
-                <TableEmptyRow colSpan={4}>{emptyMessage}</TableEmptyRow>
-              ) : (
-                result.items.map((order) => (
-                  <TableRow key={order.id} interactive>
-                    <TableCell>
-                      <Link
-                        href={orderPath(order)}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {order.orderNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      <CompanyLink company={order.company} />
-                    </TableCell>
-                    <TableCell>
-                      <Badge tone={orderStatusTones[order.status]}>
-                        {orderStatusLabels[order.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      {formatDate(order.createdAt)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <OrdersList items={result.items} emptyMessage={emptyMessage} />
         <ListPagination
           page={parsed.pagina}
           totalPages={totalPages}

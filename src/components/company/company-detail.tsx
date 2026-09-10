@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   deleteCompanyAction,
@@ -10,7 +9,16 @@ import {
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
-import { DetailColumns, DetailSection } from "@/components/detail/detail-layout";
+import {
+  DetailBackLink,
+  DetailColumns,
+  DetailEmpty,
+  DetailFieldGrid,
+  DetailHeader,
+  DetailPage,
+  DetailPanel,
+  DetailSection,
+} from "@/components/detail/detail-layout";
 import { InlineSelectField } from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
 import { ContactLink } from "@/components/entity-links";
@@ -82,9 +90,10 @@ export function CompanyDetail({
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy min-w-0 flex-1">
+    <DetailPage>
+      <DetailHeader
+        back={<DetailBackLink href="/bedrijven">Bedrijven</DetailBackLink>}
+        title={
           <InlineTextField
             label="Naam"
             value={company.name}
@@ -92,23 +101,18 @@ export function CompanyDetail({
             required
             onSave={(name) => save({ name })}
           />
-          <div className="page-header-description">
-            <Link href="/bedrijven" className="hover:underline">
-              Terug naar bedrijven
-            </Link>
-          </div>
-        </div>
-        {isAdmin ? (
-          <div className="page-actions">
+        }
+        actions={
+          isAdmin ? (
             <DeleteEntityButton
               id={company.id}
               action={deleteCompanyAction}
               title="Bedrijf verwijderen"
               description={`Weet je zeker dat je ${company.name} wilt verwijderen? Contacten en leads blijven bestaan, zonder koppeling naar dit bedrijf. Bedrijven met offertes, orders of facturen kunnen niet worden verwijderd.`}
             />
-          </div>
-        ) : null}
-      </header>
+          ) : null
+        }
+      />
 
       <DetailColumns
         left={
@@ -120,7 +124,7 @@ export function CompanyDetail({
         }
         right={activity}
       />
-    </div>
+    </DetailPage>
   );
 }
 
@@ -170,109 +174,133 @@ function CompanyDetailFields({
   const treatment = resolveVatTreatment(country, vies.status);
 
   return (
-    <DetailSection title="Gegevens">
-      <div className="flex flex-col gap-3">
-        <InlineTextField
-          label="Naam"
-          value={company.name}
-          required
-          onSave={(name) => save({ name })}
-        />
-        <InlineTextField
-          label="E-mail"
-          value={company.email ?? ""}
-          type="email"
-          onSave={(email) => save({ email: email || null })}
-        />
-        <InlineTextField
-          label="Telefoon"
-          value={company.phone ?? ""}
-          type="tel"
-          onSave={(phone) => save({ phone: phone || null })}
-        />
-        <div className="flex flex-col gap-2">
+    <>
+      <DetailSection title="Contact">
+        <DetailFieldGrid>
           <InlineTextField
-            label="Btw-nummer"
-            value={company.vatNumber ?? ""}
-            inputPlaceholder="Inclusief landcode, bv. FI12345678"
+            label="E-mail"
+            value={company.email ?? ""}
+            type="email"
+            layout="row"
+            onSave={(email) => save({ email: email || null })}
+          />
+          <InlineTextField
+            label="Telefoon"
+            value={company.phone ?? ""}
+            type="tel"
+            layout="row"
+            onSave={(phone) => save({ phone: phone || null })}
+          />
+          <InlineTextField
+            label="Website"
+            value={company.website ?? ""}
+            layout="row"
+            onSave={(website) => save({ website: website || null })}
+          />
+        </DetailFieldGrid>
+      </DetailSection>
+
+      <DetailSection title="Adres">
+        <DetailFieldGrid>
+          <InlineTextField
+            label="Adres"
+            value={company.addressLine ?? ""}
+            layout="row"
+            onSave={(addressLine) => save({ addressLine: addressLine || null })}
+          />
+          <InlineTextField
+            label="Postcode"
+            value={company.postalCode ?? ""}
+            layout="row"
+            onSave={(postalCode) => save({ postalCode: postalCode || null })}
+          />
+          <InlineTextField
+            label="Plaats"
+            value={company.city ?? ""}
+            layout="row"
+            onSave={(city) => save({ city: city || null })}
+          />
+          <InlineSelectField
+            label="Land"
+            value={country}
+            items={countryItems}
+            layout="row"
+            searchPlaceholder="Zoek een land…"
             onSave={async (next) => {
-              const error = await save({ vatNumber: next || null });
-              if (!error) setVatNumber(next);
+              const error = await save({ country: next });
+              if (!error) setCountry(next);
               return error;
             }}
           />
-          <VatValidateControls
-            companyId={company.id}
-            vatNumber={vatNumber}
-            country={country}
-            initialStatus={company.viesValid}
-            initialName={company.viesCheckedName}
-            initialCheckedAt={company.viesValidatedAt}
-            onSuccess={() => router.refresh()}
+        </DetailFieldGrid>
+      </DetailSection>
+
+      <DetailSection title="Btw & registratie" collapsible defaultOpen>
+        <DetailFieldGrid>
+          <div className="inline-field-row min-w-0">
+            <span className="pt-1.5 text-label font-medium text-fg-muted sm:pt-1">
+              Btw-nummer
+            </span>
+            <div className="min-w-0 space-y-1.5">
+              <InlineTextField
+                label="Btw-nummer"
+                value={company.vatNumber ?? ""}
+                inputPlaceholder="Inclusief landcode, bv. FI12345678"
+                onSave={async (next) => {
+                  const error = await save({ vatNumber: next || null });
+                  if (!error) setVatNumber(next);
+                  return error;
+                }}
+              />
+              <VatValidateControls
+                companyId={company.id}
+                vatNumber={vatNumber}
+                country={country}
+                initialStatus={company.viesValid}
+                initialName={company.viesCheckedName}
+                initialCheckedAt={company.viesValidatedAt}
+                onSuccess={() => router.refresh()}
+              />
+            </div>
+          </div>
+          <InlineTextField
+            label="Registratie"
+            value={company.cocNumber ?? ""}
+            inputPlaceholder="KvK, Y-tunnus…"
+            layout="row"
+            onSave={(cocNumber) => save({ cocNumber: cocNumber || null })}
           />
+          <InlineSelectField
+            label="Btw-tarief"
+            value={String(company.vatRate)}
+            items={vatRateItems}
+            layout="row"
+            searchPlaceholder="Zoek een tarief…"
+            onSave={(next) => save({ vatRate: Number(next) })}
+          />
+        </DetailFieldGrid>
+        <div className="mt-2 space-y-1">
+          <VatTreatmentNotice
+            vatRate={treatment.vatRate}
+            vatRegime={treatment.vatRegime}
+            warning={treatment.warning}
+            stale={vies.stale}
+          />
+          <p className="text-xs text-fg-muted">
+            Offertes en facturen bepalen het tarief via land + VIES.
+          </p>
         </div>
-        <InlineTextField
-          label="Registratienummer"
-          value={company.cocNumber ?? ""}
-          inputPlaceholder="KvK, Y-tunnus, Companies House…"
-          onSave={(cocNumber) => save({ cocNumber: cocNumber || null })}
-        />
-        <InlineTextField
-          label="Website"
-          value={company.website ?? ""}
-          onSave={(website) => save({ website: website || null })}
-        />
-        <InlineTextField
-          label="Adres"
-          value={company.addressLine ?? ""}
-          onSave={(addressLine) => save({ addressLine: addressLine || null })}
-        />
-        <InlineTextField
-          label="Postcode"
-          value={company.postalCode ?? ""}
-          onSave={(postalCode) => save({ postalCode: postalCode || null })}
-        />
-        <InlineTextField
-          label="Plaats"
-          value={company.city ?? ""}
-          onSave={(city) => save({ city: city || null })}
-        />
-        <InlineSelectField
-          label="Land"
-          value={country}
-          items={countryItems}
-          searchPlaceholder="Zoek een land…"
-          onSave={async (next) => {
-            const error = await save({ country: next });
-            if (!error) setCountry(next);
-            return error;
-          }}
-        />
-        <InlineSelectField
-          label="Btw-tarief"
-          value={String(company.vatRate)}
-          items={vatRateItems}
-          searchPlaceholder="Zoek een tarief…"
-          onSave={(next) => save({ vatRate: Number(next) })}
-        />
-        <VatTreatmentNotice
-          vatRate={treatment.vatRate}
-          vatRegime={treatment.vatRegime}
-          warning={treatment.warning}
-          stale={vies.stale}
-        />
-        <p className="text-xs text-fg-muted">
-          Offertes en facturen bepalen het tarief via land + VIES, niet via dit
-          veld alleen.
-        </p>
+      </DetailSection>
+
+      <DetailSection title="Notities" collapsible defaultOpen={Boolean(company.notes)}>
         <InlineTextField
           label="Notities"
           value={company.notes ?? ""}
           multiline
           onSave={(notes) => save({ notes: notes || null })}
         />
-      </div>
-    </DetailSection>
+      </DetailSection>
+    </>
   );
 }
 
@@ -289,33 +317,35 @@ function CompanyContacts({
       action={<CreateContactDialog companyId={companyId} />}
     >
       {contacts.length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          Nog geen contacten bij dit bedrijf.
-        </p>
+        <DetailEmpty>Nog geen contacten.</DetailEmpty>
       ) : (
-        <ul className="flex flex-col overflow-hidden rounded-md border border-border bg-surface">
-          {contacts.map((contact) => {
-            const meta = [contact.jobTitle, contact.email, contact.phone]
-              .filter((value): value is string => Boolean(value?.trim()))
-              .join(" · ");
-            return (
-              <li
-                key={contact.id}
-                className="flex flex-col gap-0.5 border-b border-border px-3 py-2.5 last:border-b-0"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <ContactLink contact={contact} primary />
-                  {contact.isPrimary ? (
-                    <span className="text-xs text-fg-muted">Primair</span>
+        <DetailPanel>
+          <ul>
+            {contacts.map((contact) => {
+              const meta = [contact.jobTitle, contact.email, contact.phone]
+                .filter((value): value is string => Boolean(value?.trim()))
+                .join(" · ");
+              return (
+                <li
+                  key={contact.id}
+                  className="border-b border-border px-3 py-2 last:border-b-0"
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <ContactLink contact={contact} primary />
+                    {contact.isPrimary ? (
+                      <span className="text-xs text-fg-muted">Primair</span>
+                    ) : null}
+                  </div>
+                  {meta ? (
+                    <p className="mt-0.5 truncate text-xs text-fg-muted">
+                      {meta}
+                    </p>
                   ) : null}
-                </div>
-                {meta ? (
-                  <p className="text-xs text-fg-muted">{meta}</p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </DetailPanel>
       )}
     </DetailSection>
   );

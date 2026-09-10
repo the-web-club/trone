@@ -103,13 +103,13 @@ export function TimelineEventItem({
   const [editing, setEditing] = useState(false);
 
   return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Icon className="size-3.5 text-fg-muted" aria-hidden />
-        <Badge tone={typeTones[event.type]}>
+    <div className="rounded-sm border border-border bg-surface px-2.5 py-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Icon className="size-3 text-fg-muted" aria-hidden />
+        <Badge tone={typeTones[event.type]} className="h-5 px-1.5 text-[11px]">
           {timelineEventTypeLabels[event.type]}
         </Badge>
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
+        <span className="inline-flex min-w-0 items-center gap-1 text-xs text-fg-muted">
           {event.user ? (
             <UserName
               name={event.user.name}
@@ -148,9 +148,9 @@ export function TimelineEventItem({
           onCancel={() => setEditing(false)}
         />
       ) : event.body ? (
-        <p className="mt-1 text-sm text-fg">{event.body}</p>
+        <p className="mt-0.5 text-sm leading-snug text-fg">{event.body}</p>
       ) : null}
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-muted">
+      <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-fg-muted">
         {event.quote ? (
           <Link href={quotePath(event.quote)} className="hover:underline">
             Offerte {event.quote.quoteNumber}

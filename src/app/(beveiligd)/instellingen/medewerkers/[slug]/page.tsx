@@ -1,11 +1,26 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DealHotIcon } from "@/components/deal/deal-hot-icon";
 import { DealStagePill } from "@/components/deal/deal-stage-pill";
+import {
+  DetailBackLink,
+  DetailHeader,
+  DetailMetaRow,
+  DetailPage,
+  DetailSection,
+} from "@/components/detail/detail-layout";
 import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
 import { StaffAvatarEditor } from "@/components/settings/staff-avatar-editor";
 import { Badge } from "@/components/ui/badge";
+import {
+  ListCard,
+  ListCardEmpty,
+  ListCardHeader,
+  ListCardRow,
+  ListCardRows,
+  ListCardTitle,
+  ResponsiveListView,
+} from "@/components/ui/responsive-list";
 import {
   Table,
   TableBody,
@@ -41,7 +56,7 @@ export async function generateMetadata({
     const { user } = await getStaffDetail(slug);
     return { title: user.name };
   } catch {
-    return { title: "Medewerker" };
+    return { title: "Teamlid" };
   }
 }
 
@@ -71,132 +86,191 @@ export default async function MedewerkerDetailPage({
     isAdminSession(session) || session.user.id === user.id;
   const isSelf = session.user.id === user.id;
 
-  return (
-    <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="flex min-w-0 items-start gap-4">
-          <StaffAvatarEditor
-            userId={user.id}
-            name={user.name}
-            image={user.image}
-            canEdit={canEditAvatar}
-          />
-          <div className="page-header-copy">
-            <h1 className="page-header-title">{user.name}</h1>
-            <p className="page-header-meta">
-              <span>{user.email}</span>
-              <span className="text-fg-subtle" aria-hidden>
-                ·
-              </span>
-              <span>{role ? userRoleLabels[role] : user.role}</span>
-              <span className="text-fg-subtle" aria-hidden>
-                ·
-              </span>
-              <Badge tone={status.tone}>{status.label}</Badge>
-              {isSelf ? (
-                <>
-                  <span className="text-fg-subtle" aria-hidden>
-                    ·
+  const dealsDesktop = (
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell>Lead</TableHeaderCell>
+            <TableHeaderCell>Bedrijf</TableHeaderCell>
+            <TableHeaderCell>Contact</TableHeaderCell>
+            <TableHeaderCell>Fase</TableHeaderCell>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {deals.length === 0 ? (
+            <TableEmptyRow colSpan={4}>
+              Nog geen leads gekoppeld aan dit teamlid.
+            </TableEmptyRow>
+          ) : (
+            deals.map((deal) => (
+              <TableRow key={deal.id}>
+                <TableCell>
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <DealLink deal={deal} primary />
+                    {deal.isHot ? <DealHotIcon /> : null}
                   </span>
-                  <span>Jij</span>
-                </>
-              ) : null}
-            </p>
-            <div className="page-header-description">
-              <Link href="/instellingen/medewerkers" className="hover:underline">
-                Terug naar medewerkers
-              </Link>
-            </div>
+                </TableCell>
+                <TableCell className="text-fg-muted">
+                  <CompanyLink company={deal.company} />
+                </TableCell>
+                <TableCell className="text-fg-muted">
+                  <ContactLink contact={deal.contact} />
+                </TableCell>
+                <TableCell>
+                  <DealStagePill
+                    name={deal.stage.name}
+                    isWon={deal.stage.isWon}
+                    isLost={deal.stage.isLost}
+                  />
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const dealsMobile =
+    deals.length === 0 ? (
+      <ListCardEmpty>
+        Nog geen leads gekoppeld aan dit teamlid.
+      </ListCardEmpty>
+    ) : (
+      deals.map((deal) => (
+        <ListCard key={deal.id}>
+          <ListCardHeader>
+            <ListCardTitle>
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <DealLink deal={deal} primary />
+                {deal.isHot ? <DealHotIcon /> : null}
+              </span>
+            </ListCardTitle>
+            <DealStagePill
+              name={deal.stage.name}
+              isWon={deal.stage.isWon}
+              isLost={deal.stage.isLost}
+            />
+          </ListCardHeader>
+          <ListCardRows>
+            <ListCardRow label="Bedrijf">
+              <CompanyLink company={deal.company} />
+            </ListCardRow>
+            <ListCardRow label="Contact">
+              <ContactLink contact={deal.contact} />
+            </ListCardRow>
+          </ListCardRows>
+        </ListCard>
+      ))
+    );
+
+  const companiesDesktop = (
+    <TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell>Bedrijf</TableHeaderCell>
+            <TableHeaderCell>Plaats</TableHeaderCell>
+            <TableHeaderCell>Koppeling</TableHeaderCell>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {companies.length === 0 ? (
+            <TableEmptyRow colSpan={3}>
+              Nog geen bedrijven gekoppeld aan dit teamlid.
+            </TableEmptyRow>
+          ) : (
+            companies.map((company) => (
+              <TableRow key={company.id}>
+                <TableCell>
+                  <CompanyLink company={company} primary />
+                </TableCell>
+                <TableCell className="text-fg-muted">
+                  {company.city || "—"}
+                </TableCell>
+                <TableCell>
+                  {company.ownerUserId === user.id ? (
+                    <Badge tone="info">Eigenaar</Badge>
+                  ) : (
+                    <span className="text-fg-muted">Via lead</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const companiesMobile =
+    companies.length === 0 ? (
+      <ListCardEmpty>
+        Nog geen bedrijven gekoppeld aan dit teamlid.
+      </ListCardEmpty>
+    ) : (
+      companies.map((company) => (
+        <ListCard key={company.id}>
+          <ListCardHeader>
+            <ListCardTitle>
+              <CompanyLink company={company} primary />
+            </ListCardTitle>
+            {company.ownerUserId === user.id ? (
+              <Badge tone="info">Eigenaar</Badge>
+            ) : null}
+          </ListCardHeader>
+          <ListCardRows>
+            <ListCardRow label="Plaats">{company.city || "—"}</ListCardRow>
+            <ListCardRow label="Koppeling">
+              {company.ownerUserId === user.id ? "Eigenaar" : "Via lead"}
+            </ListCardRow>
+          </ListCardRows>
+        </ListCard>
+      ))
+    );
+
+  return (
+    <DetailPage>
+      <DetailHeader
+        back={
+          <DetailBackLink href="/instellingen/medewerkers">
+            Teamleden
+          </DetailBackLink>
+        }
+        title={
+          <div className="flex min-w-0 items-start gap-3">
+            <StaffAvatarEditor
+              userId={user.id}
+              name={user.name}
+              image={user.image}
+              canEdit={canEditAvatar}
+            />
+            <h1 className="page-header-title min-w-0 pt-0.5">{user.name}</h1>
           </div>
-        </div>
-      </header>
+        }
+        status={<Badge tone={status.tone}>{status.label}</Badge>}
+        meta={
+          <DetailMetaRow
+            items={[
+              user.email,
+              role ? userRoleLabels[role] : user.role,
+              isSelf ? "Jij" : null,
+            ]}
+          />
+        }
+      />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Leads</h2>
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Lead</TableHeaderCell>
-                <TableHeaderCell>Bedrijf</TableHeaderCell>
-                <TableHeaderCell>Contact</TableHeaderCell>
-                <TableHeaderCell>Fase</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deals.length === 0 ? (
-                <TableEmptyRow colSpan={4}>
-                  Nog geen leads gekoppeld aan deze medewerker.
-                </TableEmptyRow>
-              ) : (
-                deals.map((deal) => (
-                  <TableRow key={deal.id}>
-                    <TableCell>
-                      <span className="inline-flex min-w-0 items-center gap-1">
-                        <DealLink deal={deal} primary />
-                        {deal.isHot ? <DealHotIcon /> : null}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      <CompanyLink company={deal.company} />
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      <ContactLink contact={deal.contact} />
-                    </TableCell>
-                    <TableCell>
-                      <DealStagePill
-                        name={deal.stage.name}
-                        isWon={deal.stage.isWon}
-                        isLost={deal.stage.isLost}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </section>
+      <DetailSection title="Leads">
+        <ResponsiveListView desktop={dealsDesktop} mobile={dealsMobile} />
+      </DetailSection>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-md font-medium text-fg">Bedrijven</h2>
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Bedrijf</TableHeaderCell>
-                <TableHeaderCell>Plaats</TableHeaderCell>
-                <TableHeaderCell>Koppeling</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {companies.length === 0 ? (
-                <TableEmptyRow colSpan={3}>
-                  Nog geen bedrijven gekoppeld aan deze medewerker.
-                </TableEmptyRow>
-              ) : (
-                companies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>
-                      <CompanyLink company={company} primary />
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      {company.city || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {company.ownerUserId === user.id ? (
-                        <Badge tone="info">Eigenaar</Badge>
-                      ) : (
-                        <span className="text-fg-muted">Via lead</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </section>
-    </div>
+      <DetailSection title="Bedrijven">
+        <ResponsiveListView
+          desktop={companiesDesktop}
+          mobile={companiesMobile}
+        />
+      </DetailSection>
+    </DetailPage>
   );
 }

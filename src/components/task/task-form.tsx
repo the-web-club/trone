@@ -62,7 +62,7 @@ export function TaskForm({
               label: user.name,
               image: user.image,
             }))}
-            searchPlaceholder="Zoek een medewerker…"
+            searchPlaceholder="Zoek een teamlid…"
           />
         </FormField>
       </div>

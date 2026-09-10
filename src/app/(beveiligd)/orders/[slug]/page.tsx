@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import {
+  DetailBackLink,
+  DetailHeader,
+  DetailMetaRow,
+  DetailPage,
+  DetailSection,
+} from "@/components/detail/detail-layout";
 import { OrderStatusForm } from "@/components/order/order-status-form";
 import { QuoteLines } from "@/components/quote/quote-lines";
 import { OrderInvoices } from "@/components/order/order-invoices";
-import { PageHeader } from "@/components/shell/page-header";
 import { Badge } from "@/components/ui/badge";
 import { WorkLogSection } from "@/components/worklog/work-log-section";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
@@ -45,53 +51,41 @@ export default async function OrderDetailPage({
   const logs = await listWorkLogs({ orderId: order.id });
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={order.orderNumber}
-        description={
-          <>
-            <Link href="/orders" className="hover:underline">
-              Terug naar orders
-            </Link>
-            {" · "}
-            <CompanyLink company={order.company} />
-            {order.contact ? (
-              <>
-                {" · "}
-                <ContactLink contact={order.contact} />
-              </>
-            ) : null}
-            {order.quote ? (
-              <>
-                {" · "}
+    <DetailPage>
+      <DetailHeader
+        back={<DetailBackLink href="/orders">Orders</DetailBackLink>}
+        title={<h1 className="page-header-title">{order.orderNumber}</h1>}
+        status={
+          <Badge tone={orderStatusTones[order.status]}>
+            {orderStatusLabels[order.status]}
+          </Badge>
+        }
+        meta={
+          <DetailMetaRow
+            items={[
+              <CompanyLink key="company" company={order.company} />,
+              order.contact ? (
+                <ContactLink key="contact" contact={order.contact} />
+              ) : null,
+              order.quote ? (
                 <Link
+                  key="quote"
                   href={quotePath(order.quote)}
                   className="hover:underline"
                 >
                   {order.quote.quoteNumber}
                 </Link>
-              </>
-            ) : null}
-            {order.deal ? (
-              <>
-                {" · "}
-                <DealLink deal={order.deal} />
-              </>
-            ) : null}
-            {` · ${formatDate(order.createdAt)}`}
-          </>
-        }
-        actions={
-          <Badge tone={orderStatusTones[order.status]}>
-            {orderStatusLabels[order.status]}
-          </Badge>
+              ) : null,
+              order.deal ? <DealLink key="deal" deal={order.deal} /> : null,
+              formatDate(order.createdAt),
+            ]}
+          />
         }
       />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-md font-medium text-fg">Productiestatus</h2>
+      <DetailSection title="Productiestatus">
         <OrderStatusForm orderId={order.id} status={order.status} />
-      </section>
+      </DetailSection>
 
       <QuoteLines
         items={order.items}
@@ -103,12 +97,10 @@ export default async function OrderDetailPage({
         total={Number(order.total)}
       />
 
-      <OrderInvoices
-        orderId={order.id}
-        invoices={order.invoices}
-      />
+      <OrderInvoices orderId={order.id} invoices={order.invoices} />
 
       <WorkLogSection
+        compact
         title="Werkzaamheden"
         currentUserId={session.user.id}
         isAdmin={isAdminSession(session)}
@@ -127,6 +119,6 @@ export default async function OrderDetailPage({
         ]}
         logs={logs}
       />
-    </div>
+    </DetailPage>
   );
 }

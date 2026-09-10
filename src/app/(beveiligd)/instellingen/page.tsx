@@ -45,7 +45,7 @@ export default async function InstellingenPage() {
           <div className="flex items-start gap-3">
             <Users className="mt-0.5 size-4 text-fg-muted" aria-hidden />
             <div>
-              <p className="text-sm font-medium text-fg">Medewerkers</p>
+              <p className="text-sm font-medium text-fg">Teamleden</p>
               <p className="mt-0.5 text-sm text-fg-muted">
                 {canManage
                   ? "Voeg teamleden toe, wijzig rollen en deactiveer accounts."

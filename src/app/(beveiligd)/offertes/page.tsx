@@ -4,29 +4,14 @@ import type { QuoteStatus } from "@/generated/prisma/client";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { QuotesFilters } from "@/components/quote/quotes-filters";
+import { QuotesList } from "@/components/quote/quotes-list";
 import {
   PageHeader,
   pageActionPrimaryClassName,
 } from "@/components/shell/page-header";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableEmptyRow,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/table";
 import { listCompaniesForSelect } from "@/lib/company-service";
-import { formatDate, formatEuroExact } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 import { listQuoteRows } from "@/lib/quote-service";
-import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
-import { formatQuoteVersionNumber } from "@/lib/quote-version";
-import { CompanyLink, ContactLink } from "@/components/entity-links";
-import { quotePath } from "@/lib/paths";
 import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
 
 export const metadata: Metadata = { title: "Offertes" };
@@ -82,76 +67,20 @@ export default async function OffertesPage({
         }))}
       />
       <ListBody>
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Nummer</TableHeaderCell>
-                <TableHeaderCell>Versie</TableHeaderCell>
-                <TableHeaderCell>Klant</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell align="right">Totaal excl. btw</TableHeaderCell>
-                <TableHeaderCell>Datum</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {result.items.length === 0 ? (
-                <TableEmptyRow colSpan={6}>
-                  {emptyMessage}
-                  {!hasFilters ? (
-                    <>
-                      {" "}
-                      <Link href="/offertes/nieuw" className="text-fg hover:underline">
-                        Nieuwe offerte
-                      </Link>
-                    </>
-                  ) : null}
-                </TableEmptyRow>
-              ) : (
-                result.items.map((quote) => (
-                  <TableRow key={quote.id} interactive>
-                    <TableCell>
-                      <Link
-                        href={quotePath(quote)}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {quote.quoteNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      {quote.currentVersionNumber > 0
-                        ? formatQuoteVersionNumber(
-                            quote.quoteNumber,
-                            quote.currentVersionNumber,
-                          )
-                        : "Concept"}
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      <CompanyLink company={quote.company} />
-                      {quote.contact ? (
-                        <>
-                          {" · "}
-                          <ContactLink contact={quote.contact} />
-                        </>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <Badge tone={quoteStatusTones[quote.status]}>
-                        {quoteStatusLabels[quote.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell align="right">
-                      {formatEuroExact(Number(quote.total))}
-                    </TableCell>
-                    <TableCell className="text-fg-muted">
-                      {formatDate(quote.createdAt)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <QuotesList
+          items={result.items}
+          emptyMessage={emptyMessage}
+          emptyAction={
+            !hasFilters ? (
+              <>
+                {" "}
+                <Link href="/offertes/nieuw" className="text-fg hover:underline">
+                  Nieuwe offerte
+                </Link>
+              </>
+            ) : undefined
+          }
+        />
         <ListPagination
           page={parsed.pagina}
           totalPages={totalPages}

@@ -74,6 +74,6 @@ export async function nextUserSlug(
       return Boolean(row && row.id !== exceptId);
     },
     name,
-    "medewerker",
+    "teamlid",
   );
 }

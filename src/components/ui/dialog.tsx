@@ -36,10 +36,10 @@ export function DialogContent({
           dialogBackdropMotion,
         )}
       />
-      <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto p-4 sm:items-center sm:p-6">
+      <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6">
         <Dialog.Popup
           className={cn(
-            "my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-pop)] outline-none",
+            "my-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full flex-col overflow-hidden rounded-t-lg border border-border bg-surface shadow-[var(--shadow-pop)] outline-none sm:max-h-[calc(100dvh-3rem)] sm:rounded-lg",
             dialogPopupMotion,
             dialogSizes[size],
             className,
@@ -64,7 +64,7 @@ export function DialogHeader({
       <Dialog.Close
         aria-label="Sluiten"
         className={cn(
-          "-mt-0.5 -mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-fg-subtle hover:bg-hover hover:text-fg",
+          "-mt-0.5 -mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-fg-subtle hover:bg-hover hover:text-fg sm:size-8",
           controlMotion,
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
         )}

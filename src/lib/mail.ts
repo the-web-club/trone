@@ -44,4 +44,5 @@ export async function sendMail(input: SendMailInput) {
     console.error("Resend-fout:", response.status, detail);
     throw new AppError("Versturen van de e-mail is mislukt.", "MAIL");
   }
+
 }

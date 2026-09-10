@@ -78,7 +78,7 @@ export function StaffFilters({ values }: { values: StaffFilterValues }) {
       onSearchChange={search.onChange}
       onSearchClear={search.onClear}
       searchPlaceholder="Zoek op naam of e-mail"
-      searchAriaLabel="Zoek medewerkers"
+      searchAriaLabel="Zoek teamleden"
       chips={chips}
       hasActiveFilters={Boolean(values.zoeken || values.rol || values.status)}
       onReset={() =>

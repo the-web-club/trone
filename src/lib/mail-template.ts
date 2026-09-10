@@ -1,4 +1,4 @@
-export const MAIL_SENDER_NAME = "TRÔNE Seating";
+export const MAIL_SENDER_NAME = "TRÔNE | CRM";
 export const MAIL_SENDER_EMAIL = "mail@updates.troneseating.app";
 export const MAIL_PRODUCTION_ORIGIN = "https://www.troneseating.app";
 

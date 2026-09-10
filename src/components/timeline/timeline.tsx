@@ -38,17 +38,17 @@ export function Timeline({
   );
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-md font-medium text-fg">{title}</h2>
+    <section className="flex flex-col gap-2">
+      <h2 className="text-label font-medium tracking-wide text-fg-muted uppercase">
+        {title}
+      </h2>
       {composer}
       {events.length === 0 ? (
         compact ? null : (
-          <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
-            Nog geen gebeurtenissen.
-          </p>
+          <p className="text-sm text-fg-muted">Nog geen gebeurtenissen.</p>
         )
       ) : (
-        <Stagger as="ul" className="flex flex-col gap-2">
+        <Stagger as="ul" className="flex flex-col gap-1.5">
           {events.map((event) => (
             <StaggerItem key={event.id} as="li">
               <TimelineEventItem

@@ -29,6 +29,9 @@ describe("mailFromAddress", () => {
     expect(
       mailFromAddress(`Support <${MAIL_SENDER_EMAIL}>`),
     ).toBe(`Support <${MAIL_SENDER_EMAIL}>`);
+    expect(
+      mailFromAddress(`TRÔNE | CRM <${MAIL_SENDER_EMAIL}>`),
+    ).toBe(`TRÔNE | CRM <${MAIL_SENDER_EMAIL}>`);
     expect(mailFromAddress(MAIL_SENDER_EMAIL)).toBe(
       `${MAIL_SENDER_NAME} <${MAIL_SENDER_EMAIL}>`,
     );
@@ -68,7 +71,7 @@ describe("brandedMail", () => {
       logoUrl: "https://www.troneseating.app/brand/trone-seating-logo.png",
     });
 
-    expect(mail.html).toContain("TRÔNE Seating");
+    expect(mail.html).toContain(MAIL_SENDER_NAME);
     expect(mail.html).toContain(
       'src="https://www.troneseating.app/brand/trone-seating-logo.png"',
     );
@@ -78,7 +81,7 @@ describe("brandedMail", () => {
     expect(mail.html).toContain("#ed7845");
     expect(mail.text).toContain("Hallo Anna,");
     expect(mail.text).toContain("Openen: https://www.troneseating.app/x");
-    expect(mail.text).toContain("TRÔNE Seating");
+    expect(mail.text).toContain(MAIL_SENDER_NAME);
   });
 
   it("escapt html in namen", () => {

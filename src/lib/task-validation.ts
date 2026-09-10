@@ -37,7 +37,7 @@ export const taskSchema = z.object({
     emptyToUndefined,
     z.enum(taskPriorities).optional(),
   ),
-  assigneeUserId: z.string().trim().min(1, "Kies een medewerker"),
+  assigneeUserId: z.string().trim().min(1, "Kies een teamlid"),
   dealId: z.preprocess(emptyToUndefined, z.string().optional()),
   contactId: z.preprocess(emptyToUndefined, z.string().optional()),
   companyId: z.preprocess(emptyToUndefined, z.string().optional()),

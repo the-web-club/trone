@@ -75,7 +75,7 @@ export function SearchInput({
           onClick={onClear}
           aria-label="Zoekterm wissen"
           className={cn(
-            "absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-xs text-fg-subtle",
+            "absolute top-1/2 right-1 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-xs text-fg-subtle sm:size-5",
             controlMotion,
             focusRingOutline,
             "hover:bg-hover hover:text-fg",
@@ -114,7 +114,7 @@ export function FilterChip({
         onClick={onRemove}
         aria-label={removeLabel ?? `${label}-filter verwijderen`}
         className={cn(
-          "inline-flex size-5 shrink-0 items-center justify-center rounded-xs text-fg-subtle",
+          "inline-flex size-8 shrink-0 items-center justify-center rounded-xs text-fg-subtle sm:size-5",
           controlMotion,
           focusRingOutline,
           "hover:bg-hover hover:text-fg",

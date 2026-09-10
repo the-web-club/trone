@@ -4,9 +4,19 @@ import { cn } from "@/lib/cn";
 
 export function TableContainer({
   className,
+  scrollHint = true,
   ...props
-}: React.ComponentProps<"div">) {
-  return <div className={cn("data-table", className)} {...props} />;
+}: React.ComponentProps<"div"> & { scrollHint?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "data-table",
+        scrollHint && "data-table-scroll-hint",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function Table({ className, ...props }: React.ComponentProps<"table">) {

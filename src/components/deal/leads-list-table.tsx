@@ -8,6 +8,16 @@ import {
 import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
+  ListCard,
+  ListCardEmpty,
+  ListCardHeader,
+  ListCardMeta,
+  ListCardRow,
+  ListCardRows,
+  ListCardTitle,
+  ResponsiveListView,
+} from "@/components/ui/responsive-list";
+import {
   Table,
   TableBody,
   TableCell,
@@ -48,6 +58,91 @@ export type LeadsListRow = {
   createdAt: string;
 };
 
+function LeadsListCards({
+  rows,
+  members,
+  stages,
+  emptyMessage,
+}: {
+  rows: LeadsListRow[];
+  members: DealTeamMember[];
+  stages: LeadStageOption[];
+  emptyMessage: string;
+}) {
+  if (rows.length === 0) {
+    return <ListCardEmpty>{emptyMessage}</ListCardEmpty>;
+  }
+
+  return (
+    <>
+      {rows.map((row) => (
+        <ListCard key={row.id}>
+          <ListCardHeader>
+            <div className="min-w-0">
+              <ListCardTitle>
+                <Link
+                  href={dealPath(row)}
+                  className="inline-flex min-w-0 items-center gap-1 hover:underline"
+                >
+                  {row.title}
+                  {row.isHot ? <DealHotIcon /> : null}
+                </Link>
+              </ListCardTitle>
+              {row.contact ? (
+                <ListCardMeta>
+                  <ContactLink contact={row.contact} />
+                </ListCardMeta>
+              ) : null}
+            </div>
+          </ListCardHeader>
+          <ListCardRows>
+            <ListCardRow label="Bedrijf">
+              <CompanyLink company={row.company} />
+            </ListCardRow>
+            <ListCardRow label="Fase">
+              <LeadStageSelect
+                dealId={row.id}
+                stageId={row.stageId}
+                stageName={row.stageName}
+                stages={stages}
+              />
+            </ListCardRow>
+            <ListCardRow label="Offerte">
+              {row.quoteStatus ? (
+                <Badge tone={quoteStatusTones[row.quoteStatus]}>
+                  {quoteStatusLabels[row.quoteStatus]}
+                </Badge>
+              ) : (
+                <span className="text-fg-muted">—</span>
+              )}
+            </ListCardRow>
+            <ListCardRow label="Waarde">
+              <span className="tabular-nums">
+                {formatEuro(row.valueEstimate) ?? "—"}
+              </span>
+            </ListCardRow>
+            <ListCardRow label="Bron">
+              {row.sourceName ?? "—"}
+            </ListCardRow>
+            <ListCardRow label="Eigenaar">
+              <LeadOwnerSelect
+                dealId={row.id}
+                ownerUserId={row.ownerUserId}
+                ownerName={row.ownerName}
+                ownerImage={row.ownerImage}
+                members={members}
+              />
+            </ListCardRow>
+            <ListCardRow label="Datum">
+              {formatDate(new Date(row.createdAt))}
+            </ListCardRow>
+          </ListCardRows>
+        </ListCard>
+      ))}
+    </>
+  );
+}
+
 export function LeadsListTable({
   rows,
   members,
@@ -59,7 +154,7 @@ export function LeadsListTable({
   stages: LeadStageOption[];
   emptyMessage: string;
 }) {
-  return (
+  const desktop = (
     <TableContainer>
       <Table>
         <TableHeader>
@@ -141,4 +236,15 @@ export function LeadsListTable({
       </Table>
     </TableContainer>
   );
+
+  const mobile = (
+    <LeadsListCards
+      rows={rows}
+      members={members}
+      stages={stages}
+      emptyMessage={emptyMessage}
+    />
+  );
+
+  return <ResponsiveListView desktop={desktop} mobile={mobile} />;
 }

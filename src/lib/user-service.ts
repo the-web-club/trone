@@ -6,6 +6,8 @@ import { uploadImage } from "@/lib/blob";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
+import { withResetPasswordCapture } from "@/lib/mail-capture";
+import { invitationMail, sendMail } from "@/lib/mail";
 import { paginateArgs } from "@/lib/list-query";
 import type { InviteUserInput, StaffStatus, UserRole } from "@/lib/user-validation";
 
@@ -94,7 +96,7 @@ export async function getUser(id: string) {
   });
 
   if (!user) {
-    throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+    throw new AppError("Teamlid niet gevonden.", "NOT_FOUND", 404);
   }
 
   return ensureUserSlug(user);
@@ -119,7 +121,7 @@ export async function getStaffBySlug(slug: string) {
     }));
 
   if (!user) {
-    throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+    throw new AppError("Teamlid niet gevonden.", "NOT_FOUND", 404);
   }
 
   return ensureUserSlug(user);
@@ -253,16 +255,32 @@ export async function sendInvitation(userId: string) {
   try {
     // Geen request-headers meegeven: Better Auth ziet die als browser-POST en
     // weigert ze (geen Origin), terwijl de uitnodiging dan stil faalt.
-    const request = await getAuth().api.requestPasswordReset({
-      body: {
-        email: user.email,
-        redirectTo: "/wachtwoord-instellen",
-      },
+    // Better Auth slikt fouten in sendResetPassword stil (status: true).
+    // Daarom vangen we de reset-URL en versturen we zelf via Resend.
+    const { captured } = await withResetPasswordCapture(async () => {
+      const request = await getAuth().api.requestPasswordReset({
+        body: {
+          email: user.email,
+          redirectTo: "/wachtwoord-instellen",
+        },
+      });
+      if (!request.status) {
+        throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
+      }
     });
 
-    if (!request.status) {
+    if (!captured) {
+      console.error(
+        "Uitnodiging versturen mislukt: geen reset-mail vastgelegd voor",
+        user.email,
+      );
       throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
     }
+
+    await sendMail({
+      to: captured.email,
+      ...invitationMail({ name: captured.name, url: captured.url }),
+    });
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error("Uitnodiging versturen mislukt:", error);

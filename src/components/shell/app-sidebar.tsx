@@ -12,9 +12,13 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { staffPath } from "@/lib/paths";
 
-export function sidebarNavItemClassName(active: boolean): string {
+export function sidebarNavItemClassName(
+  active: boolean,
+  mobile = false,
+): string {
   return cn(
-    "flex h-7 items-center gap-2 rounded-sm px-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-fg",
+    "flex items-center gap-2 rounded-sm px-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-fg",
+    mobile ? "min-h-11 py-2" : "h-7",
     controlMotion,
     "[&_svg]:size-4 [&_svg]:shrink-0",
     active

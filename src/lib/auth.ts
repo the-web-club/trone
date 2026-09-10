@@ -5,6 +5,7 @@ import { admin } from "better-auth/plugins";
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
+import { captureResetPassword } from "@/lib/mail-capture";
 import { invitationMail, sendMail } from "@/lib/mail";
 
 function requireEnv(name: string): string {
@@ -93,6 +94,15 @@ function createAuth() {
       minPasswordLength: 5,
       maxPasswordLength: 128,
       sendResetPassword: async ({ user, url }) => {
+        if (
+          captureResetPassword({
+            name: user.name,
+            email: user.email,
+            url,
+          })
+        ) {
+          return;
+        }
         const content = invitationMail({ name: user.name, url });
         await sendMail({
           to: user.email,

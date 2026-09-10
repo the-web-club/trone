@@ -9,7 +9,7 @@ export type StaffStatus = (typeof staffStatuses)[number];
 
 export const userRoleLabels: Record<UserRole, string> = {
   admin: "Beheerder",
-  user: "Medewerker",
+  user: "Teamlid",
   viewer: "Alleen-lezen",
 };
 
@@ -43,7 +43,7 @@ export function parseInviteUserForm(formData: FormData): InviteUserInput {
 }
 
 export const updateUserRoleSchema = z.object({
-  userId: z.string().trim().min(1, "Medewerker ontbreekt"),
+  userId: z.string().trim().min(1, "Teamlid ontbreekt"),
   role: z.enum(userRoles, { error: "Kies een geldige rol" }),
 });
 
@@ -64,7 +64,7 @@ export function parseUpdateUserRoleForm(formData: FormData): UpdateUserRoleInput
 }
 
 export const setUserActiveSchema = z.object({
-  userId: z.string().trim().min(1, "Medewerker ontbreekt"),
+  userId: z.string().trim().min(1, "Teamlid ontbreekt"),
   isActive: z.preprocess((value) => {
     if (value === true || value === "true" || value === "1" || value === "on") {
       return true;
@@ -96,11 +96,11 @@ export function parseUserId(formData: FormData): string {
   const parsed = z
     .string()
     .trim()
-    .min(1, "Medewerker ontbreekt")
+    .min(1, "Teamlid ontbreekt")
     .safeParse(formData.get("userId"));
 
   if (!parsed.success) {
-    throw new AppError("Medewerker ontbreekt.", "VALIDATION");
+    throw new AppError("Teamlid ontbreekt.", "VALIDATION");
   }
 
   return parsed.data;

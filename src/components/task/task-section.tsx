@@ -54,26 +54,29 @@ export function TaskSection({
   );
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="page-header">
-        <h2 className="text-md font-medium text-fg">Taken</h2>
-        <Link href="/taken" className="text-sm text-fg-muted hover:underline">
+    <section className="flex flex-col gap-2">
+      <div className="flex min-h-7 items-center justify-between gap-2">
+        <h2 className="text-label font-medium tracking-wide text-fg-muted uppercase">
+          Taken
+        </h2>
+        <Link
+          href="/taken"
+          className="text-xs text-fg-muted hover:text-fg hover:underline"
+        >
           Alle taken
         </Link>
       </div>
       {tasks.length === 0 ? (
         compact ? null : (
-          <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg-muted">
-            Geen openstaande taken.
-          </p>
+          <p className="text-sm text-fg-muted">Geen openstaande taken.</p>
         )
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-1.5">
           {tasks.map((task) => {
             return (
               <li
                 key={task.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border bg-surface px-2.5 py-1.5"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-fg">{task.title}</p>

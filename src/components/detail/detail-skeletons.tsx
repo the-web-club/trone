@@ -24,12 +24,14 @@ export function DetailPageHeaderSkeleton({
   action?: boolean;
 } = {}) {
   return (
-    <header className="page-header">
-      <div className="page-header-copy flex flex-col gap-2">
+    <header className="detail-header">
+      <SkeletonPulse className="mb-1 h-4 w-24" />
+      <div className="flex items-start justify-between gap-3">
         <SkeletonPulse className="h-7 w-52 sm:h-8" />
-        <SkeletonPulse className="h-4 w-36" />
+        <SkeletonPulse className="h-6 w-16" />
       </div>
-      {action ? <SkeletonPulse className="h-8 w-28" /> : null}
+      <SkeletonPulse className="mt-1.5 h-4 w-48" />
+      {action ? <SkeletonPulse className="mt-3 h-8 w-28" /> : null}
     </header>
   );
 }
@@ -174,7 +176,7 @@ export function CompanyFieldsSkeleton() {
 
 export function CompanyDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-8" aria-busy="true">
+    <div className="detail-page flex flex-col gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton />
       <DetailColumns
         left={
@@ -217,7 +219,7 @@ export function ContactFieldsSkeleton() {
 
 export function ContactDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-8" aria-busy="true">
+    <div className="detail-page flex flex-col gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton action />
       <DetailColumns
         left={<ContactFieldsSkeleton />}
@@ -234,7 +236,7 @@ export function ContactDetailSkeleton() {
 
 export function LeadDetailSkeleton() {
   return (
-    <div className="flex flex-col gap-8" aria-busy="true">
+    <div className="detail-page flex flex-col gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton action />
       <DetailColumns
         left={

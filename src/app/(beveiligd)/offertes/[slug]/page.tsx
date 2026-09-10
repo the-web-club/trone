@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { PageHeader } from "@/components/shell/page-header";
+import {
+  DetailBackLink,
+  DetailHeader,
+  DetailMetaRow,
+  DetailPage,
+} from "@/components/detail/detail-layout";
 import { Badge } from "@/components/ui/badge";
 import { CreateOrderDialog } from "@/components/order/create-order-dialog";
 import { QuoteLines } from "@/components/quote/quote-lines";
@@ -102,38 +107,28 @@ export default async function OfferteDetailPage({
       : null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={versionLabel}
-        description={
-          <>
-            <Link href="/offertes" className="hover:underline">
-              Terug naar offertes
-            </Link>
-            {" · "}
-            <span>{quote.quoteNumber}</span>
-            {displayVersionNumber > 0 ? ` · v${displayVersionNumber}` : null}
-            {" · "}
-            <CompanyLink company={quote.company} />
-            {quote.contact ? (
-              <>
-                {" · "}
-                <ContactLink contact={quote.contact} />
-              </>
-            ) : null}
-            {quote.deal ? (
-              <>
-                {" · "}
-                <DealLink deal={quote.deal} />
-              </>
-            ) : null}
-            {` · ${formatDate(quote.createdAt)}`}
-          </>
-        }
-        actions={
+    <DetailPage>
+      <DetailHeader
+        back={<DetailBackLink href="/offertes">Offertes</DetailBackLink>}
+        title={<h1 className="page-header-title">{versionLabel}</h1>}
+        status={
           <Badge tone={quoteStatusTones[displayStatus]}>
             {quoteStatusLabels[displayStatus]}
           </Badge>
+        }
+        meta={
+          <DetailMetaRow
+            items={[
+              quote.quoteNumber,
+              displayVersionNumber > 0 ? `v${displayVersionNumber}` : null,
+              <CompanyLink key="company" company={quote.company} />,
+              quote.contact ? (
+                <ContactLink key="contact" contact={quote.contact} />
+              ) : null,
+              quote.deal ? <DealLink key="deal" deal={quote.deal} /> : null,
+              formatDate(quote.createdAt),
+            ]}
+          />
         }
       />
 
@@ -214,6 +209,6 @@ export default async function OfferteDetailPage({
         selectedB={compareB}
         diff={diff}
       />
-    </div>
+    </DetailPage>
   );
 }

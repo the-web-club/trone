@@ -39,13 +39,13 @@ export function InviteUserForm() {
       <DialogTrigger
         render={
           <Button variant="primary" size="sm">
-            Medewerker toevoegen
+            Teamlid toevoegen
           </Button>
         }
       />
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Medewerker uitnodigen</DialogTitle>
+          <DialogTitle>Teamlid uitnodigen</DialogTitle>
         </DialogHeader>
         <form action={onSubmit}>
           <DialogBody>

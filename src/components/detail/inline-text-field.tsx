@@ -26,6 +26,7 @@ export function InlineTextField({
   required = false,
   variant = "body",
   multiline = false,
+  layout = "stack",
   inputMode,
   min,
   step,
@@ -40,6 +41,7 @@ export function InlineTextField({
   required?: boolean;
   variant?: "body" | "title";
   multiline?: boolean;
+  layout?: "stack" | "row";
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: number | string;
   step?: number | string;
@@ -202,25 +204,46 @@ export function InlineTextField({
   );
 
   const status = error ? (
-    <p id={`${id}-error`} className="text-xs text-danger" role="alert">
+    <p id={`${id}-error`} className="inline-field-status text-xs text-danger" role="alert">
       {error}
     </p>
   ) : saved ? (
-    <SavedIndicator visible />
+    <span className="inline-field-status">
+      <SavedIndicator visible />
+    </span>
   ) : null;
 
+  const isRow = layout === "row" && !isTitle && !multiline;
+
   return (
-    <div className={cn("min-w-0", isTitle ? "w-full" : "flex flex-col gap-1")}>
+    <div
+      className={cn(
+        "min-w-0",
+        isTitle
+          ? "w-full"
+          : isRow
+            ? "inline-field-row"
+            : "flex flex-col gap-1",
+      )}
+    >
       {isTitle ? (
         <label htmlFor={id} className="sr-only">
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className="text-label font-medium text-fg-muted">
+        <label
+          htmlFor={id}
+          className={cn(
+            "text-label font-medium text-fg-muted",
+            isRow && "pt-1.5 sm:pt-1",
+          )}
+        >
           {label}
         </label>
       )}
-      {isTitle ? <h1 className="page-header-title">{control}</h1> : control}
+      <div className="min-w-0">
+        {isTitle ? <h1 className="page-header-title">{control}</h1> : control}
+      </div>
       {status}
     </div>
   );

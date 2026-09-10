@@ -14,7 +14,15 @@ import {
   useCompanyContactFields,
 } from "@/components/contact/use-company-contact-fields";
 import { DealHotToggle } from "@/components/deal/deal-hot-toggle";
-import { DetailColumns, DetailSection } from "@/components/detail/detail-layout";
+import {
+  DetailBackLink,
+  DetailColumns,
+  DetailFieldGrid,
+  DetailHeader,
+  DetailMetaRow,
+  DetailPage,
+  DetailSection,
+} from "@/components/detail/detail-layout";
 import { LeadFieldsSkeleton } from "@/components/detail/detail-skeletons";
 import {
   INLINE_SELECT_EMPTY,
@@ -124,47 +132,48 @@ export function LeadDetail({
     return null;
   }
 
+  const primaryQuoteAction = (
+    <Link
+      href={newQuotePath({ deal, company })}
+      className={cn(pageActionPrimaryClassName(), "w-full sm:w-auto")}
+    >
+      Nieuwe offerte
+    </Link>
+  );
+
   return (
-    <div className="flex flex-col gap-8">
-      <header className="page-header">
-        <div className="page-header-copy min-w-0 flex-1">
-          <div className="flex flex-wrap items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <InlineTextField
-                label="Titel"
-                value={deal.title}
-                variant="title"
-                required
-                onSave={(title) => save({ title })}
-              />
-            </div>
-            <InlineSelectField
-              label="Fase"
-              value={deal.stageId}
-              items={stageItems}
-              hideLabel
-              compact
-              triggerClassName={cn(
-                "h-5 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-1.5 text-xs font-medium",
-                stageToneClass,
-              )}
-              searchPlaceholder="Zoek een fase…"
-              onSave={(stageId) => save({ stageId })}
-            />
-          </div>
-          <div className="page-header-description">
-            <Link href="/leads" className="hover:underline">
-              Terug naar de pijplijn
-            </Link>
-            {company ? (
-              <>
-                {" · "}
-                <CompanyLink company={company} />
-              </>
-            ) : null}
-            {contact?.slug ? (
-              <>
-                {" · "}
+    <DetailPage>
+      <DetailHeader
+        back={<DetailBackLink href="/leads">Leads</DetailBackLink>}
+        title={
+          <InlineTextField
+            label="Titel"
+            value={deal.title}
+            variant="title"
+            required
+            onSave={(title) => save({ title })}
+          />
+        }
+        status={
+          <InlineSelectField
+            label="Fase"
+            value={deal.stageId}
+            items={stageItems}
+            hideLabel
+            compact
+            triggerClassName={cn(
+              "h-6 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-2 text-xs font-medium",
+              stageToneClass,
+            )}
+            searchPlaceholder="Zoek een fase…"
+            onSave={(stageId) => save({ stageId })}
+          />
+        }
+        meta={
+          <DetailMetaRow
+            items={[
+              company ? <CompanyLink company={company} /> : null,
+              contact?.slug ? (
                 <ContactLink
                   contact={{
                     slug: contact.slug,
@@ -172,28 +181,27 @@ export function LeadDetail({
                     lastName: contact.lastName,
                   }}
                 />
-              </>
+              ) : null,
+              deal.valueEstimateLabel !== "—" ? deal.valueEstimateLabel : null,
+            ]}
+          />
+        }
+        actions={
+          <>
+            {primaryQuoteAction}
+            <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
+            {isAdmin ? (
+              <DeleteEntityButton
+                id={deal.id}
+                action={deleteDealAction}
+                title="Lead verwijderen"
+                description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
+              />
             ) : null}
-          </div>
-        </div>
-        <div className="page-actions">
-          <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
-          {isAdmin ? (
-            <DeleteEntityButton
-              id={deal.id}
-              action={deleteDealAction}
-              title="Lead verwijderen"
-              description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
-            />
-          ) : null}
-          <Link
-            href={newQuotePath({ deal, company })}
-            className={pageActionPrimaryClassName()}
-          >
-            Nieuwe offerte
-          </Link>
-        </div>
-      </header>
+          </>
+        }
+        stickyActions={primaryQuoteAction}
+      />
 
       <DetailColumns
         left={
@@ -210,7 +218,7 @@ export function LeadDetail({
         }
         right={activity}
       />
-    </div>
+    </DetailPage>
   );
 }
 
@@ -369,12 +377,13 @@ function LeadDetailFields({
   }
 
   return (
-    <DetailSection title="Gegevens">
-      <div className="flex flex-col gap-3">
+    <DetailSection title="Koppelingen">
+      <DetailFieldGrid>
         <InlineSelectField
           label="Bedrijf"
           value={relation.companyId}
           items={companyItems}
+          layout="row"
           searchPlaceholder="Zoek een bedrijf…"
           createLabel="Nieuw bedrijf"
           onCreate={(query) => {
@@ -384,9 +393,10 @@ function LeadDetailFields({
           onSave={saveCompany}
         />
         <InlineSelectField
-          label="Contactpersoon"
+          label="Contact"
           value={relation.contactId}
           items={contactItems}
+          layout="row"
           searchPlaceholder="Zoek een contact…"
           createLabel="Nieuw contact"
           createDisabled={!relation.companyId}
@@ -417,12 +427,13 @@ function LeadDetailFields({
           label="Bron"
           value={deal.sourceId ?? ""}
           items={sourceItems}
+          layout="row"
           searchPlaceholder="Zoek een bron…"
           onSave={(sourceId) => save({ sourceId: sourceId || null })}
         />
         {deal.quotedTotal == null ? (
           <InlineTextField
-            label="Geschatte waarde"
+            label="Waarde"
             value={
               deal.valueEstimate == null ? "" : String(deal.valueEstimate)
             }
@@ -430,6 +441,7 @@ function LeadDetailFields({
             type="number"
             min={0}
             step={1}
+            layout="row"
             onSave={async (next) => {
               if (next === "") return save({ valueEstimate: null });
               const parsed = Number(next);
@@ -440,16 +452,16 @@ function LeadDetailFields({
             }}
           />
         ) : (
-          <div className="flex flex-col gap-1">
-            <p className="text-label font-medium text-fg-muted">
-              Geschatte waarde
-            </p>
+          <div className="inline-field-row min-w-0">
+            <span className="pt-1.5 text-label font-medium text-fg-muted sm:pt-1">
+              Waarde
+            </span>
             <p className="min-h-8 px-1.5 py-1 text-sm text-fg">
               {deal.valueEstimateLabel}
             </p>
           </div>
         )}
-      </div>
+      </DetailFieldGrid>
     </DetailSection>
   );
 }
