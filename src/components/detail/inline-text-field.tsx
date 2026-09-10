@@ -224,7 +224,7 @@ export function InlineTextField({
         isTitle
           ? "w-full"
           : isCell
-            ? "inline-field"
+            ? "inline-field flex flex-col gap-0.5"
             : "flex flex-col gap-1",
       )}
     >

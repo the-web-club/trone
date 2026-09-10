@@ -5,6 +5,10 @@ import { createInvoiceFromOrderAction } from "@/app/(beveiligd)/actions/invoice-
 import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  CompactRecordList,
+  CompactRecordRow,
+} from "@/components/ui/responsive-list";
 import { formatEuroExact, formatDate } from "@/lib/format";
 import type { InvoiceStatus, VatRegime } from "@/generated/prisma/client";
 
@@ -51,9 +55,11 @@ export function OrderInvoices({
   );
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="page-header">
-        <h2 className="text-md font-medium text-fg">Facturen</h2>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-label font-medium tracking-wide text-fg-muted uppercase">
+          Facturen
+        </h2>
         <form action={action}>
           <input type="hidden" name="orderId" value={orderId} />
           <Button type="submit" variant="secondary" loading={pending}>
@@ -69,36 +75,29 @@ export function OrderInvoices({
       {invoices.length === 0 ? (
         <p className="text-sm text-fg-muted">Nog geen facturen bij deze order.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <CompactRecordList>
           {invoices.map((invoice) => {
             const vatRate = invoice.vatRate == null ? 21 : Number(invoice.vatRate);
             return (
-              <li
+              <CompactRecordRow
                 key={invoice.id}
-                className="rounded-md border border-border bg-surface px-4 py-3"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-fg">
-                    {invoice.invoiceNumber ?? "Conceptfactuur"}
-                  </p>
+                title={invoice.invoiceNumber ?? "Conceptfactuur"}
+                status={
                   <Badge tone={invoiceStatusTones[invoice.status]}>
                     {invoiceStatusLabels[invoice.status]}
                   </Badge>
-                </div>
-                <p className="mt-1 text-sm text-fg-muted">
-                  {formatDate(invoice.createdAt)} · {formatEuroExact(Number(invoice.amount))}
-                </p>
-                <div className="mt-2">
-                  <VatTreatmentNotice
-                    vatRate={vatRate}
-                    vatRegime={invoice.vatRegime}
-                    warning={invoice.vatNotice}
-                  />
-                </div>
-              </li>
+                }
+                meta={`${formatDate(invoice.createdAt)} · ${formatEuroExact(Number(invoice.amount))}`}
+              >
+                <VatTreatmentNotice
+                  vatRate={vatRate}
+                  vatRegime={invoice.vatRegime}
+                  warning={invoice.vatNotice}
+                />
+              </CompactRecordRow>
             );
           })}
-        </ul>
+        </CompactRecordList>
       )}
     </section>
   );

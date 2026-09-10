@@ -13,7 +13,7 @@ export default async function DrempelsPage() {
   const thresholds = await getThresholds();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Drempels"
         description={

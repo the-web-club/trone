@@ -220,7 +220,7 @@ export function DetailValueField({
   return (
     <div
       className={cn(
-        "inline-field min-w-0",
+        "inline-field flex min-w-0 flex-col gap-0.5",
         span === "full" && "col-span-2",
         className,
       )}

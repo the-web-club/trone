@@ -6,7 +6,7 @@ import { CreateCompanyDialog } from "@/components/company/create-company-dialog"
 import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
 import { Button } from "@/components/ui/button";
 import { ComboboxMenu } from "@/components/ui/combobox";
-import { FormField } from "@/components/ui/form-field";
+import { FormField, FormFieldGrid } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select";
 import { formatPersonName } from "@/lib/format";
@@ -92,17 +92,17 @@ export function DealForm({
   );
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form action={formAction} className="flex max-w-xl flex-col gap-3">
       {deal?.id ? <input type="hidden" name="id" value={deal.id} /> : null}
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="contactId" value={contactId} />
 
-      <FormField id="title" label="Titel">
-        <Input name="title" required defaultValue={deal?.title ?? ""} />
-      </FormField>
+      <FormFieldGrid>
+        <FormField id="title" label="Titel" className="col-span-2">
+          <Input name="title" required defaultValue={deal?.title ?? ""} />
+        </FormField>
 
-      <div className="flex items-end gap-2">
-        <FormField id="companyId" label="Bedrijf" className="min-w-0 flex-1">
+        <FormField id="companyId" label="Bedrijf">
           <ComboboxMenu
             value={companyId}
             onValueChange={(next) => onCompanyChange(next)}
@@ -110,34 +110,14 @@ export function DealForm({
             placeholder="Geen bedrijf gekoppeld"
             searchPlaceholder="Zoek een bedrijf…"
             createLabel="Nieuw bedrijf"
+            wrap
             onCreate={(query) => {
               setCompanyQuery(query);
               setCompanyDialogOpen(true);
             }}
           />
         </FormField>
-        <CreateCompanyDialog
-          open={companyDialogOpen}
-          onOpenChange={(next) => {
-            setCompanyDialogOpen(next);
-            if (!next) setCompanyQuery("");
-          }}
-          defaultName={companyQuery}
-          onCreated={(created) => {
-            setCompanyList((list) =>
-              list.some((row) => row.id === created.id)
-                ? list
-                : [...list, { id: created.id, name: created.name }].sort(
-                    (a, b) => a.name.localeCompare(b.name, "nl"),
-                  ),
-            );
-            onCompanyChange(created.id);
-          }}
-        />
-      </div>
-
-      <div className="flex items-end gap-2">
-        <FormField id="contactId" label="Contactpersoon" className="min-w-0 flex-1">
+        <FormField id="contactId" label="Contact">
           <ComboboxMenu
             value={contactId}
             disabled={contactsLoading}
@@ -147,6 +127,7 @@ export function DealForm({
             searchPlaceholder="Zoek een contact…"
             createLabel="Nieuw contact"
             createDisabled={!companyId}
+            wrap
             onCreate={(query) => {
               if (!companyId) return;
               setContactQuery(query);
@@ -154,24 +135,6 @@ export function DealForm({
             }}
           />
         </FormField>
-        <CreateQuoteContactDialog
-          companyId={companyId}
-          open={contactDialogOpen}
-          onOpenChange={(next) => {
-            setContactDialogOpen(next);
-            if (!next) setContactQuery("");
-          }}
-          defaultFirstName={contactQuery}
-          onCreated={(contact) => {
-            applySelection(
-              { companyId, contactId: contact.id },
-              { contacts: [...visibleContacts, contact] },
-            );
-          }}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="stageId" label="Fase">
           <SelectMenu
             name="stageId"
@@ -198,17 +161,52 @@ export function DealForm({
             searchPlaceholder="Zoek een bron…"
           />
         </FormField>
-      </div>
+        <FormField id="valueEstimate" label="Waarde (€)">
+          <Input
+            name="valueEstimate"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue={deal?.valueEstimate ?? ""}
+          />
+        </FormField>
+      </FormFieldGrid>
 
-      <FormField id="valueEstimate" label="Geschatte waarde (€)">
-        <Input
-          name="valueEstimate"
-          type="number"
-          min="0"
-          step="1"
-          defaultValue={deal?.valueEstimate ?? ""}
-        />
-      </FormField>
+      <CreateCompanyDialog
+        showTrigger={false}
+        open={companyDialogOpen}
+        onOpenChange={(next) => {
+          setCompanyDialogOpen(next);
+          if (!next) setCompanyQuery("");
+        }}
+        defaultName={companyQuery}
+        onCreated={(created) => {
+          setCompanyList((list) =>
+            list.some((row) => row.id === created.id)
+              ? list
+              : [...list, { id: created.id, name: created.name }].sort(
+                  (a, b) => a.name.localeCompare(b.name, "nl"),
+                ),
+          );
+          onCompanyChange(created.id);
+        }}
+      />
+      <CreateQuoteContactDialog
+        companyId={companyId}
+        showTrigger={false}
+        open={contactDialogOpen}
+        onOpenChange={(next) => {
+          setContactDialogOpen(next);
+          if (!next) setContactQuery("");
+        }}
+        defaultFirstName={contactQuery}
+        onCreated={(contact) => {
+          applySelection(
+            { companyId, contactId: contact.id },
+            { contacts: [...visibleContacts, contact] },
+          );
+        }}
+      />
 
       {state?.error ? (
         <p className="text-sm text-danger" role="alert">

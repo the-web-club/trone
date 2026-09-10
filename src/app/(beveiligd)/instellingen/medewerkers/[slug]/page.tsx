@@ -13,12 +13,9 @@ import { CompanyLink, ContactLink, DealLink } from "@/components/entity-links";
 import { StaffAvatarEditor } from "@/components/settings/staff-avatar-editor";
 import { Badge } from "@/components/ui/badge";
 import {
-  ListCard,
+  CompactRecordList,
+  CompactRecordRow,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
-  ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
 import {
@@ -33,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { isAppError } from "@/lib/errors";
-import { staffPath } from "@/lib/paths";
+import { companyPath, dealPath, staffPath } from "@/lib/paths";
 import { getStaffDetail, staffStatus } from "@/lib/user-service";
 import { userRoleLabels, type UserRole } from "@/lib/user-validation";
 
@@ -138,31 +135,37 @@ export default async function MedewerkerDetailPage({
         Nog geen leads gekoppeld aan dit teamlid.
       </ListCardEmpty>
     ) : (
-      deals.map((deal) => (
-        <ListCard key={deal.id}>
-          <ListCardHeader>
-            <ListCardTitle>
+      <CompactRecordList>
+        {deals.map((deal) => (
+          <CompactRecordRow
+            key={deal.id}
+            href={dealPath(deal)}
+            title={
               <span className="inline-flex min-w-0 items-center gap-1">
-                <DealLink deal={deal} primary />
+                {deal.title}
                 {deal.isHot ? <DealHotIcon /> : null}
               </span>
-            </ListCardTitle>
-            <DealStagePill
-              name={deal.stage.name}
-              isWon={deal.stage.isWon}
-              isLost={deal.stage.isLost}
-            />
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Bedrijf">
-              <CompanyLink company={deal.company} />
-            </ListCardRow>
-            <ListCardRow label="Contact">
-              <ContactLink contact={deal.contact} />
-            </ListCardRow>
-          </ListCardRows>
-        </ListCard>
-      ))
+            }
+            status={
+              <DealStagePill
+                name={deal.stage.name}
+                isWon={deal.stage.isWon}
+                isLost={deal.stage.isLost}
+              />
+            }
+            meta={[
+              deal.company?.name,
+              deal.contact
+                ? [deal.contact.firstName, deal.contact.lastName]
+                    .filter(Boolean)
+                    .join(" ")
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          />
+        ))}
+      </CompactRecordList>
     );
 
   const companiesDesktop = (
@@ -210,24 +213,21 @@ export default async function MedewerkerDetailPage({
         Nog geen bedrijven gekoppeld aan dit teamlid.
       </ListCardEmpty>
     ) : (
-      companies.map((company) => (
-        <ListCard key={company.id}>
-          <ListCardHeader>
-            <ListCardTitle>
-              <CompanyLink company={company} primary />
-            </ListCardTitle>
-            {company.ownerUserId === user.id ? (
-              <Badge tone="info">Eigenaar</Badge>
-            ) : null}
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Plaats">{company.city || "—"}</ListCardRow>
-            <ListCardRow label="Koppeling">
-              {company.ownerUserId === user.id ? "Eigenaar" : "Via lead"}
-            </ListCardRow>
-          </ListCardRows>
-        </ListCard>
-      ))
+      <CompactRecordList>
+        {companies.map((company) => (
+          <CompactRecordRow
+            key={company.id}
+            href={companyPath(company)}
+            title={company.name}
+            status={
+              company.ownerUserId === user.id ? (
+                <Badge tone="info">Eigenaar</Badge>
+              ) : null
+            }
+            meta={company.city || undefined}
+          />
+        ))}
+      </CompactRecordList>
     );
 
   return (

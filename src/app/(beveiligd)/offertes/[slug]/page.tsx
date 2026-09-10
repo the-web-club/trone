@@ -119,8 +119,6 @@ export default async function OfferteDetailPage({
         meta={
           <DetailMetaRow
             items={[
-              quote.quoteNumber,
-              displayVersionNumber > 0 ? `v${displayVersionNumber}` : null,
               <CompanyLink key="company" company={quote.company} />,
               quote.contact ? (
                 <ContactLink key="contact" contact={quote.contact} />
@@ -130,17 +128,18 @@ export default async function OfferteDetailPage({
             ]}
           />
         }
-      />
-
-      <QuoteVersionActions
-        quoteId={quote.id}
-        quoteNumber={quote.quoteNumber}
-        status={quote.status}
-        viewingHistorical={viewingHistorical}
-        pdfHref={quotePdfPath(
-          quote,
-          viewingHistorical ? { versie: displayVersionNumber } : undefined,
-        )}
+        actions={
+          <QuoteVersionActions
+            quoteId={quote.id}
+            quoteNumber={quote.quoteNumber}
+            status={quote.status}
+            viewingHistorical={viewingHistorical}
+            pdfHref={quotePdfPath(
+              quote,
+              viewingHistorical ? { versie: displayVersionNumber } : undefined,
+            )}
+          />
+        }
       />
 
       {!viewingHistorical && existingOrder ? (

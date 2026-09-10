@@ -20,7 +20,7 @@ export function OrderStatusForm({
   );
 
   return (
-    <form action={action} className="flex flex-col items-end gap-2">
+    <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="id" value={orderId} />
       <div className="flex flex-wrap items-center gap-2">
         <SelectMenu

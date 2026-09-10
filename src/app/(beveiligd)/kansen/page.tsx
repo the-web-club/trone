@@ -15,7 +15,7 @@ export default async function KansenPage() {
   const total = hotTotal + board.followUp.length + board.stale.length;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Kansen"
         description={

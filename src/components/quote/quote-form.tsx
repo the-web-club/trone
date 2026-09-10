@@ -354,8 +354,8 @@ export function QuoteForm({
       <input type="hidden" name="payload" value={JSON.stringify(payload)} />
 
       <div className="flex flex-col max-lg:pb-[var(--configurator-bar-space)]">
-      <section className="mb-8 grid gap-4 md:grid-cols-3">
-        <div className="flex items-end gap-2">
+      <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="flex min-w-0 items-end gap-2">
           <FormField id="companyId" label="Klant" className="min-w-0 flex-1">
             <ComboboxMenu
               required
@@ -365,6 +365,7 @@ export function QuoteForm({
               placeholder="Kies een klant"
               searchPlaceholder="Zoek een klant…"
               createLabel="Nieuw bedrijf"
+              wrap
               onCreate={(query) => {
                 setCompanyQuery(query);
                 setCompanyDialogOpen(true);
@@ -375,13 +376,14 @@ export function QuoteForm({
             type="button"
             variant="secondary"
             aria-label="Nieuw bedrijf"
+            className="hidden lg:inline-flex"
             onClick={() => setCompanyDialogOpen(true)}
           >
             Nieuw
           </Button>
         </div>
-        <div className="flex items-end gap-2">
-          <FormField id="contactId" label="Contactpersoon" className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-end gap-2">
+          <FormField id="contactId" label="Contact" className="min-w-0 flex-1">
             <ComboboxMenu
               value={contactId}
               disabled={contactsLoading}
@@ -391,6 +393,7 @@ export function QuoteForm({
               searchPlaceholder="Zoek een contact…"
               createLabel="Nieuw contact"
               createDisabled={!companyId}
+              wrap
               onCreate={(query) => {
                 if (!companyId) return;
                 setContactQuery(query);
@@ -403,6 +406,7 @@ export function QuoteForm({
             variant="secondary"
             disabled={!companyId}
             aria-label="Nieuw contact"
+            className="hidden lg:inline-flex"
             onClick={() => {
               if (!companyId) return;
               setContactDialogOpen(true);
@@ -411,7 +415,7 @@ export function QuoteForm({
             Nieuw
           </Button>
         </div>
-        <div className="flex items-end gap-2">
+        <div className="col-span-2 flex min-w-0 items-end gap-2 lg:col-span-1">
           <FormField id="dealId" label="Lead" className="min-w-0 flex-1">
             <ComboboxMenu
               value={dealId}
@@ -422,6 +426,7 @@ export function QuoteForm({
               searchPlaceholder="Zoek een lead…"
               createLabel="Nieuwe lead"
               createDisabled={!companyId}
+              wrap
               onCreate={(query) => {
                 if (!companyId) return;
                 setLeadQuery(query || company?.name || "");
@@ -434,6 +439,7 @@ export function QuoteForm({
             variant="secondary"
             disabled={!companyId}
             aria-label="Nieuwe lead"
+            className="hidden lg:inline-flex"
             onClick={() => {
               if (!companyId) return;
               setLeadQuery(company?.name || "");

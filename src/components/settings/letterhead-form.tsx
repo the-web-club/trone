@@ -20,7 +20,7 @@ export function LetterheadForm({
   );
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form action={formAction} className="flex max-w-xl flex-col gap-3">
       <FormField id="name" label="Bedrijfsnaam">
         <Input
           name="name"
@@ -39,7 +39,7 @@ export function LetterheadForm({
         />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="postalCode" label="Postcode">
           <Input
             name="postalCode"
@@ -67,7 +67,7 @@ export function LetterheadForm({
         />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="cocNumber" label="KvK-nummer">
           <Input
             name="cocNumber"
@@ -95,7 +95,7 @@ export function LetterheadForm({
         />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="phone" label="Telefoon">
           <Input
             name="phone"

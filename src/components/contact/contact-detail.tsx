@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteContactAction,
@@ -8,7 +8,8 @@ import {
 } from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactNameTitle } from "@/components/contact/contact-name-title";
 import { ContactPrimaryToggle } from "@/components/contact/contact-primary-toggle";
-import { DetailActionMenu } from "@/components/detail/detail-action-menu";
+import { DetailActionMenu, detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
+import { Button } from "@/components/ui/button";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   DetailBackLink,
@@ -50,6 +51,7 @@ export function ContactDetail({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const name = formatPersonName(contact.firstName, contact.lastName);
 
   async function save(patch: ContactPatch): Promise<string | null> {
@@ -84,22 +86,36 @@ export function ContactDetail({
           ) : null
         }
         actions={
-          <DetailActionMenu>
-            <ContactPrimaryToggle
-              isPrimary={contact.isPrimary}
-              onSave={(isPrimary) => save({ isPrimary })}
-              presentation="menu"
-            />
+          <>
+            <DetailActionMenu>
+              <ContactPrimaryToggle
+                isPrimary={contact.isPrimary}
+                onSave={(isPrimary) => save({ isPrimary })}
+                presentation="menu"
+              />
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={detailMenuButtonClassName(true)}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Verwijderen
+                </Button>
+              ) : null}
+            </DetailActionMenu>
             {isAdmin ? (
               <DeleteEntityButton
                 id={contact.id}
                 action={deleteContactAction}
                 title="Contact verwijderen"
                 description={`Weet je zeker dat je ${name} wilt verwijderen? Leads, offertes en orders blijven bestaan, zonder koppeling naar dit contact.`}
-                presentation="menu"
+                presentation="hidden"
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
               />
             ) : null}
-          </DetailActionMenu>
+          </>
         }
       />
 

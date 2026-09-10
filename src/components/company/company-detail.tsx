@@ -8,7 +8,11 @@ import {
 } from "@/app/(beveiligd)/actions/company-actions";
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
-import { DetailActionMenu } from "@/components/detail/detail-action-menu";
+import {
+  DetailActionMenu,
+  detailMenuButtonClassName,
+} from "@/components/detail/detail-action-menu";
+import { Button } from "@/components/ui/button";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
 import {
   DetailBackLink,
@@ -78,6 +82,7 @@ export function CompanyDetail({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function save(patch: CompanyPatch): Promise<string | null> {
     const result = await patchCompanyAction(company.id, patch);
@@ -105,15 +110,27 @@ export function CompanyDetail({
         }
         actions={
           isAdmin ? (
-            <DetailActionMenu>
+            <>
+              <DetailActionMenu>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={detailMenuButtonClassName(true)}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Verwijderen
+                </Button>
+              </DetailActionMenu>
               <DeleteEntityButton
                 id={company.id}
                 action={deleteCompanyAction}
                 title="Bedrijf verwijderen"
                 description={`Weet je zeker dat je ${company.name} wilt verwijderen? Contacten en leads blijven bestaan, zonder koppeling naar dit bedrijf. Bedrijven met offertes, orders of facturen kunnen niet worden verwijderd.`}
-                presentation="menu"
+                presentation="hidden"
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
               />
-            </DetailActionMenu>
+            </>
           ) : null
         }
       />
@@ -243,7 +260,7 @@ function CompanyDetailFields({
 
       <DetailSection title="Btw & registratie" collapsible defaultOpen>
         <DetailFieldGrid>
-          <div className="inline-field col-span-2 min-w-0">
+          <div className="inline-field col-span-2 min-w-0 space-y-1.5">
             <InlineTextField
               label="Btw-nummer"
               value={company.vatNumber ?? ""}

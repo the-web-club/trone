@@ -33,7 +33,7 @@ export type ContactFormValues = {
 function ContactFields({ contact }: { contact?: ContactFormValues }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="firstName" label="Voornaam">
           <Input name="firstName" required defaultValue={contact?.firstName ?? ""} />
         </FormField>
@@ -44,7 +44,7 @@ function ContactFields({ contact }: { contact?: ContactFormValues }) {
       <FormField id="jobTitle" label="Functie">
         <Input name="jobTitle" defaultValue={contact?.jobTitle ?? ""} />
       </FormField>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="email" label="E-mailadres">
           <Input name="email" type="email" defaultValue={contact?.email ?? ""} />
         </FormField>

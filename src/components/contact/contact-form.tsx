@@ -33,10 +33,10 @@ export function ContactForm({
   const [state, formAction, pending] = useActionState(action, null);
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form action={formAction} className="flex max-w-xl flex-col gap-3">
       <input type="hidden" name="id" value={contact.id} />
       <input type="hidden" name="companyId" value={contact.companyId} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="firstName" label="Voornaam">
           <Input name="firstName" required defaultValue={contact.firstName} />
         </FormField>
@@ -47,7 +47,7 @@ export function ContactForm({
       <FormField id="jobTitle" label="Functie">
         <Input name="jobTitle" defaultValue={contact.jobTitle ?? ""} />
       </FormField>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="email" label="E-mailadres">
           <Input name="email" type="email" defaultValue={contact.email ?? ""} />
         </FormField>

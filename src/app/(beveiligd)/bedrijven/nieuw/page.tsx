@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Nieuw bedrijf" };
 
 export default function NieuwBedrijfPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Nieuw bedrijf"
         description={

@@ -8,9 +8,8 @@ import {
   patchDealAction,
 } from "@/app/(beveiligd)/actions/deal-actions";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
-import {
-  DetailActionMenu,
-} from "@/components/detail/detail-action-menu";
+import { DetailActionMenu, detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
+import { Button } from "@/components/ui/button";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   COMPANY_SWITCH_WARNING,
@@ -106,6 +105,7 @@ export function LeadDetail({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const company = deal.company;
   const stage =
     stages.find((item) => item.id === deal.stageId) ?? deal.stage;
@@ -145,18 +145,32 @@ export function LeadDetail({
   );
 
   const moreActions = (
-    <DetailActionMenu>
-      <DealHotToggle dealId={deal.id} isHot={deal.isHot} presentation="menu" />
+    <>
+      <DetailActionMenu>
+        <DealHotToggle dealId={deal.id} isHot={deal.isHot} presentation="menu" />
+        {isAdmin ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className={detailMenuButtonClassName(true)}
+            onClick={() => setDeleteOpen(true)}
+          >
+            Verwijderen
+          </Button>
+        ) : null}
+      </DetailActionMenu>
       {isAdmin ? (
         <DeleteEntityButton
           id={deal.id}
           action={deleteDealAction}
           title="Lead verwijderen"
           description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
-          presentation="menu"
+          presentation="hidden"
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
         />
       ) : null}
-    </DetailActionMenu>
+    </>
   );
 
   return (

@@ -178,7 +178,7 @@ export function ContactNameTitle({
             onClick={startEditing}
             className={cn(
               "-mx-1 max-w-full rounded-sm px-1 text-left",
-              "hover:bg-hover",
+              "inline-editable hover:bg-hover",
               focusRingOutline,
             )}
           >

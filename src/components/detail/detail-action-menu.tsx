@@ -23,29 +23,28 @@ export function DetailActionMenu({
   const [open, setOpen] = useState(false);
 
   return (
-    <PopoverRoot open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            aria-label={label}
-            aria-haspopup="dialog"
-          />
-        }
-      >
-        <MoreHorizontal className="size-4" aria-hidden />
-      </PopoverTrigger>
-      <PopoverContent align="end" side="bottom" className="w-52 p-1">
-        <div
-          className="flex flex-col"
-          onClick={() => setOpen(false)}
+    <div className="ml-auto shrink-0">
+      <PopoverRoot open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              aria-label={label}
+              aria-haspopup="dialog"
+            />
+          }
         >
-          {children}
-        </div>
-      </PopoverContent>
-    </PopoverRoot>
+          <MoreHorizontal className="size-4" aria-hidden />
+        </PopoverTrigger>
+        <PopoverContent align="end" side="bottom" className="w-52 p-1">
+          <div className="flex flex-col" onClick={() => setOpen(false)}>
+            {children}
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
+    </div>
   );
 }
 

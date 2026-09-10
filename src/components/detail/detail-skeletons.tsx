@@ -110,26 +110,24 @@ export function DetailTimelineSkeleton({
 
 export function LeadFieldsSkeleton() {
   return (
-    <DetailSection title="Gegevens">
-      <div className="flex flex-col gap-3" aria-hidden>
-        {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="flex flex-col gap-1">
-            <SkeletonPulse className="h-3 w-24" />
-            <SkeletonPulse className="h-8 w-full" />
-          </div>
-        ))}
-      </div>
-    </DetailSection>
+    <div className="detail-field-grid" aria-hidden>
+      {Array.from({ length: 4 }, (_, index) => (
+        <div key={index} className="inline-field">
+          <SkeletonPulse className="h-3 w-16" />
+          <SkeletonPulse className="h-8 w-full" />
+        </div>
+      ))}
+    </div>
   );
 }
 
 export function CompanyFieldsSkeleton() {
   return (
     <DetailSection title="Gegevens">
-      <div className="flex flex-col gap-3" aria-hidden>
+      <div className="detail-field-grid" aria-hidden>
         {Array.from({ length: 8 }, (_, index) => (
-          <div key={index} className="flex flex-col gap-1">
-            <SkeletonPulse className="h-3 w-24" />
+          <div key={index} className="inline-field">
+            <SkeletonPulse className="h-3 w-16" />
             <SkeletonPulse className="h-8 w-full" />
           </div>
         ))}
@@ -140,7 +138,7 @@ export function CompanyFieldsSkeleton() {
 
 export function CompanyDetailSkeleton() {
   return (
-    <div className="detail-page flex flex-col gap-5" aria-busy="true">
+    <div className="detail-page flex flex-col gap-3 desktop-nav:gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton />
       <DetailColumns
         left={
@@ -163,10 +161,10 @@ export function CompanyDetailSkeleton() {
 export function ContactFieldsSkeleton() {
   return (
     <DetailSection title="Gegevens">
-      <div className="flex flex-col gap-3" aria-hidden>
-        {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="flex flex-col gap-1">
-            <SkeletonPulse className="h-3 w-24" />
+      <div className="detail-field-grid" aria-hidden>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="inline-field">
+            <SkeletonPulse className="h-3 w-16" />
             <SkeletonPulse className="h-8 w-full" />
           </div>
         ))}
@@ -177,7 +175,7 @@ export function ContactFieldsSkeleton() {
 
 export function ContactDetailSkeleton() {
   return (
-    <div className="detail-page flex flex-col gap-5" aria-busy="true">
+    <div className="detail-page flex flex-col gap-3 desktop-nav:gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton action />
       <DetailColumns
         left={<ContactFieldsSkeleton />}
@@ -189,7 +187,7 @@ export function ContactDetailSkeleton() {
 
 export function LeadDetailSkeleton() {
   return (
-    <div className="detail-page flex flex-col gap-5" aria-busy="true">
+    <div className="detail-page flex flex-col gap-3 desktop-nav:gap-5" aria-busy="true">
       <DetailPageHeaderSkeleton action />
       <DetailColumns
         left={

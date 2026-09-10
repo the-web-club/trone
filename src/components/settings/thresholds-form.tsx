@@ -20,7 +20,8 @@ export function ThresholdsForm({
   );
 
   return (
-    <form action={formAction} className="flex max-w-md flex-col gap-4">
+    <form action={formAction} className="flex max-w-md flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
       <FormField id="stilDagen" label="Dagen stilte (lead)">
         <Input
           name="stilDagen"
@@ -43,7 +44,7 @@ export function ThresholdsForm({
           required
         />
       </FormField>
-      <FormField id="hotWaarde" label="Hot-suggestie vanaf waarde (€)">
+      <FormField id="hotWaarde" label="Hot-suggestie vanaf waarde (€)" className="col-span-2">
         <Input
           name="hotWaarde"
           type="number"
@@ -54,6 +55,7 @@ export function ThresholdsForm({
           required
         />
       </FormField>
+      </div>
       {state?.error ? (
         <p className="text-sm text-danger" role="alert">
           {state.error}

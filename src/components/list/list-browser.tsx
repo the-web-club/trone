@@ -24,7 +24,7 @@ export function ListBrowser({
 
   return (
     <ListNavigationContext.Provider value={{ isPending, startTransition }}>
-      <div className={className ?? "flex flex-col gap-6"}>{children}</div>
+      <div className={className ?? "flex flex-col gap-4"}>{children}</div>
     </ListNavigationContext.Provider>
   );
 }

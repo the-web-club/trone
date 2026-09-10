@@ -18,7 +18,7 @@ export default async function NieuweLeadPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Nieuwe lead"
         description={

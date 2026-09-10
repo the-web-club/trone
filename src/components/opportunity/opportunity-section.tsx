@@ -42,7 +42,10 @@ export function OpportunitySection({
         </p>
       ) : (
         <>
-          <Stagger as="ul" className="flex flex-col gap-2">
+          <Stagger
+            as="ul"
+            className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface"
+          >
             {shown.map((item) => (
               <StaggerItem key={item.id} as="li">
                 <OpportunityRow item={item} />

@@ -92,7 +92,7 @@ export function InlineSelectField({
         compact
           ? "flex flex-row items-center gap-2"
           : isCell
-            ? "inline-field"
+            ? "inline-field flex flex-col gap-0.5"
             : "flex flex-col gap-1",
       )}
     >

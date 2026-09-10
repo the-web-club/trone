@@ -91,8 +91,12 @@ function LeadsListCards({
               {row.contact ? (
                 <ListCardMeta>
                   <ContactLink contact={row.contact} />
+                  {" · "}
+                  {formatDate(new Date(row.createdAt))}
                 </ListCardMeta>
-              ) : null}
+              ) : (
+                <ListCardMeta>{formatDate(new Date(row.createdAt))}</ListCardMeta>
+              )}
             </div>
           </ListCardHeader>
           <ListCardRows>
@@ -132,9 +136,6 @@ function LeadsListCards({
                 ownerImage={row.ownerImage}
                 members={members}
               />
-            </ListCardRow>
-            <ListCardRow label="Datum">
-              {formatDate(new Date(row.createdAt))}
             </ListCardRow>
           </ListCardRows>
         </ListCard>

@@ -13,7 +13,7 @@ export default async function BedrijfsgegevensPage() {
   const letterhead = await getLetterhead();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Bedrijfsgegevens"
         description={

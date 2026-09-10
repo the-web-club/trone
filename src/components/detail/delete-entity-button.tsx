@@ -20,6 +20,8 @@ export function DeleteEntityButton({
   description,
   label = "Verwijderen",
   presentation = "button",
+  open: openProp,
+  onOpenChange,
 }: {
   id: string;
   action: (
@@ -29,11 +31,17 @@ export function DeleteEntityButton({
   title: string;
   description: string;
   label?: string;
-  presentation?: "button" | "menu";
+  presentation?: "button" | "menu" | "hidden";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [state, formAction, pending] = useActionState(action, null);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const isMenu = presentation === "menu";
+  const showTrigger = presentation !== "hidden";
 
   return (
     <DialogRoot
@@ -42,6 +50,7 @@ export function DeleteEntityButton({
         setOpen(next);
       }}
     >
+      {showTrigger ? (
       <DialogTrigger
         render={
           <Button
@@ -53,6 +62,7 @@ export function DeleteEntityButton({
       >
         {label}
       </DialogTrigger>
+      ) : null}
       <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

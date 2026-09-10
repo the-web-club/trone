@@ -19,7 +19,7 @@ export default async function OverzichtPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Overzicht"
         description="Een snelle stand van de workspace."

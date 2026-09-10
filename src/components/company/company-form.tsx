@@ -53,14 +53,14 @@ export function CompanyForm({
   const treatment = resolveVatTreatment(country, vies.status);
 
   return (
-    <form id="company-form" action={formAction} className="flex max-w-xl flex-col gap-4">
+    <form id="company-form" action={formAction} className="flex max-w-xl flex-col gap-3">
       {company?.id ? <input type="hidden" name="id" value={company.id} /> : null}
 
       <FormField id="name" label="Naam">
         <Input name="name" required defaultValue={company?.name ?? ""} autoComplete="organization" />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="email" label="E-mailadres">
           <Input name="email" type="email" defaultValue={company?.email ?? ""} autoComplete="email" />
         </FormField>
@@ -69,7 +69,7 @@ export function CompanyForm({
         </FormField>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="vatNumber" label="Btw-nummer">
           <Input
             name="vatNumber"
@@ -107,7 +107,7 @@ export function CompanyForm({
         <Input name="addressLine" defaultValue={company?.addressLine ?? ""} autoComplete="street-address" />
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="postalCode" label="Postcode">
           <Input name="postalCode" defaultValue={company?.postalCode ?? ""} autoComplete="postal-code" />
         </FormField>

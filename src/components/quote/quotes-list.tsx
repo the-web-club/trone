@@ -150,7 +150,7 @@ export function QuotesList({
             </Badge>
           </ListCardHeader>
           <ListCardRows>
-            <ListCardRow label="Klant">
+            <ListCardRow label="Klant" span="full">
               <CompanyLink company={quote.company} />
               {quote.contact ? (
                 <>
