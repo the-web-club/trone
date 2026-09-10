@@ -2,11 +2,8 @@ import { DealStagePill } from "@/components/deal/deal-stage-pill";
 import { DetailSection } from "@/components/detail/detail-layout";
 import { ContactLink, DealLink } from "@/components/entity-links";
 import {
-  ListCard,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
-  ListCardTitle,
+  CompactRecordList,
+  CompactRecordRow,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
 import {
@@ -18,6 +15,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { dealPath } from "@/lib/paths";
 
 export type CompanyLeadRow = {
   id: string;
@@ -67,25 +65,29 @@ export function CompanyLeadsTable({ leads }: { leads: CompanyLeadRow[] }) {
     </TableContainer>
   );
 
-  const mobile = leads.map((deal) => (
-    <ListCard key={deal.id}>
-      <ListCardHeader>
-        <ListCardTitle>
-          <DealLink deal={deal} primary />
-        </ListCardTitle>
-        <DealStagePill
-          name={deal.stage.name}
-          isWon={deal.stage.isWon}
-          isLost={deal.stage.isLost}
+  const mobile = (
+    <CompactRecordList>
+      {leads.map((deal) => (
+        <CompactRecordRow
+          key={deal.id}
+          href={dealPath(deal)}
+          title={deal.title}
+          status={
+            <DealStagePill
+              name={deal.stage.name}
+              isWon={deal.stage.isWon}
+              isLost={deal.stage.isLost}
+            />
+          }
+          meta={
+            deal.contact ? (
+              <ContactLink contact={deal.contact} />
+            ) : undefined
+          }
         />
-      </ListCardHeader>
-      <ListCardRows>
-        <ListCardRow label="Contact">
-          <ContactLink contact={deal.contact} />
-        </ListCardRow>
-      </ListCardRows>
-    </ListCard>
-  ));
+      ))}
+    </CompactRecordList>
+  );
 
   return (
     <DetailSection title="Leads">

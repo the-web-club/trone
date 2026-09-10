@@ -198,33 +198,31 @@ export function CompactRecordRow({
   meta?: React.ReactNode;
   children?: React.ReactNode;
 }) {
-  const body = (
-    <>
-      <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0 text-sm font-medium break-words text-fg">
-          {title}
-        </div>
-        {status ? <div className="shrink-0">{status}</div> : null}
-      </div>
-      {meta ? (
-        <p className="mt-0.5 text-xs break-words text-fg-muted">{meta}</p>
-      ) : null}
-      {children}
-    </>
-  );
-
   return (
-    <li className="relative">
-      {href ? (
-        <Link
-          href={href}
-          className="block min-h-11 px-3 py-2 hover:bg-hover-subtle"
-        >
-          {body}
-        </Link>
-      ) : (
-        <div className="min-h-11 px-3 py-2">{body}</div>
-      )}
+    <li className="relative hover:bg-hover-subtle">
+      <div className="min-h-11 px-3 py-2">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <div className="min-w-0 text-sm font-medium break-words text-fg">
+            {href ? (
+              <Link
+                href={href}
+                className="after:absolute after:inset-0 hover:underline"
+              >
+                {title}
+              </Link>
+            ) : (
+              title
+            )}
+          </div>
+          {status ? <div className="relative z-10 shrink-0">{status}</div> : null}
+        </div>
+        {meta ? (
+          <p className="relative z-10 mt-0.5 text-xs break-words text-fg-muted">
+            {meta}
+          </p>
+        ) : null}
+        {children ? <div className="relative z-10 mt-0.5">{children}</div> : null}
+      </div>
     </li>
   );
 }

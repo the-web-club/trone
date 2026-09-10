@@ -19,7 +19,6 @@ import {
   DetailPage,
   DetailPanel,
   DetailSection,
-  DetailValueField,
 } from "@/components/detail/detail-layout";
 import { InlineSelectField } from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";

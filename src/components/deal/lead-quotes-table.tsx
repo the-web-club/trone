@@ -2,11 +2,8 @@ import Link from "next/link";
 import { DetailSection } from "@/components/detail/detail-layout";
 import { Badge } from "@/components/ui/badge";
 import {
-  ListCard,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
-  ListCardTitle,
+  CompactRecordList,
+  CompactRecordRow,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
 import {
@@ -44,12 +41,8 @@ function OrderLinks({
 }: {
   orders: LeadQuoteRow["orders"];
 }) {
-  if (orders.length === 0) {
-    return <span className="text-fg-muted">—</span>;
-  }
-
   return (
-    <span className="flex flex-col gap-1">
+    <span className="relative z-10 flex flex-wrap gap-x-2 gap-y-0.5">
       {orders.map((order) => (
         <Link
           key={order.id}
@@ -57,13 +50,21 @@ function OrderLinks({
           className="text-fg hover:underline"
         >
           {order.orderNumber}
-          <span className="ml-2 text-fg-muted">
+          <span className="ml-1 text-fg-muted">
             {orderStatusLabels[order.status]}
           </span>
         </Link>
       ))}
     </span>
   );
+}
+
+function quoteMeta(quote: LeadQuoteRow) {
+  const parts = [
+    formatEuroExact(quote.total),
+    formatDate(new Date(quote.createdAt)),
+  ];
+  return parts.filter(Boolean).join(" · ");
 }
 
 export function LeadQuotesTable({ quotes }: { quotes: LeadQuoteRow[] }) {
@@ -104,7 +105,11 @@ export function LeadQuotesTable({ quotes }: { quotes: LeadQuoteRow[] }) {
                 {formatDate(new Date(quote.createdAt))}
               </TableCell>
               <TableCell className="relative z-10">
-                <OrderLinks orders={quote.orders} />
+                {quote.orders.length === 0 ? (
+                  <span className="text-fg-muted">—</span>
+                ) : (
+                  <OrderLinks orders={quote.orders} />
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -113,31 +118,27 @@ export function LeadQuotesTable({ quotes }: { quotes: LeadQuoteRow[] }) {
     </TableContainer>
   );
 
-  const mobile = quotes.map((quote) => (
-    <ListCard key={quote.id}>
-      <ListCardHeader>
-        <ListCardTitle>
-          <Link href={quotePath(quote)} className="hover:underline">
-            {quote.quoteNumber}
-          </Link>
-        </ListCardTitle>
-        <Badge tone={quoteStatusTones[quote.status]}>
-          {quoteStatusLabels[quote.status]}
-        </Badge>
-      </ListCardHeader>
-      <ListCardRows>
-        <ListCardRow label="Totaal">
-          {formatEuroExact(quote.total)}
-        </ListCardRow>
-        <ListCardRow label="Datum">
-          {formatDate(new Date(quote.createdAt))}
-        </ListCardRow>
-        <ListCardRow label="Order">
-          <OrderLinks orders={quote.orders} />
-        </ListCardRow>
-      </ListCardRows>
-    </ListCard>
-  ));
+  const mobile = (
+    <CompactRecordList>
+      {quotes.map((quote) => (
+        <CompactRecordRow
+          key={quote.id}
+          href={quotePath(quote)}
+          title={quote.quoteNumber}
+          status={
+            <Badge tone={quoteStatusTones[quote.status]}>
+              {quoteStatusLabels[quote.status]}
+            </Badge>
+          }
+          meta={quoteMeta(quote)}
+        >
+          {quote.orders.length > 0 ? (
+            <OrderLinks orders={quote.orders} />
+          ) : null}
+        </CompactRecordRow>
+      ))}
+    </CompactRecordList>
+  );
 
   return (
     <DetailSection title="Offertes en orders">
