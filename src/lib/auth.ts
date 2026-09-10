@@ -5,7 +5,7 @@ import { admin } from "better-auth/plugins";
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
-import { invitationMail, sendMail } from "@/lib/mail";
+import { passwordResetMail, sendMail } from "@/lib/mail";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -92,8 +92,9 @@ function createAuth() {
       disableSignUp: true,
       minPasswordLength: 5,
       maxPasswordLength: 128,
+      resetPasswordTokenExpiresIn: 60 * 60 * 24,
       sendResetPassword: async ({ user, url }) => {
-        const content = invitationMail({ name: user.name, url });
+        const content = passwordResetMail({ name: user.name, url });
         await sendMail({
           to: user.email,
           ...content,

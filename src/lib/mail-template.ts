@@ -1,6 +1,8 @@
 export const MAIL_SENDER_NAME = "TRÔNE | CRM";
 export const MAIL_SENDER_EMAIL = "mail@updates.troneseating.app";
 export const MAIL_PRODUCTION_ORIGIN = "https://www.troneseating.app";
+export const INVITATION_VALID_DAYS = 28;
+export const PASSWORD_RESET_VALID_HOURS = 24;
 
 const LOGO_DISPLAY_WIDTH = 168;
 const LOGO_DISPLAY_HEIGHT = 57;
@@ -91,17 +93,40 @@ export function invitationMail(input: {
   url: string;
 }): { subject: string; html: string; text: string } {
   const subject = "Je bent uitgenodigd voor TRÔNE Seating";
+  const validity = `De link is ${INVITATION_VALID_DAYS} dagen geldig.`;
   return {
     subject,
     ...brandedMail({
       title: subject,
-      preheader: "Stel je wachtwoord in. De link is een uur geldig.",
+      preheader: `Stel je wachtwoord in. ${validity}`,
       greeting: `Hallo ${input.name},`,
       paragraphs: [
         "Je bent uitgenodigd voor de interne workspace van TRÔNE Seating.",
-        "De link is een uur geldig.",
+        validity,
       ],
       action: { label: "Wachtwoord instellen", url: input.url },
+    }),
+  };
+}
+
+export function passwordResetMail(input: {
+  name: string;
+  url: string;
+}): { subject: string; html: string; text: string } {
+  const subject = "Wachtwoord opnieuw instellen";
+  const validity = `De link is ${PASSWORD_RESET_VALID_HOURS} uur geldig.`;
+  return {
+    subject,
+    ...brandedMail({
+      title: subject,
+      preheader: `Stel een nieuw wachtwoord in. ${validity}`,
+      greeting: `Hallo ${input.name},`,
+      paragraphs: [
+        "Er is een verzoek gedaan om het wachtwoord van je TRÔNE-account opnieuw in te stellen.",
+        validity,
+        "Heb je dit niet zelf aangevraagd, dan kun je deze e-mail negeren.",
+      ],
+      action: { label: "Nieuw wachtwoord instellen", url: input.url },
     }),
   };
 }

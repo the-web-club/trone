@@ -42,6 +42,22 @@ export function parseInviteUserForm(formData: FormData): InviteUserInput {
   return parsed.data;
 }
 
+export function parsePasswordResetEmail(formData: FormData): string {
+  const raw = formData.get("email");
+  const parsed = z.email("Ongeldig e-mailadres").safeParse(
+    typeof raw === "string" ? raw.trim().toLowerCase() : raw,
+  );
+
+  if (!parsed.success) {
+    throw new AppError(
+      parsed.error.issues[0]?.message ?? "Ongeldig e-mailadres",
+      "VALIDATION",
+    );
+  }
+
+  return parsed.data;
+}
+
 export const updateUserRoleSchema = z.object({
   userId: z.string().trim().min(1, "Teamlid ontbreekt"),
   role: z.enum(userRoles, { error: "Kies een geldige rol" }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { SlideFade } from "@/components/motion";
@@ -67,7 +68,18 @@ export function LoginForm() {
         />
       </FormField>
 
-      <FormField id="password" label="Wachtwoord">
+      <FormField
+        id="password"
+        label="Wachtwoord"
+        aside={
+          <Link
+            href="/wachtwoord-vergeten"
+            className="text-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline"
+          >
+            Wachtwoord vergeten?
+          </Link>
+        }
+      >
         <Input
           name="password"
           type="password"

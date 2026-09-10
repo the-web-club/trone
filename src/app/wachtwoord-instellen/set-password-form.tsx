@@ -34,7 +34,7 @@ export function SetPasswordForm({ token }: { token: string }) {
     if (result.error) {
       setError(
         result.error.code === "INVALID_TOKEN"
-          ? "Deze uitnodigingslink is ongeldig of verlopen."
+          ? "Deze link is ongeldig of verlopen."
           : "Wachtwoord instellen is mislukt. Probeer het opnieuw.",
       );
       return;

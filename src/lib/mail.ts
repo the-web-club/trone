@@ -3,7 +3,7 @@ import "server-only";
 import { AppError } from "@/lib/errors";
 import { mailFromAddress } from "@/lib/mail-template";
 
-export { invitationMail } from "@/lib/mail-template";
+export { invitationMail, passwordResetMail } from "@/lib/mail-template";
 
 type SendMailInput = {
   to: string;

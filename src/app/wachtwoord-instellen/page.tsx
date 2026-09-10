@@ -25,14 +25,14 @@ export default async function WachtwoordInstellenPage({
             Wachtwoord instellen
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            Kies een wachtwoord om je account te activeren.
+            Kies een nieuw wachtwoord voor je account.
           </p>
         </div>
         <Panel className="p-5">
           {invalid ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-danger" role="alert">
-                Deze uitnodigingslink is ongeldig of verlopen.
+                Deze link is ongeldig of verlopen.
               </p>
               <Link
                 href="/inloggen"

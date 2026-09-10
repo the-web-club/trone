@@ -8,6 +8,7 @@ import {
   mailAssetOrigin,
   mailFromAddress,
   mailLogoUrl,
+  passwordResetMail,
 } from "@/lib/mail-template";
 
 describe("mailFromAddress", () => {
@@ -126,5 +127,21 @@ describe("invitationMail", () => {
     expect(mail.text).toContain(
       "https://www.troneseating.app/wachtwoord-instellen?token=abc",
     );
+    expect(mail.text).toContain("De link is 28 dagen geldig.");
+    expect(mail.html).toContain("De link is 28 dagen geldig.");
+  });
+});
+
+describe("passwordResetMail", () => {
+  it("gebruikt reset-copy in plaats van een uitnodiging", () => {
+    const mail = passwordResetMail({
+      name: "Thomas",
+      url: "https://www.troneseating.app/wachtwoord-instellen?token=abc",
+    });
+    expect(mail.subject).toBe("Wachtwoord opnieuw instellen");
+    expect(mail.html).toContain("Nieuw wachtwoord instellen");
+    expect(mail.text).toContain("Hallo Thomas,");
+    expect(mail.text).toContain("De link is 24 uur geldig.");
+    expect(mail.html).not.toContain("Je bent uitgenodigd");
   });
 });

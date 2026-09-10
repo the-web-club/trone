@@ -8,8 +8,12 @@ import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
-import { invitationMail, sendMail } from "@/lib/mail";
-import { invitationResetUrl } from "@/lib/mail-template";
+import { invitationMail, passwordResetMail, sendMail } from "@/lib/mail";
+import {
+  INVITATION_VALID_DAYS,
+  invitationResetUrl,
+  PASSWORD_RESET_VALID_HOURS,
+} from "@/lib/mail-template";
 import { paginateArgs } from "@/lib/list-query";
 import type { InviteUserInput, StaffStatus, UserRole } from "@/lib/user-validation";
 
@@ -248,26 +252,55 @@ export async function inviteUser(input: InviteUserInput) {
   return created.user;
 }
 
-export async function sendInvitation(userId: string) {
-  const user = await getUser(userId);
-  if (!user.isActive) {
-    throw new AppError("Een gedeactiveerd teamlid kan geen uitnodiging ontvangen.", "VALIDATION");
-  }
-
+async function createPasswordResetToken(userId: string, ttlMs: number) {
   const token = randomBytes(24).toString("base64url");
   const prisma = getPrismaClient();
   await prisma.verification.create({
     data: {
       id: createId(),
       identifier: `reset-password:${token}`,
-      value: user.id,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      value: userId,
+      expiresAt: new Date(Date.now() + ttlMs),
     },
   });
+  return token;
+}
+
+export async function sendInvitation(userId: string) {
+  const user = await getUser(userId);
+  if (!user.isActive) {
+    throw new AppError("Een gedeactiveerd teamlid kan geen uitnodiging ontvangen.", "VALIDATION");
+  }
+
+  const token = await createPasswordResetToken(
+    user.id,
+    INVITATION_VALID_DAYS * 24 * 60 * 60 * 1000,
+  );
 
   await sendMail({
     to: user.email,
     ...invitationMail({
+      name: user.name,
+      url: invitationResetUrl(token, process.env.BETTER_AUTH_URL),
+    }),
+  });
+}
+
+export async function requestPasswordReset(email: string) {
+  const prisma = getPrismaClient();
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
+  if (!user?.isActive) return;
+
+  const token = await createPasswordResetToken(
+    user.id,
+    PASSWORD_RESET_VALID_HOURS * 60 * 60 * 1000,
+  );
+
+  await sendMail({
+    to: user.email,
+    ...passwordResetMail({
       name: user.name,
       url: invitationResetUrl(token, process.env.BETTER_AUTH_URL),
     }),
