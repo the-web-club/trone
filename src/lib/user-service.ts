@@ -1,13 +1,15 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import { randomBytes } from "node:crypto";
 import { getAuth } from "@/lib/auth";
 import { uploadImage } from "@/lib/blob";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
-import { withResetPasswordCapture } from "@/lib/mail-capture";
+import { createId } from "@/lib/id";
 import { invitationMail, sendMail } from "@/lib/mail";
+import { invitationResetUrl } from "@/lib/mail-template";
 import { paginateArgs } from "@/lib/list-query";
 import type { InviteUserInput, StaffStatus, UserRole } from "@/lib/user-validation";
 
@@ -252,40 +254,24 @@ export async function sendInvitation(userId: string) {
     throw new AppError("Een gedeactiveerd teamlid kan geen uitnodiging ontvangen.", "VALIDATION");
   }
 
-  try {
-    // Geen request-headers meegeven: Better Auth ziet die als browser-POST en
-    // weigert ze (geen Origin), terwijl de uitnodiging dan stil faalt.
-    // Better Auth slikt fouten in sendResetPassword stil (status: true).
-    // Daarom vangen we de reset-URL en versturen we zelf via Resend.
-    const { captured } = await withResetPasswordCapture(async () => {
-      const request = await getAuth().api.requestPasswordReset({
-        body: {
-          email: user.email,
-          redirectTo: "/wachtwoord-instellen",
-        },
-      });
-      if (!request.status) {
-        throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
-      }
-    });
+  const token = randomBytes(24).toString("base64url");
+  const prisma = getPrismaClient();
+  await prisma.verification.create({
+    data: {
+      id: createId(),
+      identifier: `reset-password:${token}`,
+      value: user.id,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
 
-    if (!captured) {
-      console.error(
-        "Uitnodiging versturen mislukt: geen reset-mail vastgelegd voor",
-        user.email,
-      );
-      throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
-    }
-
-    await sendMail({
-      to: captured.email,
-      ...invitationMail({ name: captured.name, url: captured.url }),
-    });
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error("Uitnodiging versturen mislukt:", error);
-    throw new AppError("Uitnodiging versturen is mislukt.", "MAIL");
-  }
+  await sendMail({
+    to: user.email,
+    ...invitationMail({
+      name: user.name,
+      url: invitationResetUrl(token, process.env.BETTER_AUTH_URL),
+    }),
+  });
 }
 
 export async function updateUserRole(userId: string, role: UserRole, actorUserId: string) {

@@ -4,6 +4,7 @@ import {
   MAIL_SENDER_NAME,
   brandedMail,
   invitationMail,
+  invitationResetUrl,
   mailAssetOrigin,
   mailFromAddress,
   mailLogoUrl,
@@ -93,6 +94,22 @@ describe("brandedMail", () => {
     });
     expect(mail.html).toContain("Hallo &lt;img src=&quot;x&quot;&gt;,");
     expect(mail.html).not.toContain('<img src="x">');
+  });
+});
+
+describe("invitationResetUrl", () => {
+  it("bouwt de Better Auth reset-link op de publieke origin", () => {
+    expect(
+      invitationResetUrl("tok_abc", "https://www.troneseating.app/"),
+    ).toBe(
+      "https://www.troneseating.app/api/auth/reset-password/tok_abc?callbackURL=%2Fwachtwoord-instellen",
+    );
+  });
+
+  it("valt terug op productie als er geen origin is", () => {
+    expect(invitationResetUrl("tok_abc")).toBe(
+      "https://www.troneseating.app/api/auth/reset-password/tok_abc?callbackURL=%2Fwachtwoord-instellen",
+    );
   });
 });
 

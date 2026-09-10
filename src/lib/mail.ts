@@ -42,7 +42,18 @@ export async function sendMail(input: SendMailInput) {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     console.error("Resend-fout:", response.status, detail);
-    throw new AppError("Versturen van de e-mail is mislukt.", "MAIL");
+    throw new AppError(resendErrorMessage(detail), "MAIL");
   }
+}
 
+function resendErrorMessage(detail: string) {
+  try {
+    const parsed = JSON.parse(detail) as { message?: unknown };
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message.trim();
+    }
+  } catch {
+    /* Resend gaf geen JSON */
+  }
+  return "Versturen van de e-mail is mislukt.";
 }

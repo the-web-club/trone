@@ -50,6 +50,11 @@ export function mailFromAddress(override?: string | null) {
   );
 }
 
+export function invitationResetUrl(token: string, origin?: string | null) {
+  const base = stripSlash(origin?.trim() || MAIL_PRODUCTION_ORIGIN);
+  return `${base}/api/auth/reset-password/${encodeURIComponent(token)}?callbackURL=${encodeURIComponent("/wachtwoord-instellen")}`;
+}
+
 export function mailAssetOrigin(
   env: Record<string, string | undefined> = process.env,
 ) {
