@@ -8,15 +8,16 @@ import {
 } from "@/app/(beveiligd)/actions/contact-actions";
 import { ContactNameTitle } from "@/components/contact/contact-name-title";
 import { ContactPrimaryToggle } from "@/components/contact/contact-primary-toggle";
+import { DetailActionMenu } from "@/components/detail/detail-action-menu";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   DetailBackLink,
   DetailColumns,
   DetailFieldGrid,
   DetailHeader,
-  DetailMetaRow,
   DetailPage,
   DetailSection,
+  DetailValueField,
 } from "@/components/detail/detail-layout";
 import { InlineTextField } from "@/components/detail/inline-text-field";
 import { CompanyLink } from "@/components/entity-links";
@@ -82,20 +83,12 @@ export function ContactDetail({
             </span>
           ) : null
         }
-        meta={
-          <DetailMetaRow
-            items={[
-              contact.company ? <CompanyLink company={contact.company} /> : null,
-              contact.jobTitle,
-              contact.email,
-            ]}
-          />
-        }
         actions={
-          <>
+          <DetailActionMenu>
             <ContactPrimaryToggle
               isPrimary={contact.isPrimary}
               onSave={(isPrimary) => save({ isPrimary })}
+              presentation="menu"
             />
             {isAdmin ? (
               <DeleteEntityButton
@@ -103,9 +96,10 @@ export function ContactDetail({
                 action={deleteContactAction}
                 title="Contact verwijderen"
                 description={`Weet je zeker dat je ${name} wilt verwijderen? Leads, offertes en orders blijven bestaan, zonder koppeling naar dit contact.`}
+                presentation="menu"
               />
             ) : null}
-          </>
+          </DetailActionMenu>
         }
       />
 
@@ -134,19 +128,6 @@ function ContactDetailFields({
       <DetailSection title="Gegevens">
         <DetailFieldGrid>
           <InlineTextField
-            label="Voornaam"
-            value={contact.firstName}
-            required
-            layout="row"
-            onSave={(firstName) => save({ firstName })}
-          />
-          <InlineTextField
-            label="Achternaam"
-            value={contact.lastName ?? ""}
-            layout="row"
-            onSave={(lastName) => save({ lastName: lastName || null })}
-          />
-          <InlineTextField
             label="Functie"
             value={contact.jobTitle ?? ""}
             layout="row"
@@ -166,14 +147,9 @@ function ContactDetailFields({
             layout="row"
             onSave={(phone) => save({ phone: phone || null })}
           />
-          <div className="inline-field-row min-w-0">
-            <span className="pt-1.5 text-label font-medium text-fg-muted sm:pt-1">
-              Bedrijf
-            </span>
-            <p className="min-h-8 px-1.5 py-1 text-sm text-fg">
-              <CompanyLink company={contact.company} primary />
-            </p>
-          </div>
+          <DetailValueField label="Bedrijf">
+            <CompanyLink company={contact.company} primary />
+          </DetailValueField>
         </DetailFieldGrid>
       </DetailSection>
 
