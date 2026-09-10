@@ -249,7 +249,7 @@ export async function inviteUser(input: InviteUserInput) {
 export async function sendInvitation(userId: string) {
   const user = await getUser(userId);
   if (!user.isActive) {
-    throw new AppError("Een gedeactiveerde medewerker kan geen uitnodiging ontvangen.", "VALIDATION");
+    throw new AppError("Een gedeactiveerd teamlid kan geen uitnodiging ontvangen.", "VALIDATION");
   }
 
   try {

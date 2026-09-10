@@ -648,7 +648,7 @@ export async function setDealOwner(id: string, ownerUserId: string | null) {
       select: { id: true, banned: true },
     });
     if (!user || user.banned === true) {
-      throw new AppError("Medewerker niet gevonden.", "NOT_FOUND", 404);
+      throw new AppError("Teamlid niet gevonden.", "NOT_FOUND", 404);
     }
   }
 
