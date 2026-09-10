@@ -8,6 +8,7 @@ import {
 } from "@/app/(beveiligd)/actions/company-actions";
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
+import { DetailActionMenu } from "@/components/detail/detail-action-menu";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
 import {
   DetailBackLink,
@@ -18,6 +19,7 @@ import {
   DetailPage,
   DetailPanel,
   DetailSection,
+  DetailValueField,
 } from "@/components/detail/detail-layout";
 import { InlineSelectField } from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
@@ -104,12 +106,15 @@ export function CompanyDetail({
         }
         actions={
           isAdmin ? (
-            <DeleteEntityButton
-              id={company.id}
-              action={deleteCompanyAction}
-              title="Bedrijf verwijderen"
-              description={`Weet je zeker dat je ${company.name} wilt verwijderen? Contacten en leads blijven bestaan, zonder koppeling naar dit bedrijf. Bedrijven met offertes, orders of facturen kunnen niet worden verwijderd.`}
-            />
+            <DetailActionMenu>
+              <DeleteEntityButton
+                id={company.id}
+                action={deleteCompanyAction}
+                title="Bedrijf verwijderen"
+                description={`Weet je zeker dat je ${company.name} wilt verwijderen? Contacten en leads blijven bestaan, zonder koppeling naar dit bedrijf. Bedrijven met offertes, orders of facturen kunnen niet worden verwijderd.`}
+                presentation="menu"
+              />
+            </DetailActionMenu>
           ) : null
         }
       />
@@ -194,6 +199,7 @@ function CompanyDetailFields({
           <InlineTextField
             label="Website"
             value={company.website ?? ""}
+            span="full"
             layout="row"
             onSave={(website) => save({ website: website || null })}
           />
@@ -205,6 +211,7 @@ function CompanyDetailFields({
           <InlineTextField
             label="Adres"
             value={company.addressLine ?? ""}
+            span="full"
             layout="row"
             onSave={(addressLine) => save({ addressLine: addressLine || null })}
           />
@@ -237,31 +244,27 @@ function CompanyDetailFields({
 
       <DetailSection title="Btw & registratie" collapsible defaultOpen>
         <DetailFieldGrid>
-          <div className="inline-field-row min-w-0">
-            <span className="pt-1.5 text-label font-medium text-fg-muted sm:pt-1">
-              Btw-nummer
-            </span>
-            <div className="min-w-0 space-y-1.5">
-              <InlineTextField
-                label="Btw-nummer"
-                value={company.vatNumber ?? ""}
-                inputPlaceholder="Inclusief landcode, bv. FI12345678"
-                onSave={async (next) => {
-                  const error = await save({ vatNumber: next || null });
-                  if (!error) setVatNumber(next);
-                  return error;
-                }}
-              />
-              <VatValidateControls
-                companyId={company.id}
-                vatNumber={vatNumber}
-                country={country}
-                initialStatus={company.viesValid}
-                initialName={company.viesCheckedName}
-                initialCheckedAt={company.viesValidatedAt}
-                onSuccess={() => router.refresh()}
-              />
-            </div>
+          <div className="inline-field col-span-2 min-w-0">
+            <InlineTextField
+              label="Btw-nummer"
+              value={company.vatNumber ?? ""}
+              inputPlaceholder="Inclusief landcode, bv. FI12345678"
+              layout="row"
+              onSave={async (next) => {
+                const error = await save({ vatNumber: next || null });
+                if (!error) setVatNumber(next);
+                return error;
+              }}
+            />
+            <VatValidateControls
+              companyId={company.id}
+              vatNumber={vatNumber}
+              country={country}
+              initialStatus={company.viesValid}
+              initialName={company.viesCheckedName}
+              initialCheckedAt={company.viesValidatedAt}
+              onSuccess={() => router.refresh()}
+            />
           </div>
           <InlineTextField
             label="Registratie"

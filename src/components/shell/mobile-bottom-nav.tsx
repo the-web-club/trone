@@ -88,6 +88,7 @@ function CompaniesNavItem({ pathname }: { pathname: string }) {
     <PopoverRoot open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-current={active ? "page" : undefined}
+        aria-haspopup="menu"
         className={cn(
           itemClassName,
           controlMotion,
@@ -102,7 +103,7 @@ function CompaniesNavItem({ pathname }: { pathname: string }) {
         side="top"
         align="center"
         sideOffset={8}
-        className="w-56 p-1 shadow-[var(--shadow-xs)]"
+        className="w-56 p-1 shadow-none"
       >
         {group.children.map((item) => {
           const childActive = isNavItemActive(pathname, item.href);

@@ -8,6 +8,9 @@ import {
   patchDealAction,
 } from "@/app/(beveiligd)/actions/deal-actions";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
+import {
+  DetailActionMenu,
+} from "@/components/detail/detail-action-menu";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
   COMPANY_SWITCH_WARNING,
@@ -19,9 +22,8 @@ import {
   DetailColumns,
   DetailFieldGrid,
   DetailHeader,
-  DetailMetaRow,
   DetailPage,
-  DetailSection,
+  DetailValueField,
 } from "@/components/detail/detail-layout";
 import { LeadFieldsSkeleton } from "@/components/detail/detail-skeletons";
 import {
@@ -29,7 +31,6 @@ import {
   InlineSelectField,
 } from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
-import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
 import { pageActionPrimaryClassName } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
@@ -106,7 +107,6 @@ export function LeadDetail({
 }) {
   const router = useRouter();
   const company = deal.company;
-  const contact = deal.contact;
   const stage =
     stages.find((item) => item.id === deal.stageId) ?? deal.stage;
 
@@ -135,10 +135,28 @@ export function LeadDetail({
   const primaryQuoteAction = (
     <Link
       href={newQuotePath({ deal, company })}
-      className={cn(pageActionPrimaryClassName(), "w-full sm:w-auto")}
+      className={cn(
+        pageActionPrimaryClassName(),
+        "detail-action-primary w-full sm:w-auto",
+      )}
     >
       Nieuwe offerte
     </Link>
+  );
+
+  const moreActions = (
+    <DetailActionMenu>
+      <DealHotToggle dealId={deal.id} isHot={deal.isHot} presentation="menu" />
+      {isAdmin ? (
+        <DeleteEntityButton
+          id={deal.id}
+          action={deleteDealAction}
+          title="Lead verwijderen"
+          description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
+          presentation="menu"
+        />
+      ) : null}
+    </DetailActionMenu>
   );
 
   return (
@@ -169,38 +187,12 @@ export function LeadDetail({
             onSave={(stageId) => save({ stageId })}
           />
         }
-        meta={
-          <DetailMetaRow
-            items={[
-              company ? <CompanyLink company={company} /> : null,
-              contact?.slug ? (
-                <ContactLink
-                  contact={{
-                    slug: contact.slug,
-                    firstName: contact.firstName,
-                    lastName: contact.lastName,
-                  }}
-                />
-              ) : null,
-              deal.valueEstimateLabel !== "—" ? deal.valueEstimateLabel : null,
-            ]}
-          />
-        }
         actions={
           <>
             {primaryQuoteAction}
-            <DealHotToggle dealId={deal.id} isHot={deal.isHot} />
-            {isAdmin ? (
-              <DeleteEntityButton
-                id={deal.id}
-                action={deleteDealAction}
-                title="Lead verwijderen"
-                description={`Weet je zeker dat je ${deal.title} wilt verwijderen? Offertes en orders blijven bestaan, zonder koppeling naar deze lead.`}
-              />
-            ) : null}
+            {moreActions}
           </>
         }
-        stickyActions={primaryQuoteAction}
       />
 
       <DetailColumns
@@ -377,7 +369,7 @@ function LeadDetailFields({
   }
 
   return (
-    <DetailSection title="Koppelingen">
+    <>
       <DetailFieldGrid>
         <InlineSelectField
           label="Bedrijf"
@@ -408,21 +400,6 @@ function LeadDetailFields({
           }}
           onSave={saveContact}
         />
-        <CreateCompanyDialog
-          showTrigger={false}
-          open={companyDialogOpen}
-          onOpenChange={setCompanyDialogOpen}
-          defaultName={companyQuery}
-          onCreated={handleCreatedCompany}
-        />
-        <CreateQuoteContactDialog
-          companyId={relation.companyId}
-          showTrigger={false}
-          open={contactDialogOpen}
-          onOpenChange={setContactDialogOpen}
-          defaultFirstName={contactQuery}
-          onCreated={handleCreatedContact}
-        />
         <InlineSelectField
           label="Bron"
           value={deal.sourceId ?? ""}
@@ -452,16 +429,26 @@ function LeadDetailFields({
             }}
           />
         ) : (
-          <div className="inline-field-row min-w-0">
-            <span className="pt-1.5 text-label font-medium text-fg-muted sm:pt-1">
-              Waarde
-            </span>
-            <p className="min-h-8 px-1.5 py-1 text-sm text-fg">
-              {deal.valueEstimateLabel}
-            </p>
-          </div>
+          <DetailValueField label="Waarde">
+            {deal.valueEstimateLabel}
+          </DetailValueField>
         )}
       </DetailFieldGrid>
-    </DetailSection>
+      <CreateCompanyDialog
+        showTrigger={false}
+        open={companyDialogOpen}
+        onOpenChange={setCompanyDialogOpen}
+        defaultName={companyQuery}
+        onCreated={handleCreatedCompany}
+      />
+      <CreateQuoteContactDialog
+        companyId={relation.companyId}
+        showTrigger={false}
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        defaultFirstName={contactQuery}
+        onCreated={handleCreatedContact}
+      />
+    </>
   );
 }

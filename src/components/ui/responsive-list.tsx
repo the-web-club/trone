@@ -13,7 +13,7 @@ export function ResponsiveListView({
   return (
     <>
       <div className="hidden md:block">{desktop}</div>
-      <div className="flex flex-col gap-2 md:hidden">{mobile}</div>
+      <div className="flex flex-col gap-1.5 md:hidden">{mobile}</div>
     </>
   );
 }
@@ -28,7 +28,7 @@ export function ListCard({
   href?: string;
 }) {
   const classes = cn(
-    "rounded-md border border-border bg-surface p-3",
+    "rounded-md border border-border bg-surface px-3 py-2",
     href && "relative transition-colors hover:bg-hover-subtle",
     className,
   );
@@ -97,7 +97,12 @@ export function ListCardRows({
   className?: string;
 }) {
   return (
-    <dl className={cn("mt-2 grid gap-x-3 gap-y-1.5 text-sm", className)}>
+    <dl
+      className={cn(
+        "mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-sm",
+        className,
+      )}
+    >
       {children}
     </dl>
   );
@@ -107,20 +112,17 @@ export function ListCardRow({
   label,
   children,
   className,
+  span = "auto",
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  span?: "auto" | "full";
 }) {
   return (
-    <div
-      className={cn(
-        "grid grid-cols-[minmax(0,5.5rem)_1fr] items-baseline gap-x-2",
-        className,
-      )}
-    >
+    <div className={cn("min-w-0", span === "full" && "col-span-2", className)}>
       <dt className="text-xs text-fg-muted">{label}</dt>
-      <dd className="min-w-0 text-fg">{children}</dd>
+      <dd className="min-w-0 break-words text-fg">{children}</dd>
     </div>
   );
 }
@@ -135,7 +137,7 @@ export function ListCardEmpty({
   return (
     <p
       className={cn(
-        "rounded-md border border-border bg-surface px-3 py-6 text-center text-sm text-fg-muted",
+        "rounded-md border border-border bg-surface px-3 py-4 text-center text-sm text-fg-muted",
         className,
       )}
     >
@@ -154,11 +156,75 @@ export function ListCardActions({
   return (
     <div
       className={cn(
-        "mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3",
+        "mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2",
         className,
       )}
     >
       {children}
     </div>
+  );
+}
+
+/** Grouped related records with hairline separators instead of separate cards. */
+export function CompactRecordList({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <ul
+      className={cn(
+        "divide-y divide-border overflow-hidden rounded-md border border-border bg-surface",
+        className,
+      )}
+    >
+      {children}
+    </ul>
+  );
+}
+
+export function CompactRecordRow({
+  href,
+  title,
+  status,
+  meta,
+  children,
+}: {
+  href?: string;
+  title: React.ReactNode;
+  status?: React.ReactNode;
+  meta?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  const body = (
+    <>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 text-sm font-medium break-words text-fg">
+          {title}
+        </div>
+        {status ? <div className="shrink-0">{status}</div> : null}
+      </div>
+      {meta ? (
+        <p className="mt-0.5 text-xs break-words text-fg-muted">{meta}</p>
+      ) : null}
+      {children}
+    </>
+  );
+
+  return (
+    <li className="relative">
+      {href ? (
+        <Link
+          href={href}
+          className="block min-h-11 px-3 py-2 hover:bg-hover-subtle"
+        >
+          {body}
+        </Link>
+      ) : (
+        <div className="min-h-11 px-3 py-2">{body}</div>
+      )}
+    </li>
   );
 }

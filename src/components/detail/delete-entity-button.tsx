@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -18,6 +19,7 @@ export function DeleteEntityButton({
   title,
   description,
   label = "Verwijderen",
+  presentation = "button",
 }: {
   id: string;
   action: (
@@ -27,9 +29,11 @@ export function DeleteEntityButton({
   title: string;
   description: string;
   label?: string;
+  presentation?: "button" | "menu";
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(action, null);
+  const isMenu = presentation === "menu";
 
   return (
     <DialogRoot
@@ -40,11 +44,15 @@ export function DeleteEntityButton({
     >
       <DialogTrigger
         render={
-          <Button type="button" variant="secondary">
-            {label}
-          </Button>
+          <Button
+            type="button"
+            variant={isMenu ? "ghost" : "secondary"}
+            className={isMenu ? detailMenuButtonClassName(true) : undefined}
+          />
         }
-      />
+      >
+        {label}
+      </DialogTrigger>
       <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

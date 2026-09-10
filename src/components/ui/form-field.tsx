@@ -1,6 +1,18 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
+export function FormFieldGrid({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("form-field-grid", className)}>{children}</div>
+  );
+}
+
 export function FormField({
   id,
   label,

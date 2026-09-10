@@ -62,7 +62,7 @@ export function AccountMenu({
         align="end"
         side="bottom"
         sideOffset={8}
-        className="w-64 p-1 shadow-[var(--shadow-xs)]"
+        className="w-64 p-1 shadow-none"
       >
         <div className="px-2 py-2">
           {userSlug ? (

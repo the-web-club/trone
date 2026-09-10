@@ -27,6 +27,7 @@ export function InlineTextField({
   variant = "body",
   multiline = false,
   layout = "stack",
+  span = "auto",
   inputMode,
   min,
   step,
@@ -42,6 +43,7 @@ export function InlineTextField({
   variant?: "body" | "title";
   multiline?: boolean;
   layout?: "stack" | "row";
+  span?: "auto" | "full";
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: number | string;
   step?: number | string;
@@ -148,6 +150,7 @@ export function InlineTextField({
         ? placeholder
         : committed;
   const isEmpty = committed === "";
+  const isCell = layout === "row" && !isTitle && !multiline;
 
   const control = editing ? (
     multiline ? (
@@ -180,7 +183,7 @@ export function InlineTextField({
         className={
           isTitle
             ? "h-auto border-transparent bg-transparent px-1 py-0 text-[length:inherit] leading-[inherit] tracking-[inherit] shadow-none"
-            : undefined
+            : "h-8 px-1"
         }
       />
     )
@@ -191,8 +194,8 @@ export function InlineTextField({
       aria-label={`${label} bewerken`}
       onClick={startEditing}
       className={cn(
-        "max-w-full rounded-sm text-left",
-        isTitle ? "-mx-1 px-1" : "min-h-8 w-full px-1.5 py-1 text-sm",
+        "inline-editable max-w-full rounded-sm text-left",
+        isTitle ? "-mx-1 px-1" : "min-h-8 w-full px-1 py-1 text-sm break-words",
         multiline && !isEmpty && "whitespace-pre-wrap",
         isEmpty ? "text-fg-muted" : "text-fg",
         "hover:bg-hover",
@@ -213,16 +216,15 @@ export function InlineTextField({
     </span>
   ) : null;
 
-  const isRow = layout === "row" && !isTitle && !multiline;
-
   return (
     <div
       className={cn(
         "min-w-0",
+        span === "full" && "col-span-2",
         isTitle
           ? "w-full"
-          : isRow
-            ? "inline-field-row"
+          : isCell
+            ? "inline-field"
             : "flex flex-col gap-1",
       )}
     >
@@ -231,13 +233,7 @@ export function InlineTextField({
           {label}
         </label>
       ) : (
-        <label
-          htmlFor={id}
-          className={cn(
-            "text-label font-medium text-fg-muted",
-            isRow && "pt-1.5 sm:pt-1",
-          )}
-        >
+        <label htmlFor={id} className="text-label font-medium text-fg-muted">
           {label}
         </label>
       )}

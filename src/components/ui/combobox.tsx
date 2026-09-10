@@ -38,6 +38,7 @@ export type ComboboxMenuProps<Value extends string = string> = {
   onCreate?: (query: string) => void;
   createLabel?: string;
   createDisabled?: boolean;
+  wrap?: boolean;
 };
 
 export function ComboboxMenu<Value extends string = string>({
@@ -59,6 +60,7 @@ export function ComboboxMenu<Value extends string = string>({
   onCreate,
   createLabel = "Nieuw…",
   createDisabled,
+  wrap = false,
   ...aria
 }: ComboboxMenuProps<Value>) {
   const [uncontrolled, setUncontrolled] = React.useState<Value>(
@@ -118,6 +120,7 @@ export function ComboboxMenu<Value extends string = string>({
           controlSize[size],
           "data-[popup-open]:border-border-strong",
           "data-[disabled]:cursor-not-allowed data-[disabled]:text-fg-muted data-[disabled]:opacity-70 data-[disabled]:hover:border-border",
+          wrap && "h-auto min-h-8 items-start py-1",
           className,
         )}
       >
@@ -127,7 +130,12 @@ export function ComboboxMenu<Value extends string = string>({
         {selected && selected.image !== undefined ? (
           <UserAvatar name={selected.label} image={selected.image} size="xs" />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-left">
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-left",
+            wrap ? "break-words whitespace-normal" : "truncate",
+          )}
+        >
           {selected ? (
             selected.label
           ) : (

@@ -17,6 +17,7 @@ export function InlineSelectField({
   hideLabel = false,
   compact = false,
   layout = "stack",
+  span = "auto",
   searchPlaceholder,
   triggerClassName,
   onSave,
@@ -31,6 +32,7 @@ export function InlineSelectField({
   hideLabel?: boolean;
   compact?: boolean;
   layout?: "stack" | "row";
+  span?: "auto" | "full";
   searchPlaceholder?: string;
   triggerClassName?: string;
   onSave: (next: string) => Promise<string | false | null>;
@@ -80,16 +82,17 @@ export function InlineSelectField({
     </span>
   );
 
-  const isRow = layout === "row" && !compact && !hideLabel;
+  const isCell = layout === "row" && !compact && !hideLabel;
 
   return (
     <div
       className={cn(
         "min-w-0",
+        span === "full" && "col-span-2",
         compact
           ? "flex flex-row items-center gap-2"
-          : isRow
-            ? "inline-field-row"
+          : isCell
+            ? "inline-field"
             : "flex flex-col gap-1",
       )}
     >
@@ -98,37 +101,31 @@ export function InlineSelectField({
           {label}
         </label>
       ) : (
-        <label
-          htmlFor={id}
-          className={cn(
-            "text-label font-medium text-fg-muted",
-            isRow && "pt-1.5 sm:pt-1",
-          )}
-        >
+        <label htmlFor={id} className="text-label font-medium text-fg-muted">
           {label}
         </label>
       )}
       <div className="min-w-0">
-      <ComboboxMenu
-        id={id}
-        value={current || INLINE_SELECT_EMPTY}
-        onValueChange={onValueChange}
-        items={items}
-        disabled={disabled || pending}
-        aria-label={label}
-        searchPlaceholder={searchPlaceholder}
-        className={cn(
-          "w-full max-w-full cursor-pointer border-transparent bg-transparent px-1.5",
-          "hover:border-border hover:bg-surface",
-          "data-[popup-open]:border-border-strong data-[popup-open]:bg-surface",
-          "[&_svg]:opacity-0 hover:[&_svg]:opacity-100 data-[popup-open]:[&_svg]:opacity-100 focus-visible:[&_svg]:opacity-100",
-          compact && "w-auto",
-          triggerClassName,
-        )}
-        onCreate={onCreate}
-        createLabel={createLabel}
-        createDisabled={createDisabled}
-      />
+        <ComboboxMenu
+          id={id}
+          value={current || INLINE_SELECT_EMPTY}
+          onValueChange={onValueChange}
+          items={items}
+          disabled={disabled || pending}
+          aria-label={label}
+          searchPlaceholder={searchPlaceholder}
+          wrap={!compact}
+          className={cn(
+            "inline-editable w-full max-w-full cursor-pointer border-transparent bg-transparent px-1",
+            "hover:border-border hover:bg-surface",
+            "data-[popup-open]:border-border-strong data-[popup-open]:bg-surface",
+            compact && "w-auto",
+            triggerClassName,
+          )}
+          onCreate={onCreate}
+          createLabel={createLabel}
+          createDisabled={createDisabled}
+        />
       </div>
       {error || saved ? status : null}
     </div>
