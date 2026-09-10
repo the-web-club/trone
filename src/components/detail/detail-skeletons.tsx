@@ -88,23 +88,6 @@ export function DetailTableSkeleton({
   );
 }
 
-export function DetailTaskSkeleton({ compact = false }: { compact?: boolean }) {
-  return (
-    <section className="flex flex-col gap-4" aria-hidden>
-      <div className="page-header">
-        <h2 className="text-md font-medium text-fg">Taken</h2>
-      </div>
-      {compact ? null : (
-        <div className="flex flex-col gap-2">
-          <SkeletonPulse className="h-14 w-full rounded-md" />
-          <SkeletonPulse className="h-14 w-full rounded-md" />
-        </div>
-      )}
-      <SkeletonPulse className={cn("w-full rounded-md", compact ? "h-10" : "h-28")} />
-    </section>
-  );
-}
-
 export function DetailTimelineSkeleton({
   compact = false,
 }: {
@@ -117,25 +100,6 @@ export function DetailTimelineSkeleton({
       {compact ? null : (
         <div className="flex flex-col gap-2">
           <SkeletonPulse className="h-16 w-full rounded-md" />
-          <SkeletonPulse className="h-16 w-full rounded-md" />
-          <SkeletonPulse className="h-16 w-full rounded-md" />
-        </div>
-      )}
-    </section>
-  );
-}
-
-export function DetailWorkLogSkeleton({
-  compact = false,
-}: {
-  compact?: boolean;
-}) {
-  return (
-    <section className="flex flex-col gap-4" aria-hidden>
-      <h2 className="text-md font-medium text-fg">Werkzaamheden</h2>
-      <SkeletonPulse className={cn("w-full rounded-md", compact ? "h-10" : "h-36")} />
-      {compact ? null : (
-        <div className="flex flex-col gap-2">
           <SkeletonPulse className="h-16 w-full rounded-md" />
           <SkeletonPulse className="h-16 w-full rounded-md" />
         </div>
@@ -190,13 +154,7 @@ export function CompanyDetailSkeleton() {
             </DetailSection>
           </>
         }
-        right={
-          <>
-            <DetailTimelineSkeleton compact />
-            <DetailTaskSkeleton compact />
-            <DetailWorkLogSkeleton compact />
-          </>
-        }
+        right={<DetailTimelineSkeleton compact />}
       />
     </div>
   );
@@ -223,12 +181,7 @@ export function ContactDetailSkeleton() {
       <DetailPageHeaderSkeleton action />
       <DetailColumns
         left={<ContactFieldsSkeleton />}
-        right={
-          <>
-            <DetailTimelineSkeleton compact />
-            <DetailTaskSkeleton compact />
-          </>
-        }
+        right={<DetailTimelineSkeleton compact />}
       />
     </div>
   );
@@ -250,12 +203,7 @@ export function LeadDetailSkeleton() {
             </DetailSection>
           </>
         }
-        right={
-          <>
-            <DetailTimelineSkeleton compact />
-            <DetailTaskSkeleton compact />
-          </>
-        }
+        right={<DetailTimelineSkeleton compact />}
       />
     </div>
   );

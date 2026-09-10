@@ -3,14 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LeadDetail } from "@/components/deal/lead-detail";
 import { LeadQuotesTable } from "@/components/deal/lead-quotes-table";
-import {
-  DealTimeline,
-  EntityTasks,
-} from "@/components/detail/entity-activity";
-import {
-  DetailTaskSkeleton,
-  DetailTimelineSkeleton,
-} from "@/components/detail/detail-skeletons";
+import { DealTimeline } from "@/components/detail/entity-activity";
+import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
@@ -120,15 +114,6 @@ export default async function LeadDetailPage({
           <Suspense fallback={<DetailTimelineSkeleton compact />}>
             <DealTimeline
               compact
-              dealId={deal.id}
-              contactId={deal.contactId}
-              companyId={deal.companyId}
-            />
-          </Suspense>
-          <Suspense fallback={<DetailTaskSkeleton compact />}>
-            <EntityTasks
-              compact
-              currentUserId={session.user.id}
               dealId={deal.id}
               contactId={deal.contactId}
               companyId={deal.companyId}

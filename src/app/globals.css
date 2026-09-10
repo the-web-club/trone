@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
+/* Fine pointer + hover + lg: echte desktop. Tablets (ook landscape) blijven compact. */
+@custom-variant desktop-nav (@media (hover: hover) and (pointer: fine) and (min-width: 1024px));
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -118,6 +121,7 @@
     overscroll-behavior: contain;
     padding: 1.25rem 1rem;
     scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
   }
 
   @media (min-width: 640px) {
@@ -329,11 +333,16 @@
   }
 
   .detail-page {
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 
   .detail-page:has(.detail-sticky-actions) {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    padding-bottom: 4.5rem;
+  }
+
+  .detail-sticky-actions {
+    bottom: var(--bottom-nav-h);
+    padding-bottom: 0.75rem;
   }
 
   @media (min-width: 640px) {

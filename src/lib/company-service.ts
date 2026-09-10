@@ -7,7 +7,12 @@ import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
-import type { CompanyOwnerFacets } from "@/lib/companies-query";
+import {
+  parseCompanyLeadsFilter,
+  type CompanyLeadFacets,
+  type CompanyLeadsFilter,
+  type CompanyOwnerFacets,
+} from "@/lib/companies-query";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { checkViesVatNumber } from "@/lib/vies-service";
 import { resolveVatTreatment } from "@/lib/vat";
@@ -40,9 +45,12 @@ export type CompanyListFilters = {
   city?: string;
   country?: string;
   eigenaar?: string;
+  leads?: string;
   page?: number;
   pageSize?: number;
 };
+
+const NO_MATCH_ID = "__no_match__";
 
 export function buildCompanyListWhere(
   filters: CompanyListFilters,
@@ -52,7 +60,7 @@ export function buildCompanyListWhere(
 
   const eigenaar = filters.eigenaar?.trim() || "alle";
   if (eigenaar === "aan-mij") {
-    and.push({ ownerUserId: currentUserId ?? "__no_match__" });
+    and.push({ ownerUserId: currentUserId ?? NO_MATCH_ID });
   } else if (eigenaar === "niet-toegewezen") {
     and.push({ ownerUserId: null });
   } else if (eigenaar !== "alle") {
@@ -66,6 +74,49 @@ export function buildCompanyListWhere(
   return and.length ? { AND: and } : {};
 }
 
+function matchesLeadCount(
+  count: number,
+  leads: Exclude<CompanyLeadsFilter, "alle" | "geen">,
+): boolean {
+  if (leads === "5plus") return count >= 5;
+  return count === Number(leads);
+}
+
+async function companyIdsWithLeadCount(
+  companyWhere: Prisma.CompanyWhereInput,
+  leads: Exclude<CompanyLeadsFilter, "alle" | "geen">,
+): Promise<string[]> {
+  const prisma = getPrismaClient();
+  const groups = await prisma.deal.groupBy({
+    by: ["companyId"],
+    where: { companyId: { not: null }, company: companyWhere },
+    _count: { _all: true },
+  });
+
+  return groups.flatMap((group) =>
+    group.companyId && matchesLeadCount(group._count._all, leads)
+      ? [group.companyId]
+      : [],
+  );
+}
+
+export async function resolveCompanyListWhere(
+  filters: CompanyListFilters,
+  currentUserId?: string,
+): Promise<Prisma.CompanyWhereInput> {
+  const where = buildCompanyListWhere(filters, currentUserId);
+  const leads = parseCompanyLeadsFilter(filters.leads);
+  if (leads === "alle") return where;
+  if (leads === "geen") {
+    return { AND: [where, { deals: { none: {} } }] };
+  }
+
+  const ids = await companyIdsWithLeadCount(where, leads);
+  return {
+    AND: [where, { id: { in: ids.length ? ids : [NO_MATCH_ID] } }],
+  };
+}
+
 export async function listCompanyRows(
   filters: CompanyListFilters = {},
   currentUserId?: string,
@@ -77,11 +128,11 @@ export async function listCompanyRows(
     city: string | null;
     country: string;
     ownerUserId: string | null;
-    _count: { contacts: number };
+    _count: { contacts: number; deals: number };
   }>
 > {
   const prisma = getPrismaClient();
-  const where = buildCompanyListWhere(filters, currentUserId);
+  const where = await resolveCompanyListWhere(filters, currentUserId);
   const { page, pageSize, skip, take } = paginateArgs(
     filters.page,
     filters.pageSize,
@@ -99,7 +150,7 @@ export async function listCompanyRows(
         city: true,
         country: true,
         ownerUserId: true,
-        _count: { select: { contacts: true } },
+        _count: { select: { contacts: true, deals: true } },
       },
       skip,
       take,
@@ -114,7 +165,7 @@ export async function getCompanyOwnerFacets(
   currentUserId?: string,
 ): Promise<CompanyOwnerFacets> {
   const prisma = getPrismaClient();
-  const ownerWhere = buildCompanyListWhere(
+  const ownerWhere = await resolveCompanyListWhere(
     { ...filters, eigenaar: "alle" },
     currentUserId,
   );
@@ -144,6 +195,48 @@ export async function getCompanyOwnerFacets(
         : [],
     ),
   };
+}
+
+export async function getCompanyLeadFacets(
+  filters: CompanyListFilters = {},
+  currentUserId?: string,
+): Promise<CompanyLeadFacets> {
+  const prisma = getPrismaClient();
+  const where = buildCompanyListWhere(
+    { ...filters, leads: "alle" },
+    currentUserId,
+  );
+
+  const [total, none, groups] = await Promise.all([
+    prisma.company.count({ where }),
+    prisma.company.count({
+      where: { AND: [where, { deals: { none: {} } }] },
+    }),
+    prisma.deal.groupBy({
+      by: ["companyId"],
+      where: { companyId: { not: null }, company: where },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const byCount: CompanyLeadFacets["byCount"] = {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5plus": 0,
+  };
+  for (const group of groups) {
+    if (!group.companyId) continue;
+    const n = group._count._all;
+    if (n === 1) byCount["1"] += 1;
+    else if (n === 2) byCount["2"] += 1;
+    else if (n === 3) byCount["3"] += 1;
+    else if (n === 4) byCount["4"] += 1;
+    else if (n >= 5) byCount["5plus"] += 1;
+  }
+
+  return { total, none, byCount };
 }
 
 export async function listCompanyCities() {

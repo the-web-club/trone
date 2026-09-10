@@ -1,15 +1,10 @@
 import "server-only";
 
-import { formatDate, formatPersonName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { getPrismaClient } from "@/lib/db";
-import { companyPath, contactPath, dealPath } from "@/lib/paths";
+import { companyPath, dealPath } from "@/lib/paths";
 import { effectiveDealValue } from "@/lib/deal-value";
-import {
-  isAutoHot,
-  isDueTodayOrOverdue,
-  isFollowUpRipe,
-  isStale,
-} from "@/lib/opportunity-classify";
+import { isAutoHot, isFollowUpRipe, isStale } from "@/lib/opportunity-classify";
 import { getThresholds } from "@/lib/settings-service";
 
 export type OpportunityItem = {
@@ -28,7 +23,6 @@ export type OpportunityBoard = {
   followUp: OpportunityItem[];
   hot: OpportunityItem[];
   hotSuggestions: OpportunityItem[];
-  dueActions: OpportunityItem[];
 };
 
 function latestDate(dates: Array<Date | null | undefined>): Date | null {
@@ -37,14 +31,12 @@ function latestDate(dates: Array<Date | null | undefined>): Date | null {
   return valid.reduce((latest, value) => (value > latest ? value : latest));
 }
 
-export async function listOpportunities(
-  viewerUserId: string,
-): Promise<OpportunityBoard> {
+export async function listOpportunities(): Promise<OpportunityBoard> {
   const prisma = getPrismaClient();
   const thresholds = await getThresholds();
   const now = new Date();
 
-  const [deals, companies, tasks] = await Promise.all([
+  const [deals, companies] = await Promise.all([
     prisma.deal.findMany({
       where: { status: "OPEN" },
       select: {
@@ -87,18 +79,6 @@ export async function listOpportunities(
           orderBy: { createdAt: "desc" },
           take: 1,
         },
-      },
-    }),
-    prisma.task.findMany({
-      where: {
-        status: "OPEN",
-        assigneeUserId: viewerUserId,
-        dueAt: { not: null },
-      },
-      include: {
-        deal: { select: { id: true, slug: true, title: true } },
-        contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
-        company: { select: { id: true, slug: true, name: true } },
       },
     }),
   ]);
@@ -189,32 +169,5 @@ export async function listOpportunities(
     });
   }
 
-  const dueActions: OpportunityItem[] = [];
-  for (const task of tasks) {
-    if (!task.dueAt || !isDueTodayOrOverdue(task.dueAt, now)) continue;
-    const linked = task.deal
-      ? { href: dealPath(task.deal), label: task.deal.title }
-      : task.contact
-        ? {
-            href: contactPath(task.contact),
-            label: formatPersonName(
-              task.contact.firstName,
-              task.contact.lastName,
-            ),
-          }
-        : task.company
-          ? { href: companyPath(task.company), label: task.company.name }
-          : { href: "/taken", label: "Taak" };
-    dueActions.push({
-      id: `task-${task.id}`,
-      title: `${task.title} · ${linked.label}`,
-      reason: `Uiterlijk ${formatDate(task.dueAt)}`,
-      href: linked.href,
-      dealId: task.dealId,
-      contactId: task.contactId,
-      companyId: task.companyId,
-    });
-  }
-
-  return { stale, followUp, hot, hotSuggestions, dueActions };
+  return { stale, followUp, hot, hotSuggestions };
 }

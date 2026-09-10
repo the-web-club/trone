@@ -5,18 +5,14 @@ import { PageHeader } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
 import { listSummary } from "@/lib/list-copy";
 import { listOpportunities } from "@/lib/opportunity-service";
-import { listActiveAssignees } from "@/lib/task-service";
 
 export const metadata: Metadata = { title: "Kansen" };
 
 export default async function KansenPage() {
-  const session = await requireSession();
-  const [board, assignees] = await Promise.all([
-    listOpportunities(session.user.id),
-    listActiveAssignees(),
-  ]);
+  await requireSession();
+  const board = await listOpportunities();
   const hotTotal = board.hot.length + board.hotSuggestions.length;
-  const total = hotTotal + board.followUp.length + board.dueActions.length;
+  const total = hotTotal + board.followUp.length + board.stale.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,11 +30,7 @@ export default async function KansenPage() {
         }
         meta={[listSummary(total, "signaal", "signalen")]}
       />
-      <OpportunityBoard
-        board={board}
-        currentUserId={session.user.id}
-        assignees={assignees}
-      />
+      <OpportunityBoard board={board} />
     </div>
   );
 }

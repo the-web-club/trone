@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   isAutoHot,
-  isDueTodayOrOverdue,
   isFollowUpRipe,
   isStale,
 } from "@/lib/opportunity-classify";
@@ -72,17 +71,5 @@ describe("opportunity classifiers", () => {
         now,
       }),
     ).toBe(false);
-  });
-
-  it("flags tasks due today or earlier", () => {
-    expect(isDueTodayOrOverdue(new Date("2026-09-04T08:00:00.000Z"), now)).toBe(
-      true,
-    );
-    expect(isDueTodayOrOverdue(new Date("2026-09-03T08:00:00.000Z"), now)).toBe(
-      true,
-    );
-    expect(isDueTodayOrOverdue(new Date("2026-09-05T08:00:00.000Z"), now)).toBe(
-      false,
-    );
   });
 });

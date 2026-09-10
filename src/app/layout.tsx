@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter_Tight } from "next/font/google";
 import { MotionReadyProvider } from "@/components/motion";
 import "./globals.css";
@@ -15,6 +15,13 @@ export const metadata: Metadata = {
     template: "%s · TRÔNE Seating",
   },
   description: "Interne workspace voor TRÔNE Seating",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

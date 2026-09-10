@@ -1,6 +1,7 @@
 import { PageTransition } from "@/components/motion";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AppTopbar } from "@/components/shell/app-topbar";
+import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav";
 
 export function AppShell({
   userName,
@@ -41,6 +42,7 @@ export function AppShell({
             <PageTransition>{children}</PageTransition>
           </div>
         </main>
+        <MobileBottomNav />
       </div>
     </div>
   );

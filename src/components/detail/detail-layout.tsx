@@ -13,7 +13,12 @@ export function DetailPage({
   className?: string;
 }) {
   return (
-    <div className={cn("detail-page flex min-w-0 flex-col gap-5", className)}>
+    <div
+      className={cn(
+        "detail-page flex min-w-0 flex-col gap-3 desktop-nav:gap-5",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -46,7 +51,6 @@ export function DetailHeader({
   status,
   meta,
   actions,
-  stickyActions,
   className,
 }: {
   back?: ReactNode;
@@ -54,39 +58,30 @@ export function DetailHeader({
   status?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
-  /** Shown in a sticky bottom bar on mobile when provided. */
-  stickyActions?: ReactNode;
   className?: string;
 }) {
   return (
-    <>
-      <header className={cn("detail-header min-w-0", className)}>
-        {back ? <div className="mb-1">{back}</div> : null}
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">{title}</div>
-          {status ? (
-            <div className="shrink-0 pt-0.5">{status}</div>
-          ) : null}
-        </div>
-        {meta ? (
-          <div className="detail-meta mt-1.5 min-w-0 text-sm text-fg-muted">
-            {meta}
-          </div>
+    <header className={cn("detail-header min-w-0", className)}>
+      {back ? (
+        <div className="mb-0.5 hidden desktop-nav:block">{back}</div>
+      ) : null}
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">{title}</div>
+        {status ? (
+          <div className="shrink-0 pt-0.5">{status}</div>
         ) : null}
-        {actions ? (
-          <div className="detail-actions mt-3 flex flex-wrap items-center gap-2">
-            {actions}
-          </div>
-        ) : null}
-      </header>
-      {stickyActions ? (
-        <div className="detail-sticky-actions pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-border bg-surface/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:hidden">
-          <div className="pointer-events-auto mx-auto flex max-w-[var(--content-max)] items-center gap-2">
-            {stickyActions}
-          </div>
+      </div>
+      {meta ? (
+        <div className="detail-meta mt-1 min-w-0 text-sm text-fg-muted">
+          {meta}
         </div>
       ) : null}
-    </>
+      {actions ? (
+        <div className="detail-actions mt-2 flex items-center gap-2">
+          {actions}
+        </div>
+      ) : null}
+    </header>
   );
 }
 
@@ -133,12 +128,12 @@ export function DetailColumns({
   return (
     <div
       className={cn(
-        "grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]",
+        "grid min-w-0 items-start gap-3 desktop-nav:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]",
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col gap-5">{left}</div>
-      <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[calc(var(--topbar-h)+1rem)] lg:max-h-[calc(100dvh-var(--topbar-h)-2rem)] lg:overflow-y-auto lg:overscroll-contain">
+      <div className="flex min-w-0 flex-col gap-3 desktop-nav:gap-5">{left}</div>
+      <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-[calc(var(--topbar-h)+1rem)] lg:max-h-[calc(100dvh-var(--topbar-h)-2rem)] lg:overflow-y-auto lg:overscroll-contain">
         {right}
       </aside>
     </div>
@@ -178,7 +173,7 @@ export function DetailSection({
               </span>
             </span>
           </summary>
-          <div className="mt-2">{children}</div>
+          <div className="mt-1.5">{children}</div>
         </details>
       </section>
     );
@@ -186,7 +181,7 @@ export function DetailSection({
 
   return (
     <section className={cn("detail-section min-w-0", className)}>
-      <div className="detail-section-heading mb-2 flex min-h-7 items-center justify-between gap-2">
+      <div className="detail-section-heading mb-1.5 flex min-h-7 items-center justify-between gap-2">
         <h2 className="text-label font-medium tracking-wide text-fg-muted uppercase">
           {title}
         </h2>
@@ -197,7 +192,7 @@ export function DetailSection({
   );
 }
 
-/** Compact grid for label/value field groups. */
+/** Two-column grid of stacked label/value fields. */
 export function DetailFieldGrid({
   children,
   className,
@@ -206,8 +201,34 @@ export function DetailFieldGrid({
   className?: string;
 }) {
   return (
-    <div className={cn("detail-field-grid flex flex-col gap-2", className)}>
-      {children}
+    <div className={cn("detail-field-grid", className)}>{children}</div>
+  );
+}
+
+/** Read-only property cell that matches inline field density. */
+export function DetailValueField({
+  label,
+  children,
+  span = "auto",
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  span?: "auto" | "full";
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-field min-w-0",
+        span === "full" && "col-span-2",
+        className,
+      )}
+    >
+      <span className="text-label font-medium text-fg-muted">{label}</span>
+      <div className="min-h-8 px-1 py-1 text-sm break-words text-fg">
+        {children}
+      </div>
     </div>
   );
 }

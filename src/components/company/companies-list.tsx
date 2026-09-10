@@ -29,7 +29,7 @@ export type CompanyListRow = {
   city: string | null;
   country: string | null;
   ownerUserId: string | null;
-  _count: { contacts: number };
+  _count: { contacts: number; deals: number };
 };
 
 export function CompaniesList({
@@ -56,12 +56,13 @@ export function CompaniesList({
             <TableHeaderCell>Plaats</TableHeaderCell>
             <TableHeaderCell>Land</TableHeaderCell>
             <TableHeaderCell>Eigenaar</TableHeaderCell>
+            <TableHeaderCell align="right">Leads</TableHeaderCell>
             <TableHeaderCell align="right">Contacten</TableHeaderCell>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
-            <TableEmptyRow colSpan={5}>
+            <TableEmptyRow colSpan={6}>
               {emptyMessage}
               {emptyAction}
             </TableEmptyRow>
@@ -93,6 +94,9 @@ export function CompaniesList({
                     }
                     members={members}
                   />
+                </TableCell>
+                <TableCell align="right" className="text-fg-muted">
+                  {company._count.deals}
                 </TableCell>
                 <TableCell align="right" className="text-fg-muted">
                   {company._count.contacts}
@@ -141,6 +145,7 @@ export function CompaniesList({
                 members={members}
               />
             </ListCardRow>
+            <ListCardRow label="Leads">{company._count.deals}</ListCardRow>
             <ListCardRow label="Contacten">{company._count.contacts}</ListCardRow>
           </ListCardRows>
         </ListCard>

@@ -48,9 +48,3 @@ export function isAutoHot(input: {
   if (!input.lastActivityAt) return false;
   return daysBetween(input.lastActivityAt, input.now) <= (input.recentDays ?? 7);
 }
-
-export function isDueTodayOrOverdue(dueAt: Date, now: Date) {
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  return dueAt < new Date(start.getTime() + DAY_MS);
-}

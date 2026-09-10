@@ -8,7 +8,10 @@ import { useListHrefReplace, useListNavigation } from "@/components/list/list-br
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
 import {
   buildCompaniesHref,
+  companyLeadsFilterLabel,
+  parseCompanyLeadsFilter,
   type CompaniesFilterValues,
+  type CompanyLeadFacets,
   type CompanyOwnerFacets,
 } from "@/lib/companies-query";
 import type { DealTeamMember } from "@/lib/deal-service";
@@ -26,26 +29,20 @@ export function CompaniesFilters({
   countries,
   members,
   facets,
+  leadFacets,
 }: {
   values: CompaniesFilterValues;
   cities: string[];
   countries: string[];
   members: DealTeamMember[];
   facets: CompanyOwnerFacets;
+  leadFacets: CompanyLeadFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
 
   function navigate(next: Partial<CompaniesFilterValues>) {
-    replace(
-      buildCompaniesHref({
-        zoeken: next.zoeken ?? values.zoeken,
-        plaats: next.plaats ?? values.plaats,
-        land: next.land ?? values.land,
-        eigenaar: next.eigenaar ?? values.eigenaar,
-        pagina: 1,
-      }),
-    );
+    replace(buildCompaniesHref({ ...values, ...next, pagina: 1 }));
   }
 
   const search = useDebouncedUrlSearch(values.zoeken, (zoeken) =>
@@ -83,6 +80,19 @@ export function CompaniesFilters({
       image: member.image,
     })),
   ];
+  const leadOptions: SelectOption[] = [
+    { value: "alle", label: "Alle", hint: count(leadFacets.total) },
+    { value: "geen", label: "Geen leads", hint: count(leadFacets.none) },
+    { value: "1", label: "1 lead", hint: count(leadFacets.byCount["1"]) },
+    { value: "2", label: "2 leads", hint: count(leadFacets.byCount["2"]) },
+    { value: "3", label: "3 leads", hint: count(leadFacets.byCount["3"]) },
+    { value: "4", label: "4 leads", hint: count(leadFacets.byCount["4"]) },
+    {
+      value: "5plus",
+      label: "5 of meer",
+      hint: count(leadFacets.byCount["5plus"]),
+    },
+  ];
 
   const ownerLabel =
     values.eigenaar === "alle"
@@ -118,6 +128,14 @@ export function CompaniesFilters({
           onRemove: () => navigate({ eigenaar: "alle" }),
         }
       : null,
+    values.leads !== "alle"
+      ? {
+          key: "leads",
+          label: "Leads",
+          value: companyLeadsFilterLabel(values.leads),
+          onRemove: () => navigate({ leads: "alle" }),
+        }
+      : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
@@ -134,7 +152,11 @@ export function CompaniesFilters({
       searchAriaLabel="Zoek bedrijven"
       chips={chips}
       hasActiveFilters={Boolean(
-        values.zoeken || values.plaats || values.land || values.eigenaar !== "alle",
+        values.zoeken ||
+          values.plaats ||
+          values.land ||
+          values.eigenaar !== "alle" ||
+          values.leads !== "alle",
       )}
       onReset={() =>
         replace(
@@ -143,6 +165,7 @@ export function CompaniesFilters({
             plaats: "",
             land: "",
             eigenaar: "alle",
+            leads: "alle",
             pagina: 1,
           }),
         )
@@ -173,6 +196,16 @@ export function CompaniesFilters({
         items={ownerOptions}
         contentClassName="min-w-[16rem]"
         className="w-auto max-w-[16rem]"
+      />
+      <SelectMenu
+        prefix="Leads"
+        aria-label="Filter op aantal leads"
+        value={values.leads}
+        onValueChange={(next) =>
+          navigate({ leads: parseCompanyLeadsFilter(next) })
+        }
+        items={leadOptions}
+        className="w-auto"
       />
     </ListFilterToolbar>
   );

@@ -11,16 +11,12 @@ const IDLE_PAGE_SIZE = 15;
 export function OpportunitySection({
   title,
   items,
-  currentUserId,
-  assignees,
   pageSize,
   emptyMessage = "Niets in deze lijst.",
   hideWhenEmpty = false,
 }: {
   title: string;
   items: OpportunityItem[];
-  currentUserId: string;
-  assignees: Array<{ id: string; name: string }>;
   pageSize?: number;
   emptyMessage?: string;
   hideWhenEmpty?: boolean;
@@ -49,11 +45,7 @@ export function OpportunitySection({
           <Stagger as="ul" className="flex flex-col gap-2">
             {shown.map((item) => (
               <StaggerItem key={item.id} as="li">
-                <OpportunityRow
-                  item={item}
-                  currentUserId={currentUserId}
-                  assignees={assignees}
-                />
+                <OpportunityRow item={item} />
               </StaggerItem>
             ))}
           </Stagger>

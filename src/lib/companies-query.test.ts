@@ -17,6 +17,7 @@ describe("list query helpers", () => {
         plaats: "",
         land: "",
         eigenaar: "alle",
+        leads: "alle",
         pagina: 1,
       }),
     ).toBe("/bedrijven");
@@ -55,10 +56,11 @@ describe("list query helpers", () => {
         plaats: "Amsterdam",
         land: "NL",
         eigenaar: "niet-toegewezen",
+        leads: "5plus",
         pagina: 2,
       }),
     ).toBe(
-      "/bedrijven?zoeken=trone&plaats=Amsterdam&land=NL&eigenaar=niet-toegewezen&pagina=2",
+      "/bedrijven?zoeken=trone&plaats=Amsterdam&land=NL&eigenaar=niet-toegewezen&leads=5plus&pagina=2",
     );
     expect(
       buildContactsHref({ zoeken: "jan", bedrijf: "co-1", pagina: 3 }),
@@ -95,11 +97,16 @@ describe("list query helpers", () => {
       plaats: "Breda",
       land: "",
       eigenaar: "alle",
+      leads: "alle",
       pagina: 1,
     });
     expect(
       parseCompaniesSearchParams({ eigenaar: "aan-mij" }).eigenaar,
     ).toBe("aan-mij");
+    expect(parseCompaniesSearchParams({ leads: "geen" }).leads).toBe("geen");
+    expect(parseCompaniesSearchParams({ leads: "0" }).leads).toBe("geen");
+    expect(parseCompaniesSearchParams({ leads: "5+" }).leads).toBe("5plus");
+    expect(parseCompaniesSearchParams({ leads: "foo" }).leads).toBe("alle");
     expect(parseContactsSearchParams({ bedrijf: "co-1" })).toEqual({
       zoeken: "",
       bedrijf: "co-1",

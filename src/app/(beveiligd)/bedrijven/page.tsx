@@ -10,6 +10,7 @@ import {
 } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
 import {
+  getCompanyLeadFacets,
   getCompanyOwnerFacets,
   listCompanyCities,
   listCompanyCountries,
@@ -37,19 +38,26 @@ export default async function BedrijvenPage({
     city: parsed.plaats || undefined,
     country: parsed.land || undefined,
     eigenaar: parsed.eigenaar,
+    leads: parsed.leads,
     page: parsed.pagina,
   };
   const hasFilters = Boolean(
-    parsed.zoeken || parsed.plaats || parsed.land || parsed.eigenaar !== "alle",
+    parsed.zoeken ||
+      parsed.plaats ||
+      parsed.land ||
+      parsed.eigenaar !== "alle" ||
+      parsed.leads !== "alle",
   );
 
-  const [result, cities, countries, members, facets] = await Promise.all([
-    listCompanyRows(listFilters, currentUserId),
-    listCompanyCities(),
-    listCompanyCountries(),
-    listDealTeamMembers(),
-    getCompanyOwnerFacets(listFilters, currentUserId),
-  ]);
+  const [result, cities, countries, members, facets, leadFacets] =
+    await Promise.all([
+      listCompanyRows(listFilters, currentUserId),
+      listCompanyCities(),
+      listCompanyCountries(),
+      listDealTeamMembers(),
+      getCompanyOwnerFacets(listFilters, currentUserId),
+      getCompanyLeadFacets(listFilters, currentUserId),
+    ]);
 
   const ownerNames = new Map(
     members.map((member) => [member.id, member.name || member.email]),
@@ -65,7 +73,8 @@ export default async function BedrijvenPage({
       parsed.eigenaar === "aan-mij" &&
       !parsed.zoeken &&
       !parsed.plaats &&
-      !parsed.land
+      !parsed.land &&
+      parsed.leads === "alle"
     ) {
       emptyMessage = "Geen bedrijven aan jou toegewezen.";
     } else {
@@ -95,6 +104,7 @@ export default async function BedrijvenPage({
         countries={countries}
         members={members}
         facets={facets}
+        leadFacets={leadFacets}
       />
       <ListBody>
         <CompaniesList

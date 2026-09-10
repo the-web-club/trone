@@ -3,16 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CompanyDetail } from "@/components/company/company-detail";
 import { CompanyLeadsTable } from "@/components/company/company-leads-table";
-import {
-  CompanyTimeline,
-  CompanyWorkLogs,
-  EntityTasks,
-} from "@/components/detail/entity-activity";
-import {
-  DetailTaskSkeleton,
-  DetailTimelineSkeleton,
-  DetailWorkLogSkeleton,
-} from "@/components/detail/detail-skeletons";
+import { CompanyTimeline } from "@/components/detail/entity-activity";
+import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
 import { isAppError } from "@/lib/errors";
@@ -96,22 +88,6 @@ export default async function BedrijfDetailPage({
         <>
           <Suspense fallback={<DetailTimelineSkeleton compact />}>
             <CompanyTimeline compact companyId={company.id} />
-          </Suspense>
-          <Suspense fallback={<DetailTaskSkeleton compact />}>
-            <EntityTasks
-              compact
-              currentUserId={session.user.id}
-              companyId={company.id}
-            />
-          </Suspense>
-          <Suspense fallback={<DetailWorkLogSkeleton compact />}>
-            <CompanyWorkLogs
-              compact
-              companyId={company.id}
-              companyName={company.name}
-              currentUserId={session.user.id}
-              isAdmin={isAdminSession(session)}
-            />
           </Suspense>
         </>
       }

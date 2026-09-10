@@ -96,6 +96,7 @@
 
   --sidebar-w: 200px;
   --topbar-h: 52px;
+  --bottom-nav-h: 0px;
   --content-max: 1200px;
   --content-wide: 1440px;
   --configurator-bar-space: 11rem;
@@ -127,6 +128,13 @@
   --ease-standard: var(--ease-in-out);
   --ease-enter: var(--ease-out-expo);
   --ease-exit: var(--ease-in-quart);
+}
+
+@media not ((hover: hover) and (pointer: fine) and (min-width: 1024px)) {
+  :root {
+    --topbar-h: 56px;
+    --bottom-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Dark theme — alleen scoped toepassen (nu: inlogpagina). Light-schermen blijven ongewijzigd. */

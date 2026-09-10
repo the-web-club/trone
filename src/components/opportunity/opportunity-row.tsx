@@ -1,23 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { DealHotIcon } from "@/components/deal/deal-hot-icon";
-import { TaskForm } from "@/components/task/task-form";
 import { Button } from "@/components/ui/button";
 import type { OpportunityItem } from "@/lib/opportunity-service";
 
-export function OpportunityRow({
-  item,
-  currentUserId,
-  assignees,
-}: {
-  item: OpportunityItem;
-  currentUserId: string;
-  assignees: Array<{ id: string; name: string }>;
-}) {
-  const [showTask, setShowTask] = useState(false);
+export function OpportunityRow({ item }: { item: OpportunityItem }) {
   const [callState, callAction, callPending] = useActionState(
     createTimelineEventAction,
     null,
@@ -46,36 +36,26 @@ export function OpportunityRow({
             </Button>
           </Link>
           {canAct ? (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowTask((open) => !open)}
-              >
-                Taak maken
+            <form action={callAction}>
+              {item.dealId ? (
+                <input type="hidden" name="dealId" value={item.dealId} />
+              ) : null}
+              {item.contactId ? (
+                <input type="hidden" name="contactId" value={item.contactId} />
+              ) : null}
+              {item.companyId ? (
+                <input type="hidden" name="companyId" value={item.companyId} />
+              ) : null}
+              <input type="hidden" name="type" value="CALL" />
+              <input
+                type="hidden"
+                name="body"
+                value="Gebeld vanaf het kansen-overzicht"
+              />
+              <Button type="submit" variant="secondary" size="sm" loading={callPending}>
+                Bellen loggen
               </Button>
-              <form action={callAction}>
-                {item.dealId ? (
-                  <input type="hidden" name="dealId" value={item.dealId} />
-                ) : null}
-                {item.contactId ? (
-                  <input type="hidden" name="contactId" value={item.contactId} />
-                ) : null}
-                {item.companyId ? (
-                  <input type="hidden" name="companyId" value={item.companyId} />
-                ) : null}
-                <input type="hidden" name="type" value="CALL" />
-                <input
-                  type="hidden"
-                  name="body"
-                  value="Gebeld vanaf het kansen-overzicht"
-                />
-                <Button type="submit" variant="secondary" size="sm" loading={callPending}>
-                  Bellen loggen
-                </Button>
-              </form>
-            </>
+            </form>
           ) : null}
         </div>
       </div>
@@ -83,17 +63,6 @@ export function OpportunityRow({
         <p className="mt-2 text-xs text-danger" role="alert">
           {callState.error}
         </p>
-      ) : null}
-      {showTask ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <TaskForm
-            currentUserId={currentUserId}
-            assignees={assignees}
-            dealId={item.dealId}
-            contactId={item.contactId}
-            companyId={item.companyId}
-          />
-        </div>
       ) : null}
     </div>
   );

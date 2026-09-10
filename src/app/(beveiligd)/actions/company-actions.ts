@@ -146,7 +146,6 @@ export async function deleteCompanyAction(
     revalidatePath("/leads", "layout");
     revalidatePath("/overzicht");
     revalidatePath("/kansen");
-    revalidatePath("/logboek");
     redirect("/bedrijven");
   } catch (error) {
     if (isNextRedirect(error)) throw error;

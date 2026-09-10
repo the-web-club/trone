@@ -3,14 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ContactDetail } from "@/components/contact/contact-detail";
 import { ContactLeadsTable } from "@/components/contact/contact-leads-table";
-import {
-  ContactTimeline,
-  EntityTasks,
-} from "@/components/detail/entity-activity";
-import {
-  DetailTaskSkeleton,
-  DetailTimelineSkeleton,
-} from "@/components/detail/detail-skeletons";
+import { ContactTimeline } from "@/components/detail/entity-activity";
+import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
@@ -78,14 +72,6 @@ export default async function ContactDetailPage({
           <Suspense fallback={<DetailTimelineSkeleton compact />}>
             <ContactTimeline
               compact
-              contactId={contact.id}
-              companyId={companyId}
-            />
-          </Suspense>
-          <Suspense fallback={<DetailTaskSkeleton compact />}>
-            <EntityTasks
-              compact
-              currentUserId={session.user.id}
               contactId={contact.id}
               companyId={companyId}
             />
