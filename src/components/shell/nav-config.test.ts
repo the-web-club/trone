@@ -52,6 +52,7 @@ describe("navTitleForPath", () => {
 describe("isOverviewNavPath", () => {
   it("treats list hubs as overviews and nested routes as detail", () => {
     expect(isOverviewNavPath("/overzicht")).toBe(true);
+    expect(isOverviewNavPath("/taken")).toBe(true);
     expect(isOverviewNavPath("/leads")).toBe(true);
     expect(isOverviewNavPath("/bedrijven")).toBe(true);
     expect(isOverviewNavPath("/contacten")).toBe(true);

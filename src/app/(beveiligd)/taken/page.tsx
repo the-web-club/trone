@@ -1,0 +1,88 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { ListBody, ListBrowser } from "@/components/list/list-browser";
+import { ListPagination } from "@/components/list/list-pagination";
+import { PageHeader } from "@/components/shell/page-header";
+import { TasksFilters } from "@/components/task/tasks-filters";
+import { TasksList } from "@/components/task/tasks-list";
+import { isViewerSession, requireSession } from "@/lib/auth-session";
+import { listDealTeamMembers } from "@/lib/deal-service";
+import { listSummary } from "@/lib/list-copy";
+import { getTaskFilterFacets, listTasks } from "@/lib/task-service";
+import { buildTasksHref, parseTasksSearchParams } from "@/lib/tasks-query";
+
+export const metadata: Metadata = { title: "Taken" };
+
+export default async function TakenPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const session = await requireSession();
+  const parsed = parseTasksSearchParams(await searchParams);
+  const currentUserId = session.user.id;
+  const canWrite = !isViewerSession(session);
+
+  const listFilters = {
+    zoeken: parsed.zoeken,
+    eigenaar: parsed.eigenaar,
+    status: parsed.status,
+    wanneer: parsed.wanneer,
+    van: parsed.van || undefined,
+    tot: parsed.tot || undefined,
+    page: parsed.pagina,
+  };
+
+  const hasFilters = Boolean(
+    parsed.zoeken ||
+      parsed.eigenaar !== "aan-mij" ||
+      parsed.status !== "open" ||
+      parsed.wanneer !== "alle" ||
+      parsed.van ||
+      parsed.tot,
+  );
+
+  const [result, facets, members] = await Promise.all([
+    listTasks(listFilters, currentUserId),
+    getTaskFilterFacets(listFilters, currentUserId),
+    listDealTeamMembers(),
+  ]);
+
+  const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
+  let emptyMessage: ReactNode = "Nog geen open taken voor jou.";
+  if (result.total === 0 && hasFilters) {
+    emptyMessage = "Geen taken gevonden voor deze filters.";
+  } else if (result.total === 0 && parsed.eigenaar === "aan-mij") {
+    emptyMessage =
+      "Nog geen open taken voor jou. Plan een vervolgactie bij het registreren van een gebeurtenis.";
+  } else if (result.total === 0) {
+    emptyMessage = "Nog geen taken.";
+  }
+
+  return (
+    <ListBrowser>
+      <PageHeader
+        title="Taken"
+        description="Vervolgacties van het hele team. Standaard zie je je eigen open taken."
+        meta={[
+          result.total === 0 && hasFilters
+            ? "Geen resultaten"
+            : listSummary(result.total, "taak", "taken"),
+        ]}
+      />
+      <TasksFilters values={parsed} members={members} facets={facets} />
+      <ListBody>
+        <TasksList
+          items={result.items}
+          emptyMessage={emptyMessage}
+          canWrite={canWrite}
+        />
+        <ListPagination
+          page={parsed.pagina}
+          totalPages={totalPages}
+          hrefForPage={(pagina) => buildTasksHref({ ...parsed, pagina })}
+        />
+      </ListBody>
+    </ListBrowser>
+  );
+}
