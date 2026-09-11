@@ -17,6 +17,7 @@ import {
   type DealInput,
 } from "@/lib/deal-validation";
 import { AppError } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import {
   calculateLeadScore,
@@ -67,6 +68,41 @@ export async function listDealsForSelect(companyId?: string | null) {
     where: trimmed ? { companyId: trimmed } : {},
     orderBy: { updatedAt: "desc" },
     select: { id: true, title: true, companyId: true },
+  });
+}
+
+export type TaskDealOption = {
+  id: string;
+  title: string;
+  hint: string | null;
+};
+
+export async function listDealsForTaskSelect(): Promise<TaskDealOption[]> {
+  const prisma = getPrismaClient();
+  const deals = await prisma.deal.findMany({
+    where: { status: "OPEN" },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      company: { select: { name: true } },
+      contact: { select: { firstName: true, lastName: true } },
+    },
+  });
+  return deals.map((deal) => {
+    const hint = [
+      deal.company?.name,
+      deal.contact
+        ? formatPersonName(deal.contact.firstName, deal.contact.lastName)
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      id: deal.id,
+      title: deal.title,
+      hint: hint || null,
+    };
   });
 }
 

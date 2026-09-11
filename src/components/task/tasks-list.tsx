@@ -36,10 +36,12 @@ import {
 export function TasksList({
   items,
   emptyMessage,
+  emptyAction,
   canWrite,
 }: {
   items: TaskRecord[];
   emptyMessage: React.ReactNode;
+  emptyAction?: React.ReactNode;
   canWrite: boolean;
 }) {
   const desktop = (
@@ -57,7 +59,10 @@ export function TasksList({
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
-            <TableEmptyRow colSpan={6}>{emptyMessage}</TableEmptyRow>
+            <TableEmptyRow colSpan={6}>
+              {emptyMessage}
+              {emptyAction}
+            </TableEmptyRow>
           ) : (
             items.map((task) => {
               const overdue = isTaskOverdue(task);
@@ -120,7 +125,10 @@ export function TasksList({
 
   const mobile =
     items.length === 0 ? (
-      <ListCardEmpty>{emptyMessage}</ListCardEmpty>
+      <ListCardEmpty>
+        {emptyMessage}
+        {emptyAction}
+      </ListCardEmpty>
     ) : (
       items.map((task) => {
         const overdue = isTaskOverdue(task);

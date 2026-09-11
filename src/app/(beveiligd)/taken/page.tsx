@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader } from "@/components/shell/page-header";
+import { CreateTaskListDialog } from "@/components/task/create-task-list-dialog";
 import { TasksFilters } from "@/components/task/tasks-filters";
 import { TasksList } from "@/components/task/tasks-list";
 import { isViewerSession, requireSession } from "@/lib/auth-session";
-import { listDealTeamMembers } from "@/lib/deal-service";
+import { listDealTeamMembers, listDealsForTaskSelect } from "@/lib/deal-service";
 import { listSummary } from "@/lib/list-copy";
 import { getTaskFilterFacets, listTasks } from "@/lib/task-service";
 import { buildTasksHref, parseTasksSearchParams } from "@/lib/tasks-query";
@@ -42,10 +43,11 @@ export default async function TakenPage({
       parsed.tot,
   );
 
-  const [result, facets, members] = await Promise.all([
+  const [result, facets, members, deals] = await Promise.all([
     listTasks(listFilters, currentUserId),
     getTaskFilterFacets(listFilters, currentUserId),
     listDealTeamMembers(),
+    listDealsForTaskSelect(),
   ]);
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
@@ -53,11 +55,14 @@ export default async function TakenPage({
   if (result.total === 0 && hasFilters) {
     emptyMessage = "Geen taken gevonden voor deze filters.";
   } else if (result.total === 0 && parsed.eigenaar === "aan-mij") {
-    emptyMessage =
-      "Nog geen open taken voor jou. Plan een vervolgactie bij het registreren van een gebeurtenis.";
+    emptyMessage = "Nog geen open taken voor jou.";
   } else if (result.total === 0) {
     emptyMessage = "Nog geen taken.";
   }
+
+  const createTask = canWrite ? (
+    <CreateTaskListDialog deals={deals} />
+  ) : null;
 
   return (
     <ListBrowser>
@@ -69,12 +74,28 @@ export default async function TakenPage({
             ? "Geen resultaten"
             : listSummary(result.total, "taak", "taken"),
         ]}
+        actions={createTask}
       />
       <TasksFilters values={parsed} members={members} facets={facets} />
       <ListBody>
         <TasksList
           items={result.items}
           emptyMessage={emptyMessage}
+          emptyAction={
+            canWrite && !hasFilters ? (
+              <>
+                {" "}
+                <CreateTaskListDialog
+                  deals={deals}
+                  trigger={
+                    <button type="button" className="text-fg hover:underline">
+                      Nieuwe taak
+                    </button>
+                  }
+                />
+              </>
+            ) : undefined
+          }
           canWrite={canWrite}
         />
         <ListPagination
