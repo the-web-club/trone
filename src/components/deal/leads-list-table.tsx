@@ -63,14 +63,21 @@ function LeadsListCards({
   members,
   stages,
   emptyMessage,
+  emptyAction,
 }: {
   rows: LeadsListRow[];
   members: DealTeamMember[];
   stages: LeadStageOption[];
-  emptyMessage: string;
+  emptyMessage: React.ReactNode;
+  emptyAction?: React.ReactNode;
 }) {
   if (rows.length === 0) {
-    return <ListCardEmpty>{emptyMessage}</ListCardEmpty>;
+    return (
+      <ListCardEmpty>
+        {emptyMessage}
+        {emptyAction}
+      </ListCardEmpty>
+    );
   }
 
   return (
@@ -149,11 +156,13 @@ export function LeadsListTable({
   members,
   stages,
   emptyMessage,
+  emptyAction,
 }: {
   rows: LeadsListRow[];
   members: DealTeamMember[];
   stages: LeadStageOption[];
-  emptyMessage: string;
+  emptyMessage: React.ReactNode;
+  emptyAction?: React.ReactNode;
 }) {
   const desktop = (
     <TableContainer>
@@ -172,7 +181,10 @@ export function LeadsListTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
-            <TableEmptyRow colSpan={8}>{emptyMessage}</TableEmptyRow>
+            <TableEmptyRow colSpan={8}>
+              {emptyMessage}
+              {emptyAction}
+            </TableEmptyRow>
           ) : (
             rows.map((row) => (
               <TableRow key={row.id} interactive>
@@ -244,6 +256,7 @@ export function LeadsListTable({
       members={members}
       stages={stages}
       emptyMessage={emptyMessage}
+      emptyAction={emptyAction}
     />
   );
 

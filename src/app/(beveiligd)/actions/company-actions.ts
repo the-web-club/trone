@@ -52,18 +52,24 @@ export async function createCompanyInlineAction(
 }
 
 export async function createCompanyAction(
-  _prev: { error?: string } | null,
+  _prev: { error?: string; company?: CreatedCompanyOption } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; company?: CreatedCompanyOption }> {
   try {
     const session = await requireSession();
     const input = parseCompanyForm(formData);
     const company = await createCompany(input, session.user.id);
     revalidatePath("/bedrijven", "layout");
     revalidatePath("/overzicht");
-    redirect(companyPath(company));
+    revalidatePath("/leads", "layout");
+    return {
+      company: {
+        id: company.id,
+        slug: company.slug,
+        name: company.name,
+      },
+    };
   } catch (error) {
-    if (isNextRedirect(error)) throw error;
     return toActionError(error);
   }
 }

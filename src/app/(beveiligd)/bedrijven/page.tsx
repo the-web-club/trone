@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CompaniesFilters } from "@/components/company/companies-filters";
 import { CompaniesList } from "@/components/company/companies-list";
+import { CreateCompanyListDialog } from "@/components/company/create-company-list-dialog";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
-import {
-  PageHeader,
-  pageActionPrimaryClassName,
-} from "@/components/shell/page-header";
+import { PageHeader } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
 import {
   getCompanyLeadFacets,
@@ -92,11 +89,7 @@ export default async function BedrijvenPage({
             ? "Geen resultaten"
             : listSummary(result.total, "bedrijf", "bedrijven"),
         ]}
-        actions={
-          <Link href="/bedrijven/nieuw" className={pageActionPrimaryClassName()}>
-            Nieuw bedrijf
-          </Link>
-        }
+        actions={<CreateCompanyListDialog />}
       />
       <CompaniesFilters
         values={parsed}
@@ -117,9 +110,13 @@ export default async function BedrijvenPage({
             !hasFilters ? (
               <>
                 {" "}
-                <Link href="/bedrijven/nieuw" className="text-fg hover:underline">
-                  Nieuw bedrijf
-                </Link>
+                <CreateCompanyListDialog
+                  trigger={
+                    <button type="button" className="text-fg hover:underline">
+                      Nieuw bedrijf
+                    </button>
+                  }
+                />
               </>
             ) : undefined
           }

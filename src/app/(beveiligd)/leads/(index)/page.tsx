@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { CreateLeadListDialog } from "@/components/deal/create-lead-list-dialog";
 import { LeadsBrowser } from "@/components/deal/leads-browser";
 import { LeadsKanban } from "@/components/deal/leads-kanban";
 import { LeadsListTable } from "@/components/deal/leads-list-table";
 import { ListPagination } from "@/components/list/list-pagination";
 import { requireSession } from "@/lib/auth-session";
+import { listCompaniesForSelect } from "@/lib/company-service";
+import { listContactsForSelect } from "@/lib/contact-service";
 import {
   getDealFilterFacets,
   listAllDeals,
@@ -59,18 +62,31 @@ export default async function LeadsPage({
     sortering: parsed.sortering,
   };
 
-  const [stages, sources, members, facets, result] = await Promise.all([
-    listDealStages(),
-    listLeadSources(),
-    listDealTeamMembers(),
-    getDealFilterFacets(listFilters, currentUserId),
-    parsed.view === "kanban"
-      ? listAllDeals(listFilters, currentUserId)
-      : listDeals(
-          { ...listFilters, page: parsed.pagina, pageSize: 25 },
-          currentUserId,
-        ),
-  ]);
+  const [stages, sources, members, facets, result, companies, contacts] =
+    await Promise.all([
+      listDealStages(),
+      listLeadSources(),
+      listDealTeamMembers(),
+      getDealFilterFacets(listFilters, currentUserId),
+      parsed.view === "kanban"
+        ? listAllDeals(listFilters, currentUserId)
+        : listDeals(
+            { ...listFilters, page: parsed.pagina, pageSize: 25 },
+            currentUserId,
+          ),
+      listCompaniesForSelect(),
+      listContactsForSelect(),
+    ]);
+
+  const stageOptions = stages.map((stage) => ({ id: stage.id, name: stage.name }));
+  const sourceOptions = sources.map((source) => ({
+    id: source.id,
+    name: source.name,
+  }));
+  const companyOptions = companies.map((company) => ({
+    id: company.id,
+    name: company.name,
+  }));
 
   const ownerNames = new Map(
     members.map((member) => [member.id, member.name || member.email]),
@@ -123,8 +139,10 @@ export default async function LeadsPage({
     <LeadsBrowser
       values={filterValues}
       view={parsed.view}
-      stages={stages.map((stage) => ({ id: stage.id, name: stage.name }))}
-      sources={sources.map((source) => ({ id: source.id, name: source.name }))}
+      stages={stageOptions}
+      sources={sourceOptions}
+      companies={companyOptions}
+      contacts={contacts}
       members={members}
       facets={facets}
       exportHref={exportHref}
@@ -203,6 +221,24 @@ export default async function LeadsPage({
               createdAt: deal.createdAt.toISOString(),
             }))}
             emptyMessage={emptyMessage}
+            emptyAction={
+              !hasFilters ? (
+                <>
+                  {" "}
+                  <CreateLeadListDialog
+                    stages={stageOptions}
+                    sources={sourceOptions}
+                    companies={companyOptions}
+                    contacts={contacts}
+                    trigger={
+                      <button type="button" className="text-fg hover:underline">
+                        Nieuwe lead
+                      </button>
+                    }
+                  />
+                </>
+              ) : undefined
+            }
           />
           <ListPagination
             page={parsed.pagina}

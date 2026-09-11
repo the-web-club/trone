@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,15 +34,19 @@ export function CompanyForm({
   company,
   action,
   submitLabel,
+  onCreated,
 }: {
   company?: CompanyFormValues;
   action: (
-    prev: { error?: string } | null,
+    prev: { error?: string; company?: { id: string; slug: string } } | null,
     formData: FormData,
-  ) => Promise<{ error?: string }>;
+  ) => Promise<{ error?: string; company?: { id: string; slug: string } }>;
   submitLabel: string;
+  onCreated?: (company: { id: string; slug: string }) => void;
 }) {
-  const [state, formAction, pending] = useActionState(action, null);
+  const id = useId();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const [country, setCountry] = useState(company?.country ?? "NL");
   const [vatNumber, setVatNumber] = useState(company?.vatNumber ?? "");
   const vies = viesStatusFromCache({
@@ -52,117 +57,159 @@ export function CompanyForm({
   });
   const treatment = resolveVatTreatment(country, vies.status);
 
+  async function onSubmit(formData: FormData) {
+    setPending(true);
+    setError(null);
+    const result = await action(null, formData);
+    setPending(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.company) onCreated?.(result.company);
+  }
+
   return (
-    <form id="company-form" action={formAction} className="flex max-w-xl flex-col gap-3">
+    <form action={onSubmit} className="flex min-h-0 flex-1 flex-col">
       {company?.id ? <input type="hidden" name="id" value={company.id} /> : null}
 
-      <FormField id="name" label="Naam">
-        <Input name="name" required defaultValue={company?.name ?? ""} autoComplete="organization" />
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField id="email" label="E-mailadres">
-          <Input name="email" type="email" defaultValue={company?.email ?? ""} autoComplete="email" />
-        </FormField>
-        <FormField id="phone" label="Telefoon">
-          <Input name="phone" type="tel" defaultValue={company?.phone ?? ""} autoComplete="tel" />
-        </FormField>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField id="vatNumber" label="Btw-nummer">
+      <DialogBody className="flex flex-col gap-3">
+        <FormField id={`${id}-name`} label="Naam">
           <Input
-            name="vatNumber"
-            defaultValue={company?.vatNumber ?? ""}
-            autoComplete="off"
-            placeholder="Inclusief landcode, bv. FI12345678"
-            onChange={(event) => setVatNumber(event.target.value)}
+            name="name"
+            required
+            autoFocus
+            defaultValue={company?.name ?? ""}
+            autoComplete="organization"
           />
         </FormField>
-        <FormField id="cocNumber" label="Registratienummer">
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id={`${id}-email`} label="E-mailadres">
+            <Input
+              name="email"
+              type="email"
+              defaultValue={company?.email ?? ""}
+              autoComplete="email"
+            />
+          </FormField>
+          <FormField id={`${id}-phone`} label="Telefoon">
+            <Input
+              name="phone"
+              type="tel"
+              defaultValue={company?.phone ?? ""}
+              autoComplete="tel"
+            />
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id={`${id}-vatNumber`} label="Btw-nummer">
+            <Input
+              name="vatNumber"
+              defaultValue={company?.vatNumber ?? ""}
+              autoComplete="off"
+              placeholder="Inclusief landcode, bv. FI12345678"
+              onChange={(event) => setVatNumber(event.target.value)}
+            />
+          </FormField>
+          <FormField id={`${id}-cocNumber`} label="Registratienummer">
+            <Input
+              name="cocNumber"
+              defaultValue={company?.cocNumber ?? ""}
+              autoComplete="off"
+              placeholder="KvK, Y-tunnus, Companies House…"
+            />
+          </FormField>
+        </div>
+        {company?.id ? (
+          <VatValidateControls
+            companyId={company.id}
+            vatNumber={vatNumber}
+            country={country}
+            initialStatus={company.viesValid}
+            initialName={company.viesCheckedName}
+            initialCheckedAt={company.viesValidatedAt}
+          />
+        ) : null}
+
+        <FormField id={`${id}-website`} label="Website">
           <Input
-            name="cocNumber"
-            defaultValue={company?.cocNumber ?? ""}
-            autoComplete="off"
-            placeholder="KvK, Y-tunnus, Companies House…"
+            name="website"
+            defaultValue={company?.website ?? ""}
+            autoComplete="url"
           />
         </FormField>
-      </div>
-      {company?.id ? (
-        <VatValidateControls
-          companyId={company.id}
-          vatNumber={vatNumber}
-          country={country}
-          initialStatus={company.viesValid}
-          initialName={company.viesCheckedName}
-          initialCheckedAt={company.viesValidatedAt}
-        />
-      ) : null}
 
-      <FormField id="website" label="Website">
-        <Input name="website" defaultValue={company?.website ?? ""} autoComplete="url" />
-      </FormField>
-
-      <FormField id="addressLine" label="Adres">
-        <Input name="addressLine" defaultValue={company?.addressLine ?? ""} autoComplete="street-address" />
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField id="postalCode" label="Postcode">
-          <Input name="postalCode" defaultValue={company?.postalCode ?? ""} autoComplete="postal-code" />
+        <FormField id={`${id}-addressLine`} label="Adres">
+          <Input
+            name="addressLine"
+            defaultValue={company?.addressLine ?? ""}
+            autoComplete="street-address"
+          />
         </FormField>
-        <FormField id="city" label="Plaats">
-          <Input name="city" defaultValue={company?.city ?? ""} autoComplete="address-level2" />
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id={`${id}-postalCode`} label="Postcode">
+            <Input
+              name="postalCode"
+              defaultValue={company?.postalCode ?? ""}
+              autoComplete="postal-code"
+            />
+          </FormField>
+          <FormField id={`${id}-city`} label="Plaats">
+            <Input
+              name="city"
+              defaultValue={company?.city ?? ""}
+              autoComplete="address-level2"
+            />
+          </FormField>
+        </div>
+
+        <FormField id={`${id}-country`} label="Land">
+          <CountrySelect
+            name="country"
+            value={country}
+            onValueChange={setCountry}
+            required
+          />
         </FormField>
-      </div>
 
-      <FormField id="country" label="Land">
-        <CountrySelect
-          name="country"
-          value={country}
-          onValueChange={setCountry}
-          required
+        <FormField id={`${id}-vatRate`} label="Btw-tarief (%)">
+          <Input
+            name="vatRate"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            defaultValue={company?.vatRate ?? 21}
+          />
+        </FormField>
+        <VatTreatmentNotice
+          vatRate={treatment.vatRate}
+          vatRegime={treatment.vatRegime}
+          warning={treatment.warning}
+          stale={vies.stale}
         />
-      </FormField>
-
-      <FormField
-        id="vatRate"
-        label="Btw-tarief (%)"
-      >
-        <Input
-          name="vatRate"
-          type="number"
-          step="0.01"
-          min="0"
-          max="100"
-          defaultValue={company?.vatRate ?? 21}
-        />
-      </FormField>
-      <VatTreatmentNotice
-        vatRate={treatment.vatRate}
-        vatRegime={treatment.vatRegime}
-        warning={treatment.warning}
-        stale={vies.stale}
-      />
-      <p className="text-xs text-fg-muted">
-        Offertes en facturen bepalen het tarief via land + VIES, niet via dit veld alleen.
-      </p>
-
-      <FormField id="notes" label="Notities">
-        <Textarea name="notes" defaultValue={company?.notes ?? ""} />
-      </FormField>
-
-      {state?.error ? (
-        <p className="text-sm text-danger" role="alert">
-          {state.error}
+        <p className="text-xs text-fg-muted">
+          Offertes en facturen bepalen het tarief via land + VIES, niet via dit veld alleen.
         </p>
-      ) : null}
 
-      <div>
+        <FormField id={`${id}-notes`} label="Notities">
+          <Textarea name="notes" defaultValue={company?.notes ?? ""} />
+        </FormField>
+
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </DialogBody>
+      <DialogFooter>
         <Button type="submit" loading={pending}>
           {submitLabel}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

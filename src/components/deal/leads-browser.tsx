@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { CreateLeadListDialog } from "@/components/deal/create-lead-list-dialog";
+import type { DealFormContact, DealFormOption } from "@/components/deal/deal-form";
 import { LeadsFilters } from "@/components/deal/leads-filters";
 import { LeadsViewSwitcher } from "@/components/deal/leads-view-switcher";
 import { ListBody, ListBrowser, useListNavigation } from "@/components/list/list-browser";
 import {
   PageHeader,
-  pageActionPrimaryClassName,
   pageActionSecondaryClassName,
 } from "@/components/shell/page-header";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
@@ -17,6 +17,8 @@ export function LeadsBrowser({
   view,
   stages,
   sources,
+  companies,
+  contacts,
   members,
   facets,
   exportHref,
@@ -27,6 +29,8 @@ export function LeadsBrowser({
   view: DealsView;
   stages: Array<{ id: string; name: string }>;
   sources: Array<{ id: string; name: string }>;
+  companies: DealFormOption[];
+  contacts: DealFormContact[];
   members: DealTeamMember[];
   facets: DealFilterFacets;
   exportHref: string;
@@ -40,6 +44,8 @@ export function LeadsBrowser({
         view={view}
         stages={stages}
         sources={sources}
+        companies={companies}
+        contacts={contacts}
         members={members}
         facets={facets}
         exportHref={exportHref}
@@ -55,6 +61,8 @@ function LeadsBrowserChrome({
   view,
   stages,
   sources,
+  companies,
+  contacts,
   members,
   facets,
   exportHref,
@@ -64,6 +72,8 @@ function LeadsBrowserChrome({
   view: DealsView;
   stages: Array<{ id: string; name: string }>;
   sources: Array<{ id: string; name: string }>;
+  companies: DealFormOption[];
+  contacts: DealFormContact[];
   members: DealTeamMember[];
   facets: DealFilterFacets;
   exportHref: string;
@@ -90,9 +100,12 @@ function LeadsBrowserChrome({
             <a href={exportHref} className={pageActionSecondaryClassName()}>
               Exporteren
             </a>
-            <Link href="/leads/nieuw" className={pageActionPrimaryClassName()}>
-              Nieuwe lead
-            </Link>
+            <CreateLeadListDialog
+              stages={stages}
+              sources={sources}
+              companies={companies}
+              contacts={contacts}
+            />
           </>
         }
       />

@@ -43,17 +43,16 @@ function revalidateDealPaths(deal?: { slug: string }) {
 }
 
 export async function createDealAction(
-  _prev: { error?: string } | null,
+  _prev: { error?: string; deal?: { id: string; slug: string } } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; deal?: { id: string; slug: string } }> {
   try {
     const session = await requireSession();
     const input = parseDealForm(formData);
     const deal = await createDeal(input, session.user.id);
     revalidateDealPaths(deal);
-    redirect(dealPath(deal));
+    return { deal: { id: deal.id, slug: deal.slug } };
   } catch (error) {
-    if (isNextRedirect(error)) throw error;
     return toActionError(error);
   }
 }
