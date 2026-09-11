@@ -30,10 +30,11 @@ describe("parseTimelineEventForm", () => {
       parseTimelineEventForm(
         form({ type: "NOTE", body: "Gebeld", dealId: "deal-1" }),
       ),
-    ).toEqual({
+    ).toMatchObject({
       type: "NOTE",
       body: "Gebeld",
       dealId: "deal-1",
+      followUp: undefined,
     });
   });
 
@@ -52,6 +53,63 @@ describe("parseTimelineEventForm", () => {
   it("weigert een gebeurtenis zonder koppeling", () => {
     expect(() =>
       parseTimelineEventForm(form({ type: "NOTE", body: "Los" })),
+    ).toThrow(AppError);
+  });
+
+  it("zet een ingevulde datum in Amsterdamse tijd", () => {
+    expect(
+      parseTimelineEventForm(
+        form({
+          type: "CALL",
+          dealId: "deal-1",
+          occurredDate: "2026-09-13",
+          occurredTime: "09:00",
+        }),
+      ).occurredAt?.toISOString(),
+    ).toBe("2026-09-13T07:00:00.000Z");
+  });
+
+  it("plant een vervolgactie als er een datum is", () => {
+    const parsed = parseTimelineEventForm(
+      form({
+        type: "CALL",
+        dealId: "deal-1",
+        followUpKind: "FOLLOW_UP",
+        followUpTitle: "Prospect opvolgen",
+        followUpDate: "2026-09-13",
+        followUpTime: "09:00",
+      }),
+    );
+    expect(parsed.followUp).toMatchObject({
+      kind: "FOLLOW_UP",
+      title: "Prospect opvolgen",
+      dueDateOnly: false,
+    });
+    expect(parsed.followUp?.dueAt.toISOString()).toBe("2026-09-13T07:00:00.000Z");
+  });
+
+  it("plant een datum-only vervolgactie", () => {
+    const parsed = parseTimelineEventForm(
+      form({
+        type: "CALL",
+        dealId: "deal-1",
+        followUpDate: "2026-09-13",
+        followUpDateOnly: "on",
+      }),
+    );
+    expect(parsed.followUp?.dueDateOnly).toBe(true);
+    expect(parsed.followUp?.dueAt.toISOString()).toBe("2026-09-12T22:00:00.000Z");
+  });
+
+  it("eist een datum als de titel van de vervolgactie is gewijzigd", () => {
+    expect(() =>
+      parseTimelineEventForm(
+        form({
+          type: "CALL",
+          dealId: "deal-1",
+          followUpTitle: "Offerte nazenden",
+        }),
+      ),
     ).toThrow(AppError);
   });
 });

@@ -263,14 +263,16 @@ export async function completeTask(id: string, userId: string) {
     data: { status: "DONE", completedAt: new Date() },
     include: taskInclude,
   });
-  await logEvent({
-    type: "TASK_DONE",
-    body: task.title,
-    userId,
-    dealId: task.dealId,
-    contactId: task.contactId,
-    companyId: task.companyId,
-  });
+  if (task.dealId || task.contactId || task.companyId) {
+    await logEvent({
+      type: "TASK_DONE",
+      body: task.title,
+      userId,
+      dealId: task.dealId,
+      contactId: task.contactId,
+      companyId: task.companyId,
+    });
+  }
   return updated;
 }
 

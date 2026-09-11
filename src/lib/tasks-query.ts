@@ -8,7 +8,7 @@ import {
   setUnlessDefault,
   toListHref,
 } from "@/lib/list-query";
-import { taskStatuses, type TaskStatusValue } from "@/lib/task-validation";
+import { type TaskStatusValue } from "@/lib/task-validation";
 
 export type TaskAssigneeFilter = "aan-mij" | "alle" | string;
 
