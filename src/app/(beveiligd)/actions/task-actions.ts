@@ -3,14 +3,33 @@
 import { revalidatePath } from "next/cache";
 import { requireWritableSession } from "@/lib/auth-session";
 import { toActionError } from "@/lib/errors";
-import { completeTask, reopenTask } from "@/lib/task-service";
-import { parseTaskId } from "@/lib/task-validation";
+import { completeTask, createFollowUpTask, reopenTask } from "@/lib/task-service";
+import { parseCreateFollowUpForm, parseTaskId } from "@/lib/task-validation";
 
 function revalidateTaskPaths() {
   revalidatePath("/taken");
   revalidatePath("/leads", "layout");
   revalidatePath("/contacten", "layout");
   revalidatePath("/bedrijven", "layout");
+}
+
+export async function createFollowUpTaskAction(
+  _prev: { error?: string; createdAt?: number } | null,
+  formData: FormData,
+): Promise<{ error?: string; createdAt?: number }> {
+  try {
+    const session = await requireWritableSession();
+    const input = parseCreateFollowUpForm(formData);
+    await createFollowUpTask({
+      ...input,
+      assigneeUserId: session.user.id,
+      createdByUserId: session.user.id,
+    });
+    revalidateTaskPaths();
+    return { createdAt: Date.now() };
+  } catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function completeTaskAction(

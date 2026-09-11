@@ -7,7 +7,7 @@ import {
 import { AppError } from "@/lib/errors";
 import { normalizeRichText } from "@/lib/rich-text";
 import {
-  DEFAULT_FOLLOW_UP_TITLE,
+  buildFollowUpInput,
   taskKinds,
   type FollowUpInput,
 } from "@/lib/task-validation";
@@ -162,37 +162,16 @@ export function parseTimelineEventForm(formData: FormData): TimelineEventInput {
     parsed.data.occurredTime,
   );
 
-  const followUpDate = parsed.data.followUpDate;
-  const followUpTitle = parsed.data.followUpTitle?.trim();
-  const followUpKind = parsed.data.followUpKind ?? "FOLLOW_UP";
-  let followUp: FollowUpInput | undefined;
-  if (followUpDate) {
-    const dueDateOnly = Boolean(parsed.data.followUpDateOnly);
-    const dueAt = parseOptionalDateTime(
-      followUpDate,
-      dueDateOnly ? undefined : parsed.data.followUpTime,
-      {
-        requiredMessage: "Vul een datum in voor de vervolgactie.",
-        timeRequired: !dueDateOnly,
-      },
-    );
-    if (!dueAt) {
-      throw new AppError("Vul een datum in voor de vervolgactie.", "VALIDATION");
-    }
-    followUp = {
-      kind: followUpKind,
-      title: followUpTitle || DEFAULT_FOLLOW_UP_TITLE,
-      dueAt,
-      dueDateOnly,
-    };
-  } else if (followUpTitle && followUpTitle !== DEFAULT_FOLLOW_UP_TITLE) {
-    throw new AppError("Vul een datum in voor de vervolgactie.", "VALIDATION");
-  }
-
   return {
     ...parsed.data,
     occurredAt,
-    followUp,
+    followUp: buildFollowUpInput({
+      kind: parsed.data.followUpKind,
+      title: parsed.data.followUpTitle,
+      date: parsed.data.followUpDate,
+      time: parsed.data.followUpTime,
+      dateOnly: parsed.data.followUpDateOnly,
+    }),
   };
 }
 

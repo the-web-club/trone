@@ -222,23 +222,64 @@ export async function getTaskFilterFacets(
 
 export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
   const prisma = getPrismaClient();
-  return prisma.task.create({
-    data: {
-      id: createId(),
-      title: input.title.trim(),
-      kind: input.kind,
-      dueAt: input.dueAt,
-      dueDateOnly: input.dueDateOnly,
-      status: "OPEN",
-      assigneeUserId: input.assigneeUserId,
-      createdByUserId: input.createdByUserId,
-      dealId: input.dealId ?? null,
-      contactId: input.contactId ?? null,
-      companyId: input.companyId ?? null,
-      sourceEventId: input.sourceEventId ?? null,
-      description: input.description ?? null,
-    },
-    include: taskInclude,
+  let dealId = input.dealId ?? null;
+  let contactId = input.contactId ?? null;
+  let companyId = input.companyId ?? null;
+
+  if (dealId) {
+    const deal = await prisma.deal.findUnique({
+      where: { id: dealId },
+      select: { id: true, contactId: true, companyId: true },
+    });
+    if (!deal) {
+      throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
+    }
+    contactId = contactId ?? deal.contactId;
+    companyId = companyId ?? deal.companyId;
+  }
+
+  if (!dealId && !contactId && !companyId) {
+    throw new AppError(
+      "Koppel minstens één lead, contact of bedrijf.",
+      "VALIDATION",
+    );
+  }
+
+  const title = input.title.trim();
+  const dueLabel = followUpDueLabel(input);
+
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.create({
+      data: {
+        id: createId(),
+        title,
+        kind: input.kind,
+        dueAt: input.dueAt,
+        dueDateOnly: input.dueDateOnly,
+        status: "OPEN",
+        assigneeUserId: input.assigneeUserId,
+        createdByUserId: input.createdByUserId,
+        dealId,
+        contactId,
+        companyId,
+        sourceEventId: input.sourceEventId ?? null,
+        description: input.description ?? null,
+      },
+      include: taskInclude,
+    });
+    await tx.timelineEvent.create({
+      data: {
+        id: createId(),
+        type: "TASK_DUE",
+        body: `${title} — ${dueLabel}`,
+        occurredAt: new Date(),
+        userId: input.createdByUserId,
+        dealId,
+        contactId,
+        companyId,
+      },
+    });
+    return task;
   });
 }
 
