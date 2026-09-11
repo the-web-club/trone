@@ -26,7 +26,7 @@ export default async function TakenPage({
   const listFilters = {
     zoeken: parsed.zoeken,
     eigenaar: parsed.eigenaar,
-    status: parsed.status,
+    afgerond: parsed.afgerond,
     wanneer: parsed.wanneer,
     van: parsed.van || undefined,
     tot: parsed.tot || undefined,
@@ -36,7 +36,7 @@ export default async function TakenPage({
   const hasFilters = Boolean(
     parsed.zoeken ||
       parsed.eigenaar !== "aan-mij" ||
-      parsed.status !== "open" ||
+      parsed.afgerond ||
       parsed.wanneer !== "alle" ||
       parsed.van ||
       parsed.tot,

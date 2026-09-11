@@ -17,9 +17,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { createId } from "@/lib/id";
 import { effectiveSearchQuery, paginateArgs, type PagedList } from "@/lib/list-query";
 import {
-  taskStatusFilterToEnum,
   type TaskAssigneeFilter,
-  type TaskStatusFilter,
   type TaskWhenFilter,
 } from "@/lib/tasks-query";
 import type { FollowUpInput } from "@/lib/task-validation";
@@ -38,7 +36,8 @@ export type TaskRecord = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 export type TaskListFilters = {
   zoeken?: string;
   eigenaar?: TaskAssigneeFilter;
-  status?: TaskStatusFilter;
+  afgerond?: boolean;
+  ignoreStatus?: boolean;
   wanneer?: TaskWhenFilter;
   van?: string;
   tot?: string;
@@ -87,9 +86,12 @@ export function buildTaskListWhere(
     and.push({ assigneeUserId: eigenaar });
   }
 
-  const status = taskStatusFilterToEnum(filters.status ?? "open");
-  if (status) {
-    and.push({ status });
+  if (!filters.ignoreStatus) {
+    and.push(
+      filters.afgerond
+        ? { status: { in: ["OPEN", "DONE"] } }
+        : { status: "OPEN" },
+    );
   }
 
   const search = normalizeSearch(filters.zoeken);
@@ -181,7 +183,7 @@ export async function getTaskFilterFacets(
     currentUserId,
   );
   const statusWhere = buildTaskListWhere(
-    { ...filters, status: "alle" },
+    { ...filters, ignoreStatus: true },
     currentUserId,
   );
 

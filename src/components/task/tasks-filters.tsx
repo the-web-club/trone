@@ -11,9 +11,7 @@ import type { DealTeamMember } from "@/lib/deal-service";
 import type { TaskFilterFacets } from "@/lib/task-service";
 import {
   buildTasksHref,
-  taskStatusFilterLabels,
   taskWhenLabels,
-  type TaskStatusFilter,
   type TaskWhenFilter,
   type TasksFilterValues,
 } from "@/lib/tasks-query";
@@ -66,17 +64,6 @@ export function TasksFilters({
     })),
   ];
 
-  const statusOptions: SelectOption<TaskStatusFilter>[] = [
-    { value: "open", label: "Open", hint: count(facets.byStatus.OPEN) },
-    { value: "done", label: "Afgerond", hint: count(facets.byStatus.DONE) },
-    {
-      value: "cancelled",
-      label: "Geannuleerd",
-      hint: count(facets.byStatus.CANCELLED),
-    },
-    { value: "alle", label: "Alle statussen", hint: count(facets.statusTotal) },
-  ];
-
   const whenOptions: SelectOption<TaskWhenFilter>[] = [
     { value: "alle", label: taskWhenLabels.alle },
     { value: "achterstallig", label: taskWhenLabels.achterstallig },
@@ -103,12 +90,12 @@ export function TasksFilters({
           onRemove: () => navigate({ eigenaar: "aan-mij" }),
         }
       : null,
-    values.status !== "open"
+    values.afgerond
       ? {
-          key: "status",
-          label: "Status",
-          value: taskStatusFilterLabels[values.status],
-          onRemove: () => navigate({ status: "open" }),
+          key: "afgerond",
+          label: "Afgeronde taken",
+          value: "Aan",
+          onRemove: () => navigate({ afgerond: false }),
         }
       : null,
     values.wanneer !== "alle"
@@ -137,10 +124,12 @@ export function TasksFilters({
   const hasActiveFilters = Boolean(
     values.zoeken ||
       values.eigenaar !== "aan-mij" ||
-      values.status !== "open" ||
+      values.afgerond ||
       values.wanneer !== "alle" ||
       hasDate,
   );
+
+  const moreCount = hasDate ? 1 : 0;
 
   return (
     <ListFilterToolbar
@@ -150,7 +139,7 @@ export function TasksFilters({
       searchPlaceholder="Zoek op titel, lead of klant"
       searchAriaLabel="Zoek taken"
       chips={chips}
-      moreCount={hasDate ? 1 : 0}
+      moreCount={moreCount}
       moreFilters={
         <DateRangeFields
           van={values.van}
@@ -173,16 +162,6 @@ export function TasksFilters({
         className="w-auto max-w-[16rem]"
       />
       <SelectMenu
-        prefix="Status"
-        aria-label="Filter op status"
-        value={values.status}
-        onValueChange={(next) =>
-          navigate({ status: next as TaskStatusFilter })
-        }
-        items={statusOptions}
-        className="w-auto"
-      />
-      <SelectMenu
         prefix="Wanneer"
         aria-label="Filter op deadline"
         value={values.wanneer}
@@ -192,6 +171,21 @@ export function TasksFilters({
         items={whenOptions}
         className="w-auto"
       />
+      <label className="flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-border bg-surface px-2.5 text-sm text-fg shadow-[var(--shadow-xs)]">
+        <input
+          type="checkbox"
+          checked={values.afgerond}
+          onChange={(event) => navigate({ afgerond: event.target.checked })}
+          className="size-3.5 rounded-xs border-border accent-fg"
+          aria-label="Toon afgeronde taken"
+        />
+        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+          Afgeronde taken
+          <span className="text-xs text-fg-muted tabular-nums">
+            {count(facets.byStatus.DONE)}
+          </span>
+        </span>
+      </label>
     </ListFilterToolbar>
   );
 }

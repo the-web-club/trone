@@ -8,11 +8,8 @@ import {
   setUnlessDefault,
   toListHref,
 } from "@/lib/list-query";
-import { type TaskStatusValue } from "@/lib/task-validation";
 
 export type TaskAssigneeFilter = "aan-mij" | "alle" | string;
-
-export type TaskStatusFilter = "open" | "done" | "cancelled" | "alle";
 
 export type TaskWhenFilter =
   | "alle"
@@ -25,7 +22,7 @@ export type TaskWhenFilter =
 export type TasksFilterValues = {
   zoeken: string;
   eigenaar: TaskAssigneeFilter;
-  status: TaskStatusFilter;
+  afgerond: boolean;
   wanneer: TaskWhenFilter;
   van: string;
   tot: string;
@@ -35,6 +32,16 @@ export type TasksQueryValues = Partial<TasksFilterValues> & {
   pagina?: number;
 };
 
+function isTruthyFlag(value: string | null | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return (
+    normalized === "1" ||
+    normalized === "true" ||
+    normalized === "ja" ||
+    normalized === "on"
+  );
+}
+
 export function parseTaskAssigneeFilter(
   value: string | null | undefined,
 ): TaskAssigneeFilter {
@@ -42,19 +49,12 @@ export function parseTaskAssigneeFilter(
   return normalized;
 }
 
-export function parseTaskStatusFilter(
-  value: string | null | undefined,
-): TaskStatusFilter {
-  const normalized = value?.trim().toLowerCase();
-  if (
-    normalized === "open" ||
-    normalized === "done" ||
-    normalized === "cancelled" ||
-    normalized === "alle"
-  ) {
-    return normalized;
-  }
-  return "open";
+export function parseAfgerondFilter(
+  params: Record<string, string | string[] | undefined>,
+): boolean {
+  if (isTruthyFlag(firstSearchParam(params, "afgerond"))) return true;
+  const status = firstSearchParam(params, "status").trim().toLowerCase();
+  return status === "done" || status === "alle";
 }
 
 export function parseTaskWhenFilter(
@@ -73,22 +73,13 @@ export function parseTaskWhenFilter(
   return "alle";
 }
 
-export function taskStatusFilterToEnum(
-  status: TaskStatusFilter,
-): TaskStatusValue | null {
-  if (status === "open") return "OPEN";
-  if (status === "done") return "DONE";
-  if (status === "cancelled") return "CANCELLED";
-  return null;
-}
-
 export function parseTasksSearchParams(
   params: Record<string, string | string[] | undefined>,
 ): TasksFilterValues & { pagina: number } {
   return {
     zoeken: firstSearchParam(params, "zoeken").trim(),
     eigenaar: parseTaskAssigneeFilter(firstSearchParam(params, "eigenaar")),
-    status: parseTaskStatusFilter(firstSearchParam(params, "status")),
+    afgerond: parseAfgerondFilter(params),
     wanneer: parseTaskWhenFilter(firstSearchParam(params, "wanneer")),
     van: normalizeDateOnlyInput(firstSearchParam(params, "van")) ?? "",
     tot: normalizeDateOnlyInput(firstSearchParam(params, "tot")) ?? "",
@@ -100,7 +91,7 @@ export function buildTasksHref(values: TasksQueryValues): string {
   const query = new URLSearchParams();
   setIfPresent(query, "zoeken", values.zoeken);
   setUnlessDefault(query, "eigenaar", values.eigenaar, "aan-mij");
-  setUnlessDefault(query, "status", values.status, "open");
+  if (values.afgerond) query.set("afgerond", "1");
   setUnlessDefault(query, "wanneer", values.wanneer, "alle");
   setIfPresent(query, "van", normalizeDateOnlyInput(values.van));
   setIfPresent(query, "tot", normalizeDateOnlyInput(values.tot));
@@ -116,11 +107,4 @@ export const taskWhenLabels: Record<TaskWhenFilter, string> = {
   "deze-week": "Deze week",
   later: "Later",
   "zonder-datum": "Zonder datum",
-};
-
-export const taskStatusFilterLabels: Record<TaskStatusFilter, string> = {
-  open: "Open",
-  done: "Afgerond",
-  cancelled: "Geannuleerd",
-  alle: "Alle",
 };

@@ -10,7 +10,7 @@ describe("tasks query", () => {
       buildTasksHref({
         zoeken: "",
         eigenaar: "aan-mij",
-        status: "open",
+        afgerond: false,
         wanneer: "alle",
         van: "",
         tot: "",
@@ -24,22 +24,22 @@ describe("tasks query", () => {
       buildTasksHref({
         zoeken: "opvolgen",
         eigenaar: "alle",
-        status: "done",
+        afgerond: true,
         wanneer: "achterstallig",
         van: "2026-09-01",
         tot: "2026-09-30",
         pagina: 2,
       }),
     ).toBe(
-      "/taken?zoeken=opvolgen&eigenaar=alle&status=done&wanneer=achterstallig&van=2026-09-01&tot=2026-09-30&pagina=2",
+      "/taken?zoeken=opvolgen&eigenaar=alle&afgerond=1&wanneer=achterstallig&van=2026-09-01&tot=2026-09-30&pagina=2",
     );
   });
 
-  it("defaults to own open tasks", () => {
+  it("defaults to own open tasks without completed ones", () => {
     expect(parseTasksSearchParams({})).toEqual({
       zoeken: "",
       eigenaar: "aan-mij",
-      status: "open",
+      afgerond: false,
       wanneer: "alle",
       van: "",
       tot: "",
@@ -51,5 +51,14 @@ describe("tasks query", () => {
     expect(parseTasksSearchParams({ eigenaar: "user-42" }).eigenaar).toBe(
       "user-42",
     );
+  });
+
+  it("toont afgeronde taken via het vinkje", () => {
+    expect(parseTasksSearchParams({ afgerond: "1" }).afgerond).toBe(true);
+  });
+
+  it("leest oude status=done URL's als afgerond aan", () => {
+    expect(parseTasksSearchParams({ status: "done" }).afgerond).toBe(true);
+    expect(parseTasksSearchParams({ status: "alle" }).afgerond).toBe(true);
   });
 });

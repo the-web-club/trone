@@ -65,7 +65,14 @@ export function TasksList({
                 <TableRow key={task.id}>
                   <TableCell>
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="font-medium text-fg">{task.title}</span>
+                      <span
+                        className={cn(
+                          "font-medium",
+                          task.status === "DONE" ? "text-fg-muted" : "text-fg",
+                        )}
+                      >
+                        {task.title}
+                      </span>
                       <span className="text-xs text-fg-muted">
                         {taskKindLabels[task.kind]}
                       </span>
@@ -120,7 +127,11 @@ export function TasksList({
         return (
           <ListCard key={task.id}>
             <ListCardHeader>
-              <ListCardTitle>{task.title}</ListCardTitle>
+              <ListCardTitle
+                className={task.status === "DONE" ? "text-fg-muted" : undefined}
+              >
+                {task.title}
+              </ListCardTitle>
               <Badge tone={taskStatusTones[task.status]}>
                 {taskStatusLabels[task.status]}
               </Badge>
