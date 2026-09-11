@@ -22,8 +22,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { RichText } from "@/components/ui/rich-text";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { SelectMenu } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { UserName } from "@/components/user/user-name";
 import { formatDateTime, formatPersonName } from "@/lib/format";
 import {
@@ -148,7 +149,10 @@ export function TimelineEventItem({
           onCancel={() => setEditing(false)}
         />
       ) : event.body ? (
-        <p className="mt-0.5 text-sm leading-snug text-fg">{event.body}</p>
+        <RichText
+          value={event.body}
+          className="mt-0.5 text-sm leading-snug text-fg"
+        />
       ) : null}
       <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-fg-muted">
         {event.quote ? (
@@ -219,7 +223,7 @@ function TimelineEventEditor({
         />
       </FormField>
       <FormField id={`body-${eventId}`} label="Toelichting">
-        <Textarea
+        <RichTextEditor
           name="body"
           defaultValue={body ?? ""}
           placeholder="Wat is er gebeurd?"

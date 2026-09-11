@@ -4,8 +4,8 @@ import { useActionState, useEffect, useRef } from "react";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { SelectMenu } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { timelineEventTypeLabels } from "@/lib/timeline-validation";
 
 export function TimelineComposer({
@@ -65,7 +65,7 @@ export function TimelineComposer({
         />
       </FormField>
       <FormField id="body" label="Toelichting">
-        <Textarea name="body" placeholder="Wat is er gebeurd?" />
+        <RichTextEditor name="body" placeholder="Wat is er gebeurd?" />
       </FormField>
       {state?.error ? (
         <p className="text-sm text-danger" role="alert">

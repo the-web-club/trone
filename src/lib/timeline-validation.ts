@@ -1,11 +1,18 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
+import { normalizeRichText } from "@/lib/rich-text";
 
 function emptyToUndefined(value: unknown): unknown {
   if (value == null) return undefined;
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
   return trimmed === "" ? undefined : trimmed;
+}
+
+function optionalRichText(value: unknown): unknown {
+  if (value == null) return undefined;
+  if (typeof value !== "string") return value;
+  return normalizeRichText(value);
 }
 
 export const manualTimelineTypes = [
@@ -27,7 +34,10 @@ export function isManualTimelineType(
 export const timelineEventSchema = z
   .object({
     type: z.enum(manualTimelineTypes),
-    body: z.preprocess(emptyToUndefined, z.string().optional()),
+    body: z.preprocess(
+      optionalRichText,
+      z.string().max(20_000, "Toelichting is te lang.").optional(),
+    ),
     dealId: z.preprocess(emptyToUndefined, z.string().optional()),
     contactId: z.preprocess(emptyToUndefined, z.string().optional()),
     companyId: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -59,7 +69,10 @@ export function parseTimelineEventForm(formData: FormData): TimelineEventInput {
 export const updateTimelineEventSchema = z.object({
   id: z.string().trim().min(1, "Gebeurtenis ontbreekt"),
   type: z.enum(manualTimelineTypes),
-  body: z.preprocess(emptyToUndefined, z.string().optional()),
+  body: z.preprocess(
+    optionalRichText,
+    z.string().max(20_000, "Toelichting is te lang.").optional(),
+  ),
 });
 
 export type UpdateTimelineEventInput = z.infer<typeof updateTimelineEventSchema>;

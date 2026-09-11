@@ -37,6 +37,18 @@ describe("parseTimelineEventForm", () => {
     });
   });
 
+  it("sanitizet opgemaakte toelichting", () => {
+    expect(
+      parseTimelineEventForm(
+        form({
+          type: "NOTE",
+          body: '<b onclick="alert(1)">Hi</b><script>x</script>',
+          dealId: "deal-1",
+        }),
+      ).body,
+    ).toBe("<b>Hi</b>");
+  });
+
   it("weigert een gebeurtenis zonder koppeling", () => {
     expect(() =>
       parseTimelineEventForm(form({ type: "NOTE", body: "Los" })),
