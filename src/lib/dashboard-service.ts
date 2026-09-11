@@ -2,6 +2,12 @@ import "server-only";
 
 import { getPrismaClient } from "@/lib/db";
 
+function toAmount(value: { toString(): string } | number | null | undefined) {
+  if (value == null) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export async function getDashboardCounts() {
   const prisma = getPrismaClient();
   const [companies, deals, orders, stages, openByStage] = await Promise.all([
@@ -13,21 +19,32 @@ export async function getDashboardCounts() {
       by: ["stageId"],
       where: { status: "OPEN" },
       _count: { id: true },
+      _sum: { valueEstimate: true },
     }),
   ]);
 
-  const countByStage = new Map(
-    openByStage.map((row) => [row.stageId, row._count.id]),
+  const totalsByStage = new Map(
+    openByStage.map((row) => [
+      row.stageId,
+      {
+        count: row._count.id,
+        value: toAmount(row._sum.valueEstimate),
+      },
+    ]),
   );
+
+  const openDealsByStage = stages.map((stage) => ({
+    id: stage.id,
+    name: stage.name,
+    count: totalsByStage.get(stage.id)?.count ?? 0,
+    value: totalsByStage.get(stage.id)?.value ?? 0,
+  }));
 
   return {
     companies,
     deals,
     orders,
-    openDealsByStage: stages.map((stage) => ({
-      id: stage.id,
-      name: stage.name,
-      count: countByStage.get(stage.id) ?? 0,
-    })),
+    pipelineValue: openDealsByStage.reduce((sum, stage) => sum + stage.value, 0),
+    openDealsByStage,
   };
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/ui/panel";
 import { getDashboardCounts } from "@/lib/dashboard-service";
+import { formatEuro } from "@/lib/format";
 import { listSummary } from "@/lib/list-copy";
 
 export const metadata: Metadata = {
@@ -11,11 +12,13 @@ export const metadata: Metadata = {
 
 export default async function OverzichtPage() {
   const counts = await getDashboardCounts();
+  const pipelineLabel = formatEuro(counts.pipelineValue) ?? "€ 0";
 
   const stats = [
     { label: "Bedrijven", value: counts.companies, href: "/bedrijven" },
     { label: "Leads", value: counts.deals, href: "/leads" },
     { label: "Orders", value: counts.orders, href: "/orders" },
+    { label: "Pipeline", value: pipelineLabel, href: "/leads" },
   ];
 
   return (
@@ -29,11 +32,11 @@ export default async function OverzichtPage() {
           listSummary(counts.orders, "order", "orders"),
         ]}
       />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Panel key={stat.label}>
             <p className="text-label font-medium text-fg-muted">{stat.label}</p>
-            <p className="mt-1 text-2xl font-medium tracking-tight text-fg">
+            <p className="mt-1 text-2xl font-medium tracking-tight text-fg tabular-nums">
               <Link href={stat.href} className="hover:underline">
                 {stat.value}
               </Link>
@@ -51,6 +54,11 @@ export default async function OverzichtPage() {
               <p className="mt-1 text-xl font-medium tracking-tight text-fg">
                 {stage.count}
               </p>
+              {stage.count > 0 || stage.value > 0 ? (
+                <p className="mt-0.5 text-sm text-fg-muted tabular-nums">
+                  {formatEuro(stage.value) ?? "€ 0"}
+                </p>
+              ) : null}
             </Panel>
           ))}
         </div>
