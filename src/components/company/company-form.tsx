@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import type { CreatedCompanyOption } from "@/app/(beveiligd)/actions/company-actions";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
@@ -10,6 +11,11 @@ import { CountrySelect } from "@/components/company/country-select";
 import { VatValidateControls } from "@/components/company/vat-validate-controls";
 import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
 import { resolveVatTreatment, viesStatusFromCache } from "@/lib/vat";
+
+type CompanyFormActionState = {
+  error?: string;
+  company?: CreatedCompanyOption;
+};
 
 export type CompanyFormValues = {
   id?: string;
@@ -38,11 +44,11 @@ export function CompanyForm({
 }: {
   company?: CompanyFormValues;
   action: (
-    prev: { error?: string; company?: { id: string; slug: string } } | null,
+    prev: CompanyFormActionState | null,
     formData: FormData,
-  ) => Promise<{ error?: string; company?: { id: string; slug: string } }>;
+  ) => Promise<CompanyFormActionState>;
   submitLabel: string;
-  onCreated?: (company: { id: string; slug: string }) => void;
+  onCreated?: (company: CreatedCompanyOption) => void;
 }) {
   const id = useId();
   const [error, setError] = useState<string | null>(null);
