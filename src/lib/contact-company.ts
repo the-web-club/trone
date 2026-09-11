@@ -9,10 +9,17 @@ export type ContactCompanyRef = {
   companyId?: string | null;
 };
 
+export function normalizeCompanyId(
+  companyId: string | null | undefined,
+): string | null {
+  const trimmed = companyId?.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function getContactCompanyId(
   contact: ContactCompanyRef | null | undefined,
 ): string | null {
-  return contact?.companyId ?? null;
+  return normalizeCompanyId(contact?.companyId);
 }
 
 export function getContactCompany(
@@ -26,7 +33,7 @@ export function contactBelongsToCompany(
   contact: ContactCompanyRef | null | undefined,
   companyId: string | null | undefined,
 ): boolean {
-  return getContactCompanyId(contact) === (companyId ?? null);
+  return getContactCompanyId(contact) === normalizeCompanyId(companyId);
 }
 
 export function assertContactBelongsToCompany(

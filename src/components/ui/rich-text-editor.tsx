@@ -47,6 +47,7 @@ export function RichTextEditor({
   defaultValue = "",
   placeholder,
   disabled = false,
+  tall = false,
   "aria-invalid": ariaInvalid,
 }: {
   name: string;
@@ -54,6 +55,7 @@ export function RichTextEditor({
   defaultValue?: string;
   placeholder?: string;
   disabled?: boolean;
+  tall?: boolean;
   "aria-invalid"?: boolean | "true" | "false";
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -155,7 +157,8 @@ export function RichTextEditor({
       data-field-control=""
       aria-invalid={invalid || undefined}
       className={cn(
-        "flex w-full min-h-20 flex-col overflow-hidden rounded-sm border border-border bg-surface text-fg",
+        "flex w-full flex-col overflow-hidden rounded-sm border border-border bg-surface text-fg",
+        tall ? "min-h-36" : "min-h-20",
         controlMotion,
         "hover:border-border-strong",
         "has-[:focus-visible]:border-fg has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring has-[:focus-visible]:outline-none",
@@ -218,7 +221,10 @@ export function RichTextEditor({
           aria-placeholder={placeholder}
           aria-invalid={invalid || undefined}
           contentEditable={!disabled}
-          className="rich-text min-h-14 px-2.5 pt-1 pb-2 text-sm leading-snug outline-none focus-visible:outline-none"
+          className={cn(
+            "rich-text px-2.5 pt-1 pb-2 text-sm leading-snug outline-none focus-visible:outline-none",
+            tall ? "min-h-24" : "min-h-14",
+          )}
           onInput={sync}
           onBlur={sync}
           onPaste={onPaste}

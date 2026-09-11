@@ -40,11 +40,13 @@ export function CreateContactListDialog({
   const [companyQuery, setCompanyQuery] = useState("");
 
   const companyItems = useMemo(
-    () =>
-      companyList.map((company) => ({
+    () => [
+      { value: "", label: "Geen bedrijf gekoppeld" },
+      ...companyList.map((company) => ({
         value: company.id,
         label: company.name,
       })),
+    ],
     [companyList],
   );
 
@@ -60,10 +62,6 @@ export function CreateContactListDialog({
   }
 
   async function onSubmit(formData: FormData) {
-    if (!companyId) {
-      setError("Kies een bedrijf.");
-      return;
-    }
     setPending(true);
     setError(null);
     const result = await createContactAction(null, formData);
@@ -95,7 +93,7 @@ export function CreateContactListDialog({
           <DialogHeader>
             <DialogTitle>Nieuw contact</DialogTitle>
             <p className="text-sm text-fg-muted">
-              Koppel het contact aan een bedrijf.
+              Een bedrijf koppelen kan nu of later.
             </p>
           </DialogHeader>
           <form action={onSubmit} key={open ? `${id}-open` : `${id}-closed`}>
@@ -105,11 +103,10 @@ export function CreateContactListDialog({
                 <FormField id={`${id}-companyId`} label="Bedrijf" className="min-w-0 flex-1">
                   <ComboboxMenu
                     id={`${id}-companyId`}
-                    required
                     value={companyId}
                     onValueChange={setCompanyId}
                     items={companyItems}
-                    placeholder="Kies een bedrijf"
+                    placeholder="Geen bedrijf gekoppeld"
                     searchPlaceholder="Zoek een bedrijf…"
                     createLabel="Nieuw bedrijf"
                     onCreate={(query) => {
@@ -152,14 +149,16 @@ export function CreateContactListDialog({
               <FormField id={`${id}-notes`} label="Notities">
                 <Textarea name="notes" />
               </FormField>
-              <label className="flex items-center gap-2 text-sm text-fg">
-                <input
-                  type="checkbox"
-                  name="isPrimary"
-                  className="size-3.5 rounded-xs border-border accent-fg"
-                />
-                Primair contact
-              </label>
+              {companyId ? (
+                <label className="flex items-center gap-2 text-sm text-fg">
+                  <input
+                    type="checkbox"
+                    name="isPrimary"
+                    className="size-3.5 rounded-xs border-border accent-fg"
+                  />
+                  Primair contact
+                </label>
+              ) : null}
               {error ? (
                 <p className="text-sm text-danger" role="alert">
                   {error}

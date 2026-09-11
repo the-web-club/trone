@@ -33,6 +33,7 @@ export type ContactPatch = {
   phone?: string | null;
   notes?: string | null;
   isPrimary?: boolean;
+  companyId?: string | null;
 };
 
 function hasFilledValue(value: unknown): boolean {

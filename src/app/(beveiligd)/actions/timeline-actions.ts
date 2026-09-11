@@ -21,6 +21,7 @@ function revalidateTimelinePaths() {
   revalidatePath("/leads", "layout");
   revalidatePath("/contacten", "layout");
   revalidatePath("/bedrijven", "layout");
+  revalidatePath("/taken");
 }
 
 export async function createTimelineEventAction(
@@ -33,10 +34,14 @@ export async function createTimelineEventAction(
     await logEvent({
       type: input.type,
       body: input.body ?? null,
+      occurredAt: input.occurredAt,
+      direction: input.direction,
+      outcome: input.outcome,
       userId: session.user.id,
       dealId: input.dealId,
       contactId: input.contactId,
       companyId: input.companyId,
+      followUp: input.followUp,
     });
     revalidateTimelinePaths();
     return { loggedAt: Date.now() };

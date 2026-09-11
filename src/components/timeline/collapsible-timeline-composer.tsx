@@ -13,7 +13,7 @@ export function CollapsibleTimelineComposer({
   companyId?: string | null;
 }) {
   return (
-    <CollapsibleComposer label="Gebeurtenis loggen">
+    <CollapsibleComposer label="Gebeurtenis registreren">
       {({ close }) => (
         <TimelineComposer
           dealId={dealId}

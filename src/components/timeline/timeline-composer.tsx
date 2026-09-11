@@ -1,12 +1,44 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { SelectMenu } from "@/components/ui/select";
-import { timelineEventTypeLabels } from "@/lib/timeline-validation";
+import { DEFAULT_FOLLOW_UP_TITLE, taskKindLabels } from "@/lib/task-validation";
+import {
+  timelineDirectionLabels,
+  timelineEventTypeLabels,
+  timelineOutcomeLabels,
+} from "@/lib/timeline-validation";
+
+const channelItems = [
+  { value: "CALL", label: timelineEventTypeLabels.CALL },
+  { value: "EMAIL", label: timelineEventTypeLabels.EMAIL },
+  { value: "MEETING", label: timelineEventTypeLabels.MEETING },
+  { value: "DEMO", label: timelineEventTypeLabels.DEMO },
+  { value: "NOTE", label: timelineEventTypeLabels.NOTE },
+];
+
+const directionItems = [
+  { value: "OUTBOUND", label: timelineDirectionLabels.OUTBOUND },
+  { value: "INBOUND", label: timelineDirectionLabels.INBOUND },
+];
+
+const outcomeItems = [
+  { value: "__none", label: "Geen" },
+  { value: "CONNECTED", label: timelineOutcomeLabels.CONNECTED },
+  { value: "NO_ANSWER", label: timelineOutcomeLabels.NO_ANSWER },
+  { value: "VOICEMAIL", label: timelineOutcomeLabels.VOICEMAIL },
+  { value: "BUSY", label: timelineOutcomeLabels.BUSY },
+  { value: "WRONG_NUMBER", label: timelineOutcomeLabels.WRONG_NUMBER },
+];
+
+const followUpKindItems = [
+  { value: "FOLLOW_UP", label: taskKindLabels.FOLLOW_UP },
+];
 
 export function TimelineComposer({
   dealId,
@@ -26,10 +58,12 @@ export function TimelineComposer({
     null,
   );
   const notifiedAt = useRef<number | null>(null);
+  const [dateOnly, setDateOnly] = useState(false);
 
   useEffect(() => {
     if (!state?.loggedAt || notifiedAt.current === state.loggedAt) return;
     notifiedAt.current = state.loggedAt;
+    setDateOnly(false);
     onSuccess?.();
   }, [state?.loggedAt, onSuccess]);
 
@@ -50,23 +84,102 @@ export function TimelineComposer({
       {companyId ? (
         <input type="hidden" name="companyId" value={companyId} />
       ) : null}
-      <FormField id="type" label="Type">
-        <SelectMenu
-          name="type"
-          defaultValue="NOTE"
-          items={[
-            { value: "NOTE", label: timelineEventTypeLabels.NOTE },
-            { value: "CALL", label: timelineEventTypeLabels.CALL },
-            { value: "EMAIL", label: timelineEventTypeLabels.EMAIL },
-            { value: "MEETING", label: timelineEventTypeLabels.MEETING },
-            { value: "DEMO", label: timelineEventTypeLabels.DEMO },
-          ]}
-          searchPlaceholder="Zoek een type…"
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <FormField id="type" label="Kanaal">
+          <SelectMenu
+            name="type"
+            defaultValue="CALL"
+            items={channelItems}
+            searchPlaceholder="Zoek een kanaal…"
+          />
+        </FormField>
+        <FormField id="direction" label="Richting">
+          <SelectMenu
+            name="direction"
+            defaultValue="OUTBOUND"
+            items={directionItems}
+            searchPlaceholder="Zoek een richting…"
+          />
+        </FormField>
+        <FormField id="outcome" label="Uitkomst">
+          <SelectMenu
+            name="outcome"
+            defaultValue="__none"
+            items={outcomeItems}
+            searchPlaceholder="Zoek een uitkomst…"
+          />
+        </FormField>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs text-fg-muted">
+          Laat leeg voor de huidige datum en tijd. Vul in om de interactie op de
+          juiste plek in de tijdlijn te zetten.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id="occurredDate" label="Datum">
+            <Input type="date" name="occurredDate" />
+          </FormField>
+          <FormField id="occurredTime" label="Tijd">
+            <Input type="time" name="occurredTime" />
+          </FormField>
+        </div>
+      </div>
+
+      <FormField id="body" label="Wat is besproken?">
+        <RichTextEditor
+          name="body"
+          tall
+          placeholder="Kort wat er is gezegd of afgesproken."
         />
       </FormField>
-      <FormField id="body" label="Toelichting">
-        <RichTextEditor name="body" placeholder="Wat is er gebeurd?" />
-      </FormField>
+
+      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <legend className="px-1 text-label font-medium text-fg-muted">
+          Vervolgactie plannen
+        </legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField id="followUpKind" label="Type">
+            <SelectMenu
+              name="followUpKind"
+              defaultValue="FOLLOW_UP"
+              items={followUpKindItems}
+              searchPlaceholder="Zoek een type…"
+            />
+          </FormField>
+          <FormField id="followUpTitle" label="Titel">
+            <Input
+              name="followUpTitle"
+              defaultValue={DEFAULT_FOLLOW_UP_TITLE}
+            />
+          </FormField>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id="followUpDate" label="Datum">
+            <Input type="date" name="followUpDate" />
+          </FormField>
+          {dateOnly ? null : (
+            <FormField id="followUpTime" label="Tijd">
+              <Input type="time" name="followUpTime" defaultValue="09:00" />
+            </FormField>
+          )}
+        </div>
+        <label className="flex items-center gap-2 text-sm text-fg">
+          <input
+            type="checkbox"
+            name="followUpDateOnly"
+            checked={dateOnly}
+            onChange={(event) => setDateOnly(event.target.checked)}
+            className="size-3.5 rounded-xs border-border accent-fg"
+          />
+          Alleen datum
+        </label>
+        <p className="text-xs text-fg-muted">
+          Optioneel. Vul een datum in om een taak te plannen.
+        </p>
+      </fieldset>
+
       {state?.error ? (
         <p className="text-sm text-danger" role="alert">
           {state.error}

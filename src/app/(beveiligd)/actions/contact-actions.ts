@@ -14,9 +14,13 @@ import {
   deleteContact,
   getContact,
   listContactsForSelect,
+  setContactCompany,
   updateContact,
 } from "@/lib/contact-service";
-import { getContactCompanyId } from "@/lib/contact-company";
+import {
+  getContactCompanyId,
+  normalizeCompanyId,
+} from "@/lib/contact-company";
 import { toActionError } from "@/lib/errors";
 import { companyPath, contactPath } from "@/lib/paths";
 
@@ -35,7 +39,9 @@ export async function createContactAction(
 }> {
   try {
     await requireSession();
-    const companyId = String(formData.get("companyId") ?? "");
+    const companyId = normalizeCompanyId(
+      String(formData.get("companyId") ?? ""),
+    );
     const input = parseContactForm(formData);
     const contact = await createContact(companyId, input);
     revalidatePath("/bedrijven");
@@ -71,7 +77,9 @@ export async function updateContactAction(
   try {
     await requireSession();
     const id = String(formData.get("id") ?? "");
-    const companyId = String(formData.get("companyId") ?? "") || null;
+    const companyId = normalizeCompanyId(
+      String(formData.get("companyId") ?? ""),
+    );
     const input = parseContactForm(formData);
     const contact = await updateContact(id, companyId, input);
     revalidateContactPaths(contact);
@@ -88,12 +96,16 @@ export async function patchContactAction(
   try {
     await requireSession();
     const current = await getContact(contactId);
-    const input = mergeContactPatch(contactRecordToInput(current), patch);
-    const contact = await updateContact(
+    const { companyId: nextCompanyId, ...fieldPatch } = patch;
+    const input = mergeContactPatch(contactRecordToInput(current), fieldPatch);
+    let contact = await updateContact(
       current.id,
       getContactCompanyId(current),
       input,
     );
+    if (nextCompanyId !== undefined) {
+      contact = await setContactCompany(contact.id, nextCompanyId);
+    }
     revalidateContactPaths(contact);
     return { slug: contact.slug };
   } catch (error) {

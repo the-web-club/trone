@@ -1,11 +1,18 @@
 import "server-only";
 
-import type { Prisma, TimelineEventType } from "@/generated/prisma/client";
+import type {
+  Prisma,
+  TimelineDirection,
+  TimelineEventType,
+  TimelineOutcome,
+} from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import { ACTIVITY_FEED_CAP } from "@/lib/list-query";
 import { getContactCompanyId } from "@/lib/contact-company";
+import type { FollowUpInput } from "@/lib/task-validation";
 import {
   isManualTimelineType,
   type ManualTimelineType,
@@ -33,12 +40,15 @@ export type LogEventInput = {
   type: TimelineEventType;
   body?: string | null;
   occurredAt?: Date;
+  direction?: TimelineDirection | null;
+  outcome?: TimelineOutcome | null;
   userId?: string | null;
   dealId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
   quoteId?: string | null;
   orderId?: string | null;
+  followUp?: FollowUpInput | null;
 };
 
 async function resolveLinks(input: LogEventInput) {
@@ -128,17 +138,63 @@ async function resolveLinks(input: LogEventInput) {
 export async function logEvent(input: LogEventInput) {
   const links = await resolveLinks(input);
   const prisma = getPrismaClient();
+  const occurredAt = input.occurredAt ?? new Date();
+  const followUp = input.followUp;
+  if (followUp && !input.userId) {
+    throw new AppError(
+      "Een vervolgactie vereist een ingelogde gebruiker.",
+      "VALIDATION",
+    );
+  }
 
-  return prisma.timelineEvent.create({
-    data: {
-      id: createId(),
-      type: input.type,
-      body: input.body?.trim() ? input.body.trim() : null,
-      occurredAt: input.occurredAt ?? new Date(),
-      userId: input.userId ?? null,
-      ...links,
-    },
-    include: timelineInclude,
+  return prisma.$transaction(async (tx) => {
+    const event = await tx.timelineEvent.create({
+      data: {
+        id: createId(),
+        type: input.type,
+        body: input.body?.trim() ? input.body.trim() : null,
+        occurredAt,
+        direction: input.direction ?? null,
+        outcome: input.outcome ?? null,
+        userId: input.userId ?? null,
+        ...links,
+      },
+      include: timelineInclude,
+    });
+
+    if (followUp && input.userId) {
+      await tx.task.create({
+        data: {
+          id: createId(),
+          title: followUp.title.trim(),
+          kind: followUp.kind,
+          dueAt: followUp.dueAt,
+          dueDateOnly: followUp.dueDateOnly,
+          status: "OPEN",
+          assigneeUserId: input.userId,
+          createdByUserId: input.userId,
+          dealId: links.dealId,
+          contactId: links.contactId,
+          companyId: links.companyId,
+          sourceEventId: event.id,
+        },
+      });
+      const dueLabel = followUp.dueDateOnly
+        ? formatDate(followUp.dueAt)
+        : formatDateTime(followUp.dueAt);
+      await tx.timelineEvent.create({
+        data: {
+          id: createId(),
+          type: "TASK_DUE",
+          body: `${followUp.title.trim()} — ${dueLabel}`,
+          occurredAt,
+          userId: input.userId,
+          ...links,
+        },
+      });
+    }
+
+    return event;
   });
 }
 

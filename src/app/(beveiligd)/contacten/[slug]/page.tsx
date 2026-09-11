@@ -6,6 +6,7 @@ import { ContactLeadsTable } from "@/components/contact/contact-leads-table";
 import { ContactTimeline } from "@/components/detail/entity-activity";
 import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
+import { listCompaniesForSelect } from "@/lib/company-service";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
 import { contactPath } from "@/lib/paths";
@@ -32,18 +33,20 @@ export default async function ContactDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [session, contact] = await Promise.all([
+  const [session, contact, companies] = await Promise.all([
     requireSession(),
     getContact(slug).catch((error) => {
       if (isAppError(error) && error.status === 404) notFound();
       throw error;
     }),
+    listCompaniesForSelect(),
   ]);
   if (slug !== contact.slug) redirect(contactPath(contact));
   const companyId = getContactCompanyId(contact);
 
   return (
     <ContactDetail
+      companies={companies}
       contact={{
         id: contact.id,
         slug: contact.slug,

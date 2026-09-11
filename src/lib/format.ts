@@ -38,6 +38,7 @@ export function formatEuroExact(value: number | null | undefined): string {
 export function formatDate(value: Date): string {
   return new Intl.DateTimeFormat("nl-NL", {
     dateStyle: "medium",
+    timeZone: "Europe/Amsterdam",
   }).format(value);
 }
 
@@ -45,6 +46,7 @@ export function formatDateTime(value: Date): string {
   return new Intl.DateTimeFormat("nl-NL", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Europe/Amsterdam",
   }).format(value);
 }
 

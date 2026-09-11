@@ -45,7 +45,7 @@ export default async function ContactenPage({
     <ListBrowser>
       <PageHeader
         title="Contacten"
-        description="Personen bij klanten en prospects."
+        description="Personen, met of zonder koppeling aan een bedrijf."
         meta={[
           result.total === 0 && hasFilters
             ? "Geen resultaten"

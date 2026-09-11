@@ -35,11 +35,9 @@ export function CreateQuoteContactDialog({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const disabled = !companyId;
   const open = openProp ?? uncontrolledOpen;
 
   function setOpen(next: boolean) {
-    if (disabled && next) return;
     if (openProp === undefined) setUncontrolledOpen(next);
     onOpenChange?.(next);
     if (!next) setError(null);
@@ -68,7 +66,6 @@ export function CreateQuoteContactDialog({
             <Button
               type="button"
               variant="secondary"
-              disabled={disabled}
               aria-label="Nieuw contact"
             >
               Nieuw
@@ -82,7 +79,9 @@ export function CreateQuoteContactDialog({
         </DialogHeader>
         <form action={onSubmit} key={open ? `${id}-open` : `${id}-closed`}>
           <input type="hidden" name="companyId" value={companyId} />
-          <input type="hidden" name="isPrimary" value="on" />
+          {companyId ? (
+            <input type="hidden" name="isPrimary" value="on" />
+          ) : null}
           <DialogBody className="flex flex-col gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <FormField id={`${id}-firstName`} label="Voornaam">

@@ -159,10 +159,8 @@ export function DealForm({
               placeholder="Geen contactpersoon"
               searchPlaceholder="Zoek een contact…"
               createLabel="Nieuw contact"
-              createDisabled={!companyId}
               wrap
               onCreate={(query) => {
-                if (!companyId) return;
                 setContactQuery(query);
                 setNestedDialog("contact", true);
               }}
@@ -247,7 +245,10 @@ export function DealForm({
         defaultFirstName={contactQuery}
         onCreated={(contact) => {
           applySelection(
-            { companyId, contactId: contact.id },
+            {
+              companyId: contact.companyId ?? companyId,
+              contactId: contact.id,
+            },
             { contacts: [...visibleContacts, contact] },
           );
         }}

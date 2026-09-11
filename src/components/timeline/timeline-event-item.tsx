@@ -36,9 +36,13 @@ import {
 } from "@/lib/paths";
 import {
   isManualTimelineType,
+  timelineDirectionLabels,
   timelineEventTypeLabels,
+  timelineOutcomeLabels,
   type ManualTimelineType,
+  type TimelineDirection,
   type TimelineEventView,
+  type TimelineOutcome,
 } from "@/lib/timeline-validation";
 
 const typeIcons = {
@@ -110,6 +114,16 @@ export function TimelineEventItem({
         <Badge tone={typeTones[event.type]} className="h-5 px-1.5 text-[11px]">
           {timelineEventTypeLabels[event.type]}
         </Badge>
+        {event.direction ? (
+          <span className="text-xs text-fg-muted">
+            {timelineDirectionLabels[event.direction as TimelineDirection]}
+          </span>
+        ) : null}
+        {event.outcome ? (
+          <span className="text-xs text-fg-muted">
+            {timelineOutcomeLabels[event.outcome as TimelineOutcome]}
+          </span>
+        ) : null}
         <span className="inline-flex min-w-0 items-center gap-1 text-xs text-fg-muted">
           {event.user ? (
             <UserName

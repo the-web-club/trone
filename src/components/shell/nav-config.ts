@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
+  CheckSquare,
   FileText,
   Flame,
   LayoutDashboard,
@@ -51,6 +52,7 @@ export const companiesNavGroup: AppNavGroup = {
 
 export const appMainNav: AppNavEntry[] = [
   { type: "link", href: "/overzicht", label: "Overzicht", icon: LayoutDashboard },
+  { type: "link", href: "/taken", label: "Taken", icon: CheckSquare },
   { type: "link", href: "/leads", label: "Leads", icon: Workflow },
   companiesNavGroup,
   { type: "link", href: "/offertes", label: "Offertes", icon: FileText },
@@ -71,6 +73,7 @@ export const settingsHubModules: AppNavLink[] = [
 
 const pageTitles: Array<{ href: string; label: string }> = [
   { href: "/overzicht", label: "Overzicht" },
+  { href: "/taken", label: "Taken" },
   { href: "/leads", label: "Leads" },
   { href: "/bedrijven", label: "Bedrijven" },
   { href: "/contacten", label: "Contacten" },
@@ -83,6 +86,7 @@ const pageTitles: Array<{ href: string; label: string }> = [
 
 const overviewPaths = new Set([
   "/overzicht",
+  "/taken",
   "/leads",
   "/bedrijven",
   "/contacten",

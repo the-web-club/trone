@@ -405,10 +405,8 @@ function LeadDetailFields({
           layout="row"
           searchPlaceholder="Zoek een contact…"
           createLabel="Nieuw contact"
-          createDisabled={!relation.companyId}
           disabled={relation.contactsLoading}
           onCreate={(query) => {
-            if (!relation.companyId) return;
             setContactQuery(query);
             setContactDialogOpen(true);
           }}

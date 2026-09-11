@@ -7,7 +7,10 @@ import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import { getCompany } from "@/lib/company-service";
-import { getContactCompanyId } from "@/lib/contact-company";
+import {
+  getContactCompanyId,
+  normalizeCompanyId,
+} from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
 import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
 
@@ -115,7 +118,7 @@ export const getContact = cache(
   },
 );
 
-function toContactData(input: ContactInput) {
+function toContactData(input: ContactInput, companyId: string | null) {
   return {
     firstName: input.firstName,
     lastName: input.lastName ?? null,
@@ -123,7 +126,7 @@ function toContactData(input: ContactInput) {
     email: input.email ?? null,
     phone: input.phone ?? null,
     notes: input.notes ?? null,
-    isPrimary: input.isPrimary,
+    isPrimary: Boolean(input.isPrimary && companyId),
   };
 }
 
@@ -139,12 +142,18 @@ async function clearOtherPrimaries(companyId: string, exceptId?: string) {
   });
 }
 
-export async function createContact(companyId: string, input: ContactInput) {
-  await getCompany(companyId);
+export async function createContact(
+  companyId: string | null | undefined,
+  input: ContactInput,
+) {
+  const nextCompanyId = normalizeCompanyId(companyId);
+  if (nextCompanyId) {
+    await getCompany(nextCompanyId);
+  }
   const prisma = getPrismaClient();
 
-  if (input.isPrimary) {
-    await clearOtherPrimaries(companyId);
+  if (input.isPrimary && nextCompanyId) {
+    await clearOtherPrimaries(nextCompanyId);
   }
 
   const slug = await nextContactSlug(
@@ -156,8 +165,8 @@ export async function createContact(companyId: string, input: ContactInput) {
     data: {
       id: createId(),
       slug,
-      companyId,
-      ...toContactData(input),
+      companyId: nextCompanyId,
+      ...toContactData(input, nextCompanyId),
     },
   });
 }
@@ -168,12 +177,13 @@ export async function updateContact(
   input: ContactInput,
 ) {
   const contact = await getContact(id);
-  if (getContactCompanyId(contact) !== companyId) {
+  const expectedCompanyId = normalizeCompanyId(companyId);
+  if (getContactCompanyId(contact) !== expectedCompanyId) {
     throw new AppError("Contact niet gevonden.", "NOT_FOUND", 404);
   }
 
-  if (input.isPrimary && companyId) {
-    await clearOtherPrimaries(companyId, contact.id);
+  if (input.isPrimary && expectedCompanyId) {
+    await clearOtherPrimaries(expectedCompanyId, contact.id);
   }
 
   const prisma = getPrismaClient();
@@ -186,8 +196,60 @@ export async function updateContact(
   return prisma.contact.update({
     where: { id: contact.id },
     data: {
-      ...toContactData(input),
+      ...toContactData(input, expectedCompanyId),
       slug,
+    },
+  });
+}
+
+export async function setContactCompany(
+  id: string,
+  companyId: string | null | undefined,
+) {
+  const contact = await getContact(id);
+  const nextCompanyId = normalizeCompanyId(companyId);
+  const currentCompanyId = getContactCompanyId(contact);
+  if (nextCompanyId === currentCompanyId) return contact;
+
+  if (nextCompanyId) {
+    await getCompany(nextCompanyId);
+  }
+
+  const prisma = getPrismaClient();
+  const dealMismatch = nextCompanyId
+    ? { OR: [{ companyId: null }, { companyId: { not: nextCompanyId } }] }
+    : { companyId: { not: null } };
+  const billedMismatch = nextCompanyId
+    ? { companyId: { not: nextCompanyId } }
+    : {};
+  const [dealCount, quoteCount, orderCount] = await Promise.all([
+    prisma.deal.count({
+      where: { contactId: contact.id, ...dealMismatch },
+    }),
+    prisma.quote.count({
+      where: { contactId: contact.id, ...billedMismatch },
+    }),
+    prisma.order.count({
+      where: { contactId: contact.id, ...billedMismatch },
+    }),
+  ]);
+  if (dealCount + quoteCount + orderCount > 0) {
+    throw new AppError(
+      "Dit contact is gekoppeld aan een lead, offerte of order met een ander bedrijf. Pas die koppeling eerst aan.",
+      "VALIDATION",
+    );
+  }
+
+  const isPrimary = nextCompanyId ? contact.isPrimary : false;
+  if (isPrimary && nextCompanyId) {
+    await clearOtherPrimaries(nextCompanyId, contact.id);
+  }
+
+  return prisma.contact.update({
+    where: { id: contact.id },
+    data: {
+      companyId: nextCompanyId,
+      isPrimary,
     },
   });
 }

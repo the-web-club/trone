@@ -34,6 +34,7 @@ describe("isCompaniesGroupActive", () => {
 describe("navTitleForPath", () => {
   it("uses short titles for the commercial flow", () => {
     expect(navTitleForPath("/overzicht")).toBe("Overzicht");
+    expect(navTitleForPath("/taken")).toBe("Taken");
     expect(navTitleForPath("/leads/demo")).toBe("Leads");
     expect(navTitleForPath("/bedrijven/acme")).toBe("Bedrijven");
     expect(navTitleForPath("/contacten/jan")).toBe("Contacten");
@@ -73,7 +74,7 @@ describe("parentNavPath", () => {
 
 describe("bottomNavIcon", () => {
   it("uses Users for Leads in the compact bar, shared icons otherwise", () => {
-    const leads = appMainNav[1];
+    const leads = appMainNav[2];
     expect(leads?.type).toBe("link");
     expect(bottomNavIcon(leads!)).toBe(Users);
     expect(leads?.type === "link" ? leads.icon : null).toBe(Workflow);

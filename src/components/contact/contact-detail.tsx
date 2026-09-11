@@ -1,11 +1,12 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteContactAction,
   patchContactAction,
 } from "@/app/(beveiligd)/actions/contact-actions";
+import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import { ContactNameTitle } from "@/components/contact/contact-name-title";
 import { ContactPrimaryToggle } from "@/components/contact/contact-primary-toggle";
 import { DetailActionMenu, detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
@@ -18,10 +19,13 @@ import {
   DetailHeader,
   DetailPage,
   DetailSection,
-  DetailValueField,
 } from "@/components/detail/detail-layout";
+import {
+  INLINE_SELECT_EMPTY,
+  InlineSelectField,
+} from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
-import { CompanyLink } from "@/components/entity-links";
+import type { SelectOption } from "@/components/ui/select";
 import type { ContactPatch } from "@/lib/contact-validation";
 import { formatPersonName } from "@/lib/format";
 import { contactPath } from "@/lib/paths";
@@ -41,11 +45,13 @@ export type ContactDetailRecord = {
 
 export function ContactDetail({
   contact,
+  companies,
   leads,
   activity,
   isAdmin = false,
 }: {
   contact: ContactDetailRecord;
+  companies: Array<{ id: string; slug: string; name: string }>;
   leads: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
@@ -87,23 +93,27 @@ export function ContactDetail({
         }
         actions={
           <>
-            <DetailActionMenu>
-              <ContactPrimaryToggle
-                isPrimary={contact.isPrimary}
-                onSave={(isPrimary) => save({ isPrimary })}
-                presentation="menu"
-              />
-              {isAdmin ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className={detailMenuButtonClassName(true)}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  Verwijderen
-                </Button>
-              ) : null}
-            </DetailActionMenu>
+            {contact.company || isAdmin ? (
+              <DetailActionMenu>
+                {contact.company ? (
+                  <ContactPrimaryToggle
+                    isPrimary={contact.isPrimary}
+                    onSave={(isPrimary) => save({ isPrimary })}
+                    presentation="menu"
+                  />
+                ) : null}
+                {isAdmin ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={detailMenuButtonClassName(true)}
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    Verwijderen
+                  </Button>
+                ) : null}
+              </DetailActionMenu>
+            ) : null}
             {isAdmin ? (
               <DeleteEntityButton
                 id={contact.id}
@@ -122,7 +132,11 @@ export function ContactDetail({
       <DetailColumns
         left={
           <>
-            <ContactDetailFields contact={contact} save={save} />
+            <ContactDetailFields
+              contact={contact}
+              companies={companies}
+              save={save}
+            />
             {leads}
           </>
         }
@@ -134,11 +148,37 @@ export function ContactDetail({
 
 function ContactDetailFields({
   contact,
+  companies,
   save,
 }: {
   contact: ContactDetailRecord;
+  companies: Array<{ id: string; slug: string; name: string }>;
   save: (patch: ContactPatch) => Promise<string | null>;
 }) {
+  const [companyList, setCompanyList] = useState(companies);
+  const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
+  const [companyQuery, setCompanyQuery] = useState("");
+
+  const companyItems = useMemo<SelectOption[]>(() => {
+    const items: SelectOption[] = [
+      { value: INLINE_SELECT_EMPTY, label: "Geen bedrijf gekoppeld" },
+      ...companyList.map((company) => ({
+        value: company.id,
+        label: company.name,
+      })),
+    ];
+    if (
+      contact.company &&
+      !items.some((item) => item.value === contact.company?.id)
+    ) {
+      items.splice(1, 0, {
+        value: contact.company.id,
+        label: contact.company.name,
+      });
+    }
+    return items;
+  }, [companyList, contact.company]);
+
   return (
     <>
       <DetailSection title="Gegevens">
@@ -163,11 +203,40 @@ function ContactDetailFields({
             layout="row"
             onSave={(phone) => save({ phone: phone || null })}
           />
-          <DetailValueField label="Bedrijf">
-            <CompanyLink company={contact.company} primary />
-          </DetailValueField>
+          <InlineSelectField
+            label="Bedrijf"
+            value={contact.company?.id ?? ""}
+            items={companyItems}
+            layout="row"
+            searchPlaceholder="Zoek een bedrijf…"
+            createLabel="Nieuw bedrijf"
+            onCreate={(query) => {
+              setCompanyQuery(query);
+              setCompanyDialogOpen(true);
+            }}
+            onSave={(companyId) => save({ companyId: companyId || null })}
+          />
         </DetailFieldGrid>
       </DetailSection>
+      <CreateCompanyDialog
+        showTrigger={false}
+        open={companyDialogOpen}
+        onOpenChange={(next) => {
+          setCompanyDialogOpen(next);
+          if (!next) setCompanyQuery("");
+        }}
+        defaultName={companyQuery}
+        onCreated={async (created) => {
+          setCompanyList((list) =>
+            list.some((row) => row.id === created.id)
+              ? list
+              : [...list, created].sort((a, b) =>
+                  a.name.localeCompare(b.name, "nl"),
+                ),
+          );
+          await save({ companyId: created.id });
+        }}
+      />
 
       <DetailSection
         title="Notities"

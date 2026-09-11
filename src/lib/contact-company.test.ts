@@ -6,12 +6,14 @@ import {
   contactBelongsToCompany,
   getContactCompany,
   getContactCompanyId,
+  normalizeCompanyId,
 } from "@/lib/contact-company";
 
 describe("getContactCompanyId", () => {
   it("leest het huidige 1:1-bedrijf van het contact", () => {
     expect(getContactCompanyId({ companyId: "bedrijf-a" })).toBe("bedrijf-a");
     expect(getContactCompanyId({ companyId: null })).toBeNull();
+    expect(getContactCompanyId({ companyId: "  " })).toBeNull();
     expect(getContactCompanyId(null)).toBeNull();
   });
 
@@ -20,6 +22,17 @@ describe("getContactCompanyId", () => {
       id: "bedrijf-a",
     });
     expect(getContactCompany({ companyId: null })).toBeNull();
+  });
+});
+
+describe("normalizeCompanyId", () => {
+  it("zet lege waarden om naar null", () => {
+    expect(normalizeCompanyId("bedrijf-a")).toBe("bedrijf-a");
+    expect(normalizeCompanyId("  bedrijf-a  ")).toBe("bedrijf-a");
+    expect(normalizeCompanyId("")).toBeNull();
+    expect(normalizeCompanyId("   ")).toBeNull();
+    expect(normalizeCompanyId(null)).toBeNull();
+    expect(normalizeCompanyId(undefined)).toBeNull();
   });
 });
 
@@ -40,6 +53,8 @@ describe("assertDealContactCompany", () => {
     expect(contactBelongsToCompany({ companyId: "bedrijf-a" }, "bedrijf-a")).toBe(
       true,
     );
+    expect(contactBelongsToCompany({ companyId: null }, "")).toBe(true);
+    expect(contactBelongsToCompany({ companyId: null }, "  ")).toBe(true);
   });
 
   it("weigert een contact zonder bedrijf als de lead wél een bedrijf heeft", () => {

@@ -271,12 +271,27 @@ enum TimelineEventType {
   SYSTEM
 }
 
+enum TimelineDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum TimelineOutcome {
+  CONNECTED
+  NO_ANSWER
+  VOICEMAIL
+  BUSY
+  WRONG_NUMBER
+}
+
 model TimelineEvent {
-  id         String             @id
+  id         String              @id
   type       TimelineEventType
-  body       String?            @db.Text
-  occurredAt DateTime           @default(now())
-  createdAt  DateTime           @default(now())
+  body       String?             @db.Text
+  occurredAt DateTime            @default(now())
+  createdAt  DateTime            @default(now())
+  direction  TimelineDirection?
+  outcome    TimelineOutcome?
   userId     String?
   dealId     String?
   contactId  String?
@@ -290,6 +305,7 @@ model TimelineEvent {
   company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
   order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  tasks   Task[]
 
   @@index([userId])
   @@index([dealId])
@@ -313,11 +329,17 @@ enum TaskPriority {
   HIGH
 }
 
+enum TaskKind {
+  FOLLOW_UP
+}
+
 model Task {
   id              String        @id
   title           String
+  kind            TaskKind      @default(FOLLOW_UP)
   description     String?       @db.Text
   dueAt           DateTime?
+  dueDateOnly     Boolean       @default(false)
   status          TaskStatus    @default(OPEN)
   priority        TaskPriority?
   assigneeUserId  String
@@ -325,20 +347,23 @@ model Task {
   dealId          String?
   contactId       String?
   companyId       String?
+  sourceEventId   String?
   createdAt       DateTime      @default(now())
   completedAt     DateTime?
 
-  assignee  User     @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
-  createdBy User     @relation("TaskCreator", fields: [createdByUserId], references: [id])
-  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
-  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignee    User           @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  createdBy   User           @relation("TaskCreator", fields: [createdByUserId], references: [id])
+  deal        Deal?          @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact     Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  company     Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  sourceEvent TimelineEvent? @relation(fields: [sourceEventId], references: [id], onDelete: SetNull)
 
   @@index([assigneeUserId])
   @@index([createdByUserId])
   @@index([dealId])
   @@index([contactId])
   @@index([companyId])
+  @@index([sourceEventId])
   @@index([status])
   @@index([dueAt])
   @@index([status, assigneeUserId])
