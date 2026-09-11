@@ -155,7 +155,7 @@ export function RichTextEditor({
       data-field-control=""
       aria-invalid={invalid || undefined}
       className={cn(
-        "w-full overflow-hidden rounded-sm border border-border bg-surface text-fg",
+        "flex w-full min-h-20 flex-col overflow-hidden rounded-sm border border-border bg-surface text-fg",
         controlMotion,
         "hover:border-border-strong",
         "has-[:focus-visible]:border-fg has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring has-[:focus-visible]:outline-none",
@@ -166,7 +166,7 @@ export function RichTextEditor({
       <div
         role="toolbar"
         aria-label="Opmaak"
-        className="flex items-center gap-0.5 border-b border-border px-1 py-0.5"
+        className="flex shrink-0 items-center justify-start gap-0.5 self-start px-1 pt-1"
       >
         <FormatButton
           label="Vet"
@@ -204,9 +204,9 @@ export function RichTextEditor({
           <List />
         </FormatButton>
       </div>
-      <div className="relative">
+      <div className="relative min-h-0 flex-1">
         {placeholder && empty ? (
-          <span className="pointer-events-none absolute top-2 left-2.5 text-sm text-fg-subtle">
+          <span className="pointer-events-none absolute top-1 left-2.5 text-sm text-fg-subtle">
             {placeholder}
           </span>
         ) : null}
@@ -218,7 +218,7 @@ export function RichTextEditor({
           aria-placeholder={placeholder}
           aria-invalid={invalid || undefined}
           contentEditable={!disabled}
-          className="rich-text min-h-20 px-2.5 py-2 text-sm leading-snug outline-none focus-visible:outline-none"
+          className="rich-text min-h-14 px-2.5 pt-1 pb-2 text-sm leading-snug outline-none focus-visible:outline-none"
           onInput={sync}
           onBlur={sync}
           onPaste={onPaste}
@@ -259,7 +259,7 @@ function FormatButton({
       aria-pressed={active}
       disabled={disabled}
       className={cn(
-        "inline-flex size-7 items-center justify-center rounded-sm text-fg-muted",
+        "inline-flex size-6 items-center justify-center rounded-sm text-fg-muted",
         controlMotion,
         "hover:bg-hover hover:text-fg",
         "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-fg",
