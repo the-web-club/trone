@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/password-validation";
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -85,8 +89,8 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          minLength={5}
-          maxLength={128}
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           disabled={isLoading}

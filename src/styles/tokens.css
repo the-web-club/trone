@@ -161,6 +161,8 @@
   --accent-fg: var(--gray-0);
   --accent-hover: color-mix(in srgb, var(--brand-accent) 78%, #1a1a1c);
 
+  --success: #6ee7b7;
+  --success-dot: #34d399;
   --danger: #f0b4b0;
   --danger-dot: #f0b4b0;
   --danger-bg: color-mix(in srgb, #f0b4b0 16%, var(--surface-raised));

@@ -2,10 +2,26 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
+import {
+  PasswordRequirements,
+  PASSWORD_REQUIREMENTS_ID,
+} from "@/components/auth/password-requirements";
+import { SlideFade } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  isPasswordValid,
+  passwordApiErrorMessage,
+  passwordValidationMessage,
+} from "@/lib/password-validation";
+
+const inputClassName =
+  "bg-bg focus:border-accent focus-visible:border-accent";
 
 export function SetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
@@ -16,8 +32,9 @@ export function SetPasswordForm({ token }: { token: string }) {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (password !== confirm) {
-      setError("De wachtwoorden komen niet overeen.");
+    const validationError = passwordValidationMessage(password, confirm);
+    if (validationError || !isPasswordValid(password, confirm)) {
+      setError(validationError ?? "Controleer het wachtwoord.");
       return;
     }
 
@@ -32,11 +49,7 @@ export function SetPasswordForm({ token }: { token: string }) {
     setPending(false);
 
     if (result.error) {
-      setError(
-        result.error.code === "INVALID_TOKEN"
-          ? "Deze link is ongeldig of verlopen."
-          : "Wachtwoord instellen is mislukt. Probeer het opnieuw.",
-      );
+      setError(passwordApiErrorMessage(result.error.code));
       return;
     }
 
@@ -52,11 +65,16 @@ export function SetPasswordForm({ token }: { token: string }) {
           type="password"
           autoComplete="new-password"
           required
-          minLength={5}
-          maxLength={128}
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setError(null);
+          }}
           disabled={pending}
+          aria-describedby={PASSWORD_REQUIREMENTS_ID}
+          className={inputClassName}
         />
       </FormField>
       <FormField id="confirm" label="Wachtwoord bevestigen">
@@ -65,18 +83,31 @@ export function SetPasswordForm({ token }: { token: string }) {
           type="password"
           autoComplete="new-password"
           required
-          minLength={5}
-          maxLength={128}
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
           value={confirm}
-          onChange={(event) => setConfirm(event.target.value)}
+          onChange={(event) => {
+            setConfirm(event.target.value);
+            setError(null);
+          }}
           disabled={pending}
+          aria-describedby={PASSWORD_REQUIREMENTS_ID}
+          className={inputClassName}
         />
       </FormField>
-      {error ? (
-        <p className="text-sm text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <PasswordRequirements password={password} confirm={confirm} />
+      <AnimatePresence initial={false}>
+        {error ? (
+          <SlideFade>
+            <p
+              className="rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger"
+              role="alert"
+            >
+              {error}
+            </p>
+          </SlideFade>
+        ) : null}
+      </AnimatePresence>
       <Button type="submit" loading={pending} className="w-full">
         Wachtwoord opslaan
       </Button>
