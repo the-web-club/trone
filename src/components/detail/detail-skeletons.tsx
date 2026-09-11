@@ -193,6 +193,16 @@ export function LeadDetailSkeleton() {
         left={
           <>
             <LeadFieldsSkeleton />
+            <DetailSection title="Leadkwalificatie">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div key={index} className="inline-field">
+                    <SkeletonPulse className="h-3 w-40" />
+                    <SkeletonPulse className="h-8 w-full" />
+                  </div>
+                ))}
+              </div>
+            </DetailSection>
             <DetailSection title="Offertes en orders">
               <DetailTableSkeleton
                 columns={["Offerte", "Status", "Totaal", "Datum", "Order"]}

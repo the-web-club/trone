@@ -9,15 +9,32 @@ import {
   startOfCalendarDate,
 } from "@/lib/date-input";
 import { nextDealSlug } from "@/lib/entity-slug";
-import { AppError } from "@/lib/errors";
-import { createId, whereIdOrSlug } from "@/lib/id";
-import { getPrismaClient } from "@/lib/db";
 import { getContactCompanyId } from "@/lib/contact-company";
+import { getPrismaClient } from "@/lib/db";
 import {
   assertDealContactCompany,
   type DealActivityInput,
   type DealInput,
 } from "@/lib/deal-validation";
+import { AppError } from "@/lib/errors";
+import { createId, whereIdOrSlug } from "@/lib/id";
+import {
+  calculateLeadScore,
+  getLeadScoreQuestion,
+  isLeadScoreQuestionId,
+  leadScoreAnswersFromFields,
+  leadScoreCategoryLabel,
+  leadScoreDerivedFields,
+  leadScoreFilterWhereInput,
+  leadScoreFractionLabel,
+  leadScoreFromDeal,
+  leadScoreMatchesFilter,
+  parseLeadScoreAnswer,
+  LEAD_SCORE_FILTERS,
+  type LeadScoreAnswers,
+  type LeadScoreFilter,
+  type LeadScoreResult,
+} from "@/lib/lead-score";
 import { logEvent } from "@/lib/timeline-service";
 import type {
   DealDateField,
@@ -65,6 +82,7 @@ export type DealListFilters = {
   tot?: string;
   datumveld?: DealDateField;
   sortering?: DealSort;
+  leadscore?: LeadScoreFilter | "";
   page?: number;
   pageSize?: number;
 };
@@ -83,6 +101,14 @@ const dealListSelect = {
   status: true,
   expectedClose: true,
   createdAt: true,
+  qualFit: true,
+  qualNeed: true,
+  qualIntent: true,
+  qualDecision: true,
+  qualTiming: true,
+  leadScore: true,
+  leadScoreAssessed: true,
+  leadScoreNoMatch: true,
   company: { select: { id: true, slug: true, name: true } },
   contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   stage: { select: { id: true, name: true, isWon: true, isLost: true } },
@@ -183,6 +209,10 @@ export function buildDealListWhere(
     and.push({ [field]: range });
   }
 
+  if (filters.leadscore) {
+    and.push(leadScoreFilterWhereInput(filters.leadscore));
+  }
+
   return and.length > 0 ? { AND: and } : {};
 }
 
@@ -194,6 +224,8 @@ function buildDealOrderBy(
       return [{ createdAt: "asc" }, { id: "asc" }];
     case "gewijzigd":
       return [{ updatedAt: "desc" }, { id: "desc" }];
+    case "leadscore":
+      return [{ leadScoreSort: "desc" }, { id: "desc" }];
     case "nieuwste":
     default:
       return [{ createdAt: "desc" }, { id: "desc" }];
@@ -286,12 +318,14 @@ export type DealFilterFacets = {
   byOwner: Array<{ userId: string; count: number }>;
   statusTotal: number;
   byStatus: Partial<Record<DealStatus, number>>;
+  scoreTotal: number;
+  byScore: Record<LeadScoreFilter, number>;
 };
 
 /**
  * Facet counts for the leads filter bar.
  * Each dimension ignores its own filter so counts stay meaningful.
- * Four groupBy queries; totals/unassigned are derived from the groups.
+ * GroupBy queries; totals/unassigned are derived from the groups.
  */
 export async function getDealFilterFacets(
   filters: DealListFilters = {},
@@ -315,8 +349,12 @@ export async function getDealFilterFacets(
     { ...filters, status: "alle" },
     currentUserId,
   );
+  const scoreWhere = buildDealListWhere(
+    { ...filters, leadscore: "" },
+    currentUserId,
+  );
 
-  const [stageGroups, sourceGroups, ownerGroups, statusGroups] =
+  const [stageGroups, sourceGroups, ownerGroups, statusGroups, scoreGroups] =
     await Promise.all([
       prisma.deal.groupBy({
         by: ["stageId"],
@@ -336,6 +374,11 @@ export async function getDealFilterFacets(
       prisma.deal.groupBy({
         by: ["status"],
         where: statusWhere,
+        _count: { _all: true },
+      }),
+      prisma.deal.groupBy({
+        by: ["leadScore", "leadScoreAssessed", "leadScoreNoMatch"],
+        where: scoreWhere,
         _count: { _all: true },
       }),
     ]);
@@ -376,7 +419,37 @@ export async function getDealFilterFacets(
     ),
     statusTotal: sumGroupCounts(statusGroups),
     byStatus,
+    scoreTotal: sumGroupCounts(scoreGroups),
+    byScore: scoreFacetsFromGroups(scoreGroups),
   };
+}
+
+function scoreFacetsFromGroups(
+  groups: Array<{
+    leadScore: number | null;
+    leadScoreAssessed: number;
+    leadScoreNoMatch: boolean;
+    _count: { _all: number };
+  }>,
+): Record<LeadScoreFilter, number> {
+  const counts = Object.fromEntries(
+    LEAD_SCORE_FILTERS.map((filter) => [filter, 0]),
+  ) as Record<LeadScoreFilter, number>;
+
+  for (const group of groups) {
+    const snapshot = {
+      score: group.leadScore,
+      assessedCount: group.leadScoreAssessed,
+      isNoMatch: group.leadScoreNoMatch,
+    };
+    for (const filter of LEAD_SCORE_FILTERS) {
+      if (leadScoreMatchesFilter(snapshot, filter)) {
+        counts[filter] += group._count._all;
+      }
+    }
+  }
+
+  return counts;
 }
 
 function sumGroupCounts(groups: Array<{ _count: { _all: number } }>): number {
@@ -409,6 +482,8 @@ export async function exportDealsCsv(
     "Bedrijf",
     "Contact",
     "Fase",
+    "Leadscore",
+    "Scorecategorie",
     "Status",
     "Waarde",
     "Bron",
@@ -428,11 +503,14 @@ export async function exportDealsCsv(
       deal.valueEstimate == null ? null : Number(deal.valueEstimate),
       deal.quotes,
     );
+    const score = leadScoreFromDeal(deal);
     return [
       deal.title,
       deal.company?.name ?? "",
       contact,
       deal.stage.name,
+      leadScoreFractionLabel(score) ?? "Niet beoordeeld",
+      leadScoreCategoryLabel(score.category),
       deal.status,
       value == null ? "" : String(value),
       deal.source?.name ?? "",
@@ -656,6 +734,70 @@ export async function setDealOwner(id: string, ownerUserId: string | null) {
     where: { id: deal.id },
     data: { ownerUserId: nextOwnerId },
   });
+}
+
+const qualificationSelect = {
+  slug: true,
+  qualFit: true,
+  qualNeed: true,
+  qualIntent: true,
+  qualDecision: true,
+  qualTiming: true,
+} satisfies Prisma.DealSelect;
+
+export async function setDealQualificationAnswer(
+  id: string,
+  questionId: string,
+  answerKey: string | null,
+): Promise<{
+  slug: string;
+  answers: LeadScoreAnswers;
+  result: LeadScoreResult;
+}> {
+  const current = await getDeal(id);
+  const question = getLeadScoreQuestion(questionId);
+  if (!question || !isLeadScoreQuestionId(questionId)) {
+    throw new AppError("Onbekende kwalificatievraag.", "VALIDATION");
+  }
+  const parsed = parseLeadScoreAnswer(questionId, answerKey);
+  const field = question.field;
+  const prisma = getPrismaClient();
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.$queryRawUnsafe(
+      "SELECT id FROM deal WHERE id = ? FOR UPDATE",
+      current.id,
+    );
+    const locked = await tx.deal.findUnique({
+      where: { id: current.id },
+      select: qualificationSelect,
+    });
+    if (!locked) {
+      throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
+    }
+
+    const answers: LeadScoreAnswers = {
+      ...leadScoreAnswersFromFields(locked),
+      [question.id]: parsed,
+    };
+    const result = calculateLeadScore(answers);
+
+    return tx.deal.update({
+      where: { id: current.id },
+      data: {
+        [field]: parsed,
+        ...leadScoreDerivedFields(result),
+      },
+      select: qualificationSelect,
+    });
+  });
+
+  const answers = leadScoreAnswersFromFields(updated);
+  return {
+    slug: updated.slug,
+    answers,
+    result: calculateLeadScore(answers),
+  };
 }
 
 export async function addDealActivity(

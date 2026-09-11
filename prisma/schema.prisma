@@ -208,6 +208,15 @@ model Deal {
   lostReason    String?
   expectedClose DateTime?  @db.Date
   isHot         Boolean    @default(false)
+  qualFit       String?
+  qualNeed      String?
+  qualIntent    String?
+  qualDecision  String?
+  qualTiming    String?
+  leadScore          Int?
+  leadScoreAssessed  Int      @default(0)
+  leadScoreNoMatch   Boolean  @default(false)
+  leadScoreSort      Int      @default(-1)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -229,6 +238,9 @@ model Deal {
   @@index([contactId])
   @@index([createdAt])
   @@index([status, stageId])
+  @@index([leadScoreNoMatch, leadScore])
+  @@index([leadScoreAssessed])
+  @@index([leadScoreSort])
   @@map("deal")
 }
 

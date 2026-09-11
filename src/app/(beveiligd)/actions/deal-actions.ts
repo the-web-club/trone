@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin, requireSession } from "@/lib/auth-session";
+import {
+  requireAdmin,
+  requireSession,
+  requireWritableSession,
+} from "@/lib/auth-session";
 import {
   addDealActivity,
   createDeal,
@@ -13,6 +17,7 @@ import {
   moveDealToStage,
   setDealHot,
   setDealOwner,
+  setDealQualificationAnswer,
   updateDeal,
 } from "@/lib/deal-service";
 import {
@@ -24,6 +29,7 @@ import {
 } from "@/lib/deal-validation";
 import { toActionError } from "@/lib/errors";
 import { dealPath } from "@/lib/paths";
+import type { LeadScoreAnswers, LeadScoreResult } from "@/lib/lead-score";
 
 function isNextRedirect(error: unknown): boolean {
   return (
@@ -112,6 +118,29 @@ export async function setDealOwnerAction(
     const deal = await setDealOwner(dealId, ownerUserId);
     revalidateDealPaths(deal);
     return {};
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function patchDealQualificationAction(
+  dealId: string,
+  questionId: string,
+  answerKey: string | null,
+): Promise<{
+  error?: string;
+  answers?: LeadScoreAnswers;
+  result?: LeadScoreResult;
+}> {
+  try {
+    await requireWritableSession();
+    const updated = await setDealQualificationAnswer(
+      dealId,
+      questionId,
+      answerKey,
+    );
+    revalidateDealPaths(updated);
+    return { answers: updated.answers, result: updated.result };
   } catch (error) {
     return toActionError(error);
   }

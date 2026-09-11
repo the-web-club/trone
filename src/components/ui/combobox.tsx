@@ -191,6 +191,7 @@ export function ComboboxMenu<Value extends string = string>({
                   className={cn(
                     popupItem,
                     "relative pr-2 pl-7 data-[selected]:font-medium",
+                    wrap && "items-start",
                   )}
                 >
                   <ComboboxPrimitive.ItemIndicator className="absolute left-2 inline-flex text-fg">
@@ -203,7 +204,14 @@ export function ComboboxMenu<Value extends string = string>({
                       size="xs"
                     />
                   ) : null}
-                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1",
+                      wrap ? "break-words whitespace-normal" : "truncate",
+                    )}
+                  >
+                    {option.label}
+                  </span>
                   {option.hint ? (
                     <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
                       {option.hint}

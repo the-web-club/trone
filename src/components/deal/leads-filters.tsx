@@ -22,6 +22,11 @@ import { formatDate, formatEuro } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
 import {
+  LEAD_SCORE_FILTERS,
+  leadScoreFilterLabel,
+  type LeadScoreFilter,
+} from "@/lib/lead-score";
+import {
   buildDealsHref,
   type DealDateField,
   type DealSort,
@@ -99,6 +104,7 @@ export function LeadsFilters({
       tot: next.tot ?? values.tot,
       datumveld: next.datumveld ?? values.datumveld,
       sortering: next.sortering ?? values.sortering,
+      leadscore: next.leadscore ?? values.leadscore,
       pagina: 1,
       view,
     });
@@ -172,6 +178,16 @@ export function LeadsFilters({
     { value: "nieuwste", label: "Nieuwste" },
     { value: "oudste", label: "Oudste" },
     { value: "gewijzigd", label: "Gewijzigd" },
+    { value: "leadscore", label: "Leadscore" },
+  ];
+
+  const scoreOptions: SelectOption<LeadScoreFilter | typeof ALL>[] = [
+    { value: ALL, label: "Alle", hint: count(facets.scoreTotal) },
+    ...LEAD_SCORE_FILTERS.map((filter) => ({
+      value: filter,
+      label: leadScoreFilterLabel(filter),
+      hint: count(facets.byScore[filter]),
+    })),
   ];
 
   const dateFieldOptions: SelectOption<DealDateField>[] = [
@@ -230,6 +246,14 @@ export function LeadsFilters({
         statusOptions.find((option) => option.value === values.status)?.label ??
         values.status,
       onRemove: () => navigate({ status: "alle" }),
+    });
+  }
+  if (values.leadscore) {
+    chips.push({
+      key: "leadscore",
+      label: "Leadscore",
+      value: leadScoreFilterLabel(values.leadscore),
+      onRemove: () => navigate({ leadscore: "" }),
     });
   }
   if (hasValueRange) {
@@ -327,6 +351,18 @@ export function LeadsFilters({
           onValueChange={(next) => navigate({ status: next })}
           items={statusOptions}
           className="w-auto"
+        />
+
+        <SelectMenu<LeadScoreFilter | typeof ALL>
+          prefix="Leadscore"
+          aria-label="Filter op leadscore"
+          value={values.leadscore || ALL}
+          onValueChange={(next) =>
+            navigate({ leadscore: next === ALL ? "" : next })
+          }
+          items={scoreOptions}
+          contentClassName="min-w-[16rem]"
+          className="w-auto max-w-[16rem]"
         />
 
         <SelectMenu<DealSort>

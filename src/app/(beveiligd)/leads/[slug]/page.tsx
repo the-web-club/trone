@@ -5,13 +5,18 @@ import { LeadDetail } from "@/components/deal/lead-detail";
 import { LeadQuotesTable } from "@/components/deal/lead-quotes-table";
 import { DealTimeline } from "@/components/detail/entity-activity";
 import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
-import { isAdminSession, requireSession } from "@/lib/auth-session";
+import {
+  isAdminSession,
+  isViewerSession,
+  requireSession,
+} from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
 import { effectiveDealValue, sumActiveQuoteTotals } from "@/lib/deal-value";
 import { formatEuro } from "@/lib/format";
+import { leadScoreAnswersFromFields } from "@/lib/lead-score";
 import { dealPath } from "@/lib/paths";
 
 export async function generateMetadata({
@@ -84,6 +89,7 @@ export default async function LeadDetailPage({
           isWon: deal.stage.isWon,
           isLost: deal.stage.isLost,
         },
+        qualification: leadScoreAnswersFromFields(deal),
       }}
       stages={stages.map((stage) => ({
         id: stage.id,
@@ -93,6 +99,7 @@ export default async function LeadDetailPage({
       }))}
       relationOptions={relationOptions}
       isAdmin={isAdminSession(session)}
+      canEdit={!isViewerSession(session)}
       quotes={
         <LeadQuotesTable
           quotes={deal.quotes.map((quote) => ({

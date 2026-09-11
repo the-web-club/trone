@@ -88,7 +88,7 @@ describe("getDealFilterFacets", () => {
     expect(where).not.toContain("user-me");
   });
 
-  it("leidt totalen af uit vier groupBy-queries, zonder losse counts", async () => {
+  it("leidt totalen af uit vijf groupBy-queries, zonder losse counts", async () => {
     mockDealGroupBy.mockImplementation(async (args: { by: string[] }) => {
       if (args.by[0] === "stageId") {
         return [
@@ -109,6 +109,16 @@ describe("getDealFilterFacets", () => {
           { ownerUserId: "user-other", _count: { _all: 3 } },
         ];
       }
+      if (args.by[0] === "leadScore") {
+        return [
+          {
+            leadScore: null,
+            leadScoreAssessed: 0,
+            leadScoreNoMatch: false,
+            _count: { _all: 10 },
+          },
+        ];
+      }
       return [
         { status: "OPEN", _count: { _all: 8 } },
         { status: "WON", _count: { _all: 2 } },
@@ -118,7 +128,7 @@ describe("getDealFilterFacets", () => {
     const facets = await getDealFilterFacets({}, "user-me");
 
     expect(mockDealCount).not.toHaveBeenCalled();
-    expect(mockDealGroupBy).toHaveBeenCalledTimes(4);
+    expect(mockDealGroupBy).toHaveBeenCalledTimes(5);
     expect(facets.stageTotal).toBe(10);
     expect(facets.sourceTotal).toBe(10);
     expect(facets.unassignedSource).toBe(3);
@@ -128,5 +138,31 @@ describe("getDealFilterFacets", () => {
     expect(facets.assignedToMe).toBe(5);
     expect(facets.statusTotal).toBe(10);
     expect(facets.byStatus).toEqual({ OPEN: 8, WON: 2 });
+    expect(facets.scoreTotal).toBe(10);
+    expect(facets.byScore["niet-beoordeeld"]).toBe(10);
+    expect(facets.byScore.hoog).toBe(0);
+  });
+
+  it("negeert de eigen dimensie: score-facet houdt fase, niet de leadscore", async () => {
+    await getDealFilterFacets({
+      stageId: "stage-offerte",
+      leadscore: "hoog",
+      zoeken: "demo",
+    });
+
+    const scoreGroupCall = mockDealGroupBy.mock.calls.find(
+      (call) => call[0]?.by?.[0] === "leadScore",
+    );
+    expect(scoreGroupCall).toBeTruthy();
+    const scoreWhere = JSON.stringify(scoreGroupCall?.[0]?.where);
+    expect(scoreWhere).toContain("stage-offerte");
+    expect(scoreWhere).toContain("demo");
+    expect(scoreWhere).not.toContain("75");
+
+    const stageGroupCall = mockDealGroupBy.mock.calls.find(
+      (call) => call[0]?.by?.[0] === "stageId",
+    );
+    const stageWhere = JSON.stringify(stageGroupCall?.[0]?.where);
+    expect(stageWhere).toContain("75");
   });
 });

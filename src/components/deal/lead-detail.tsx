@@ -16,6 +16,7 @@ import {
   useCompanyContactFields,
 } from "@/components/contact/use-company-contact-fields";
 import { DealHotToggle } from "@/components/deal/deal-hot-toggle";
+import { LeadQualification } from "@/components/deal/lead-qualification";
 import {
   DetailBackLink,
   DetailColumns,
@@ -35,6 +36,7 @@ import { pageActionPrimaryClassName } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
 import { contactBelongsToCompany } from "@/lib/contact-company";
 import type { DealPatch } from "@/lib/deal-validation";
+import type { LeadScoreAnswers } from "@/lib/lead-score";
 import { formatPersonName } from "@/lib/format";
 import { dealPath, newQuotePath } from "@/lib/paths";
 import type { SelectOption } from "@/components/ui/select";
@@ -60,6 +62,7 @@ export type LeadDetailRecord = {
     companyId: string | null;
   } | null;
   stage: { id: string; name: string; isWon: boolean; isLost: boolean };
+  qualification: LeadScoreAnswers;
 };
 
 export type LeadDetailOption = { id: string; name: string };
@@ -96,6 +99,7 @@ export function LeadDetail({
   quotes,
   activity,
   isAdmin = false,
+  canEdit = true,
 }: {
   deal: LeadDetailRecord;
   stages: LeadDetailStage[];
@@ -103,6 +107,7 @@ export function LeadDetail({
   quotes: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -219,6 +224,11 @@ export function LeadDetail({
                 save={save}
               />
             </Suspense>
+            <LeadQualification
+              dealId={deal.id}
+              answers={deal.qualification}
+              canEdit={canEdit}
+            />
             {quotes}
           </>
         }

@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         tot: parsed.tot || undefined,
         datumveld: parsed.datumveld,
         sortering: parsed.sortering,
+        leadscore: parsed.leadscore,
       },
       session.user.id,
     );

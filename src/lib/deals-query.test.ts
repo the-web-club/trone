@@ -36,9 +36,10 @@ describe("buildDealsHref", () => {
         van: "2026-01-01",
         tot: "2026-08-05",
         sortering: "oudste",
+        leadscore: "hoog",
       }),
     ).toBe(
-      "/leads?zoeken=stoel&fase=stage-1&bron=src-web&eigenaar=niet-toegewezen&status=open&waarde-min=1000&waarde-max=5000&van=2026-01-01&tot=2026-08-05&sortering=oudste",
+      "/leads?zoeken=stoel&fase=stage-1&bron=src-web&eigenaar=niet-toegewezen&status=open&leadscore=hoog&waarde-min=1000&waarde-max=5000&van=2026-01-01&tot=2026-08-05&sortering=oudste",
     );
   });
 
@@ -103,6 +104,7 @@ describe("parse helpers", () => {
     expect(parseDealStatusFilter("WON")).toBe("won");
     expect(parseDealSort(undefined)).toBe("nieuwste");
     expect(parseDealSort("gewijzigd")).toBe("gewijzigd");
+    expect(parseDealSort("leadscore")).toBe("leadscore");
     expect(parseDealDateField("verwacht")).toBe("verwacht");
     expect(parseDealDateField("aangemaakt")).toBe("aangemaakt");
   });
@@ -118,5 +120,14 @@ describe("parseDealsSearchParams", () => {
     expect(parsed.view).toBe("kanban");
     expect(parsed.fase).toBe("");
     expect(parsed.zoeken).toBe("demo");
+  });
+
+  it("parses the leadscore filter", () => {
+    const parsed = parseDealsSearchParams({
+      leadscore: "onvolledig",
+      sortering: "leadscore",
+    });
+    expect(parsed.leadscore).toBe("onvolledig");
+    expect(parsed.sortering).toBe("leadscore");
   });
 });

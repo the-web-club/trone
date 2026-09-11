@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CreateLeadListDialog } from "@/components/deal/create-lead-list-dialog";
 import { LeadsBrowser } from "@/components/deal/leads-browser";
 import { LeadsKanban } from "@/components/deal/leads-kanban";
@@ -46,6 +47,7 @@ export default async function LeadsPage({
     tot: parsed.tot || undefined,
     datumveld: parsed.datumveld,
     sortering: parsed.sortering,
+    leadscore: parsed.leadscore,
   };
 
   const filterValues = {
@@ -60,6 +62,7 @@ export default async function LeadsPage({
     tot: parsed.tot,
     datumveld: parsed.datumveld,
     sortering: parsed.sortering,
+    leadscore: parsed.leadscore,
   };
 
   const [stages, sources, members, facets, result, companies, contacts] =
@@ -104,7 +107,8 @@ export default async function LeadsPage({
       parsed.waardeMin ||
       parsed.waardeMax ||
       parsed.van ||
-      parsed.tot,
+      parsed.tot ||
+      parsed.leadscore,
   );
 
   let emptyMessage = "Nog geen leads. Voeg de eerste lead toe.";
@@ -176,6 +180,11 @@ export default async function LeadsPage({
             ownerImage: deal.ownerUserId
               ? (ownerImages.get(deal.ownerUserId) ?? null)
               : null,
+            qualFit: deal.qualFit,
+            qualNeed: deal.qualNeed,
+            qualIntent: deal.qualIntent,
+            qualDecision: deal.qualDecision,
+            qualTiming: deal.qualTiming,
           }))}
         />
       ) : (
@@ -219,10 +228,25 @@ export default async function LeadsPage({
                 ? (ownerImages.get(deal.ownerUserId) ?? null)
                 : null,
               createdAt: deal.createdAt.toISOString(),
+              qualFit: deal.qualFit,
+              qualNeed: deal.qualNeed,
+              qualIntent: deal.qualIntent,
+              qualDecision: deal.qualDecision,
+              qualTiming: deal.qualTiming,
             }))}
             emptyMessage={emptyMessage}
             emptyAction={
-              !hasFilters ? (
+              hasFilters ? (
+                <>
+                  {" "}
+                  <Link
+                    href={buildDealsHref({ view: parsed.view })}
+                    className="text-fg hover:underline"
+                  >
+                    Filters wissen
+                  </Link>
+                </>
+              ) : (
                 <>
                   {" "}
                   <CreateLeadListDialog
@@ -237,7 +261,7 @@ export default async function LeadsPage({
                     }
                   />
                 </>
-              ) : undefined
+              )
             }
           />
           <ListPagination

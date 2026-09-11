@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DealHotIcon } from "@/components/deal/deal-hot-icon";
+import { LeadScoreView } from "@/components/deal/lead-score-view";
 import { LeadOwnerSelect } from "@/components/deal/lead-owner-select";
 import {
   LeadStageSelect,
@@ -31,6 +32,10 @@ import { formatDate, formatEuro } from "@/lib/format";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { dealPath } from "@/lib/paths";
 import {
+  leadScoreFromDeal,
+  type LeadScoreAnswerFields,
+} from "@/lib/lead-score";
+import {
   quoteStatusLabels,
   quoteStatusTones,
   type QuoteStatusInput,
@@ -56,7 +61,7 @@ export type LeadsListRow = {
   ownerName: string | null;
   ownerImage: string | null;
   createdAt: string;
-};
+} & LeadScoreAnswerFields;
 
 function LeadsListCards({
   rows,
@@ -118,6 +123,9 @@ function LeadsListCards({
                 stages={stages}
               />
             </ListCardRow>
+            <ListCardRow label="Leadscore">
+              <LeadScoreView result={leadScoreFromDeal(row)} compact />
+            </ListCardRow>
             <ListCardRow label="Offerte">
               {row.quoteStatus ? (
                 <Badge tone={quoteStatusTones[row.quoteStatus]}>
@@ -172,6 +180,7 @@ export function LeadsListTable({
             <TableHeaderCell>Titel</TableHeaderCell>
             <TableHeaderCell>Bedrijf</TableHeaderCell>
             <TableHeaderCell>Fase</TableHeaderCell>
+            <TableHeaderCell>Leadscore</TableHeaderCell>
             <TableHeaderCell>Offerte</TableHeaderCell>
             <TableHeaderCell align="right">Waarde</TableHeaderCell>
             <TableHeaderCell>Bron</TableHeaderCell>
@@ -181,7 +190,7 @@ export function LeadsListTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
-            <TableEmptyRow colSpan={8}>
+            <TableEmptyRow colSpan={9}>
               {emptyMessage}
               {emptyAction}
             </TableEmptyRow>
@@ -214,6 +223,9 @@ export function LeadsListTable({
                     stageName={row.stageName}
                     stages={stages}
                   />
+                </TableCell>
+                <TableCell>
+                  <LeadScoreView result={leadScoreFromDeal(row)} compact />
                 </TableCell>
                 <TableCell>
                   {row.quoteStatus ? (

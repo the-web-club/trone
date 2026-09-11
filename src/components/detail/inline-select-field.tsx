@@ -20,6 +20,7 @@ export function InlineSelectField({
   span = "auto",
   searchPlaceholder,
   triggerClassName,
+  contentClassName,
   onSave,
   onCreate,
   createLabel,
@@ -35,6 +36,7 @@ export function InlineSelectField({
   span?: "auto" | "full";
   searchPlaceholder?: string;
   triggerClassName?: string;
+  contentClassName?: string;
   onSave: (next: string) => Promise<string | false | null>;
   onCreate?: (query: string) => void;
   createLabel?: string;
@@ -101,7 +103,7 @@ export function InlineSelectField({
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className="text-label font-medium text-fg-muted">
+        <label htmlFor={id} className="text-label text-pretty font-medium break-words text-fg-muted">
           {label}
         </label>
       )}
@@ -122,6 +124,7 @@ export function InlineSelectField({
             compact && "w-auto",
             triggerClassName,
           )}
+          contentClassName={contentClassName}
           onCreate={onCreate}
           createLabel={createLabel}
           createDisabled={createDisabled}

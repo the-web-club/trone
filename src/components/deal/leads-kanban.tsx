@@ -20,10 +20,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { SelectMenu } from "@/components/ui/select";
 import { DealHotIcon } from "@/components/deal/deal-hot-icon";
+import { LeadScoreView } from "@/components/deal/lead-score-view";
 import { CompanyLink } from "@/components/entity-links";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { formatEuro } from "@/lib/format";
 import { dealPath } from "@/lib/paths";
+import {
+  leadScoreFromDeal,
+  type LeadScoreAnswerFields,
+} from "@/lib/lead-score";
 import { cn } from "@/lib/cn";
 import {
   quoteStatusLabels,
@@ -49,7 +54,7 @@ export type KanbanDeal = {
   isHot: boolean;
   ownerName: string | null;
   ownerImage: string | null;
-};
+} & LeadScoreAnswerFields;
 
 function stageTone(stage: KanbanStage): "default" | "success" | "danger" {
   if (stage.isWon) return "success";
@@ -100,6 +105,13 @@ function DealCard({
         <CompanyLink company={deal.company} fallback="Geen bedrijf" />
       </p>
       {value ? <p className="mt-1 text-xs text-fg">{value}</p> : null}
+      <div
+        className="mt-1.5 min-w-0"
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <LeadScoreView result={leadScoreFromDeal(deal)} compact />
+      </div>
       {deal.quoteStatus ? (
         <div className="mt-1.5">
           <Badge tone={quoteStatusTones[deal.quoteStatus]}>

@@ -1,5 +1,9 @@
 import { normalizeDateOnlyInput, parseAmountInput } from "@/lib/date-input";
 import {
+  parseLeadScoreFilter,
+  type LeadScoreFilter,
+} from "@/lib/lead-score";
+import {
   firstSearchParam,
   parsePageParam,
   toListHref,
@@ -11,7 +15,7 @@ export type DealOwnerFilter = "alle" | "niet-toegewezen" | "aan-mij" | string;
 
 export type DealStatusFilter = "alle" | "open" | "won" | "lost";
 
-export type DealSort = "nieuwste" | "oudste" | "gewijzigd";
+export type DealSort = "nieuwste" | "oudste" | "gewijzigd" | "leadscore";
 
 export type DealDateField = "aangemaakt" | "verwacht";
 
@@ -27,6 +31,7 @@ export type DealsQueryValues = {
   tot?: string;
   datumveld?: string;
   sortering?: string;
+  leadscore?: string;
   pagina?: number;
   view?: DealsView | string | null;
 };
@@ -43,6 +48,7 @@ export type DealsFilterValues = {
   tot: string;
   datumveld: DealDateField;
   sortering: DealSort;
+  leadscore: LeadScoreFilter | "";
 };
 
 export function parseDealsView(
@@ -72,7 +78,11 @@ export function parseDealSort(
   value: string | null | undefined,
 ): DealSort {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "oudste" || normalized === "gewijzigd") {
+  if (
+    normalized === "oudste" ||
+    normalized === "gewijzigd" ||
+    normalized === "leadscore"
+  ) {
     return normalized;
   }
   return "nieuwste";
@@ -100,6 +110,7 @@ export function parseDealsSearchParams(
     tot: normalizeDateOnlyInput(firstSearchParam(params, "tot")) ?? "",
     datumveld: parseDealDateField(firstSearchParam(params, "datumveld")),
     sortering: parseDealSort(firstSearchParam(params, "sortering")),
+    leadscore: parseLeadScoreFilter(firstSearchParam(params, "leadscore")),
     pagina: parsePageParam(firstSearchParam(params, "pagina")),
     view,
   };
@@ -118,12 +129,14 @@ function buildDealsFilterQuery(values: DealsQueryValues): URLSearchParams {
   const tot = normalizeDateOnlyInput(values.tot) ?? "";
   const datumveld = parseDealDateField(values.datumveld);
   const sortering = parseDealSort(values.sortering);
+  const leadscore = parseLeadScoreFilter(values.leadscore);
 
   if (zoeken) query.set("zoeken", zoeken);
   if (fase) query.set("fase", fase);
   if (bron) query.set("bron", bron);
   if (eigenaar !== "alle") query.set("eigenaar", eigenaar);
   if (status !== "alle") query.set("status", status);
+  if (leadscore) query.set("leadscore", leadscore);
   if (waardeMin != null) query.set("waarde-min", String(waardeMin));
   if (waardeMax != null) query.set("waarde-max", String(waardeMax));
   if (van) query.set("van", van);
