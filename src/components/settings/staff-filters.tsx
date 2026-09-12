@@ -92,7 +92,7 @@ export function StaffFilters({ values }: { values: StaffFilterValues }) {
         value={values.rol || ALL}
         onValueChange={(next) => navigate({ rol: next === ALL ? "" : next })}
         items={roleOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
       <SelectMenu
         prefix="Status"
@@ -100,7 +100,7 @@ export function StaffFilters({ values }: { values: StaffFilterValues }) {
         value={values.status || ALL}
         onValueChange={(next) => navigate({ status: next === ALL ? "" : next })}
         items={statusOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
     </ListFilterToolbar>
   );

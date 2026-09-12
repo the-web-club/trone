@@ -142,7 +142,7 @@ export function LeadDetail({
       href={newQuotePath({ deal, company })}
       className={cn(
         pageActionPrimaryClassName(),
-        "detail-action-primary w-full sm:w-auto",
+        "detail-action-primary",
       )}
     >
       Nieuwe offerte

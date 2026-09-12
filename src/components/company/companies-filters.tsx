@@ -178,7 +178,7 @@ export function CompaniesFilters({
         value={values.plaats || ALL}
         onValueChange={(next) => navigate({ plaats: next === ALL ? "" : next })}
         items={cityOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
       <SelectMenu
         prefix="Land"
@@ -186,7 +186,7 @@ export function CompaniesFilters({
         value={values.land || ALL}
         onValueChange={(next) => navigate({ land: next === ALL ? "" : next })}
         items={countryOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
       <SelectMenu
         prefix="Eigenaar"
@@ -195,7 +195,7 @@ export function CompaniesFilters({
         onValueChange={(next) => navigate({ eigenaar: next })}
         items={ownerOptions}
         contentClassName="min-w-[16rem]"
-        className="w-auto max-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
       />
       <SelectMenu
         prefix="Leads"
@@ -205,7 +205,7 @@ export function CompaniesFilters({
           navigate({ leads: parseCompanyLeadsFilter(next) })
         }
         items={leadOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
     </ListFilterToolbar>
   );

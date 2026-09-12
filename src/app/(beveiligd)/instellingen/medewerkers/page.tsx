@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { InviteUserForm } from "@/components/settings/invite-user-form";
 import { StaffFilters } from "@/components/settings/staff-filters";
 import { StaffTable } from "@/components/settings/staff-table";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import { getSessionRole, requireSession } from "@/lib/auth-session";
 import { listSummary } from "@/lib/list-copy";
 import { buildStaffHref, parseStaffSearchParams } from "@/lib/staff-query";
@@ -40,6 +39,11 @@ export default async function MedewerkersPage({
     <ListBrowser>
       <PageHeader
         title="Teamleden"
+        nav={
+          <PageHeaderNavLink href="/instellingen">
+            Terug naar instellingen
+          </PageHeaderNavLink>
+        }
         description="Interne accounts voor het team. Nieuwe teamleden stellen zelf een wachtwoord in via de uitnodigingsmail."
         meta={[
           result.total === 0 && hasFilters
@@ -70,11 +74,6 @@ export default async function MedewerkersPage({
           hrefForPage={(pagina) => buildStaffHref({ ...parsed, pagina })}
         />
       </ListBody>
-      <p className="text-sm text-fg-muted">
-        <Link href="/instellingen" className="hover:underline">
-          Terug naar instellingen
-        </Link>
-      </p>
     </ListBrowser>
   );
 }

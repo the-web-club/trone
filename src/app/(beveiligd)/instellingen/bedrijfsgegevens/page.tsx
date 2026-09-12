@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LetterheadForm } from "@/components/settings/letterhead-form";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import { getSessionRole, requireSession } from "@/lib/auth-session";
 import { getLetterhead } from "@/lib/settings-service";
 
@@ -16,15 +15,13 @@ export default async function BedrijfsgegevensPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Bedrijfsgegevens"
-        description={
-          <Link href="/instellingen" className="hover:underline">
+        nav={
+          <PageHeaderNavLink href="/instellingen">
             Terug naar instellingen
-          </Link>
+          </PageHeaderNavLink>
         }
+        description="Deze gegevens komen op offertes. Lege velden blijven leeg."
       />
-      <p className="max-w-xl text-sm text-fg-muted">
-        Deze gegevens komen op offertes. Lege velden blijven leeg.
-      </p>
       <LetterheadForm letterhead={letterhead} canManage={canManage} />
     </div>
   );

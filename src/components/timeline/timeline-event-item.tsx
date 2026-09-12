@@ -21,6 +21,7 @@ import {
 } from "@/app/(beveiligd)/actions/timeline-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 import { FormField } from "@/components/ui/form-field";
 import { RichText } from "@/components/ui/rich-text";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -248,19 +249,14 @@ function TimelineEventEditor({
           {state.error}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="sm" loading={pending}>
-          Opslaan
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={onCancel}
-        >
+      <FormFooter>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Annuleren
         </Button>
-      </div>
+        <Button type="submit" loading={pending}>
+          Opslaan
+        </Button>
+      </FormFooter>
     </form>
   );
 }

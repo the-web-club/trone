@@ -101,12 +101,16 @@ export function DialogBody({ className, ...props }: React.ComponentProps<"div">)
 
 export function DialogFooter({
   className,
+  layout = "actions",
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  layout?: "actions" | "auto";
+}) {
   return (
     <div
+      data-layout={layout === "auto" ? "auto" : undefined}
       className={cn(
-        "flex shrink-0 flex-wrap items-center justify-end gap-2 px-4 pt-3 pb-3.5",
+        "dialog-footer shrink-0 px-4 pt-3 pb-3.5",
         className,
       )}
       {...props}

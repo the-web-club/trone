@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
   cn(
-    "relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm font-medium whitespace-nowrap",
+    "relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm font-medium whitespace-nowrap md:gap-1.5",
     controlMotion,
     focusRingOutline,
     "disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -30,8 +30,8 @@ const buttonVariants = cva(
       size: {
         xs: "h-6 gap-1 px-1.5 text-xs [&_svg]:size-3",
         sm: "h-7 px-2.5 text-sm [&_svg]:size-3.5",
-        md: "h-8 px-3 text-sm [&_svg]:size-3.5",
-        icon: "size-11 p-0 [&_svg]:size-4 sm:size-8",
+        md: "min-h-11 px-3.5 text-sm [&_svg]:size-4 md:min-h-8 md:px-3 md:[&_svg]:size-3.5",
+        icon: "size-11 p-0 [&_svg]:size-4 md:size-8",
       },
     },
     defaultVariants: {

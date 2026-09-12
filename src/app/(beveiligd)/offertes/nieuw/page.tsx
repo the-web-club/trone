@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { QuoteForm } from "@/components/quote/quote-form";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import {
   getQuoteComposerData,
   resolveQuoteComposerLinks,
@@ -25,15 +24,12 @@ export default async function NieuweOffertePage({
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Nieuwe offerte"
-        description={
-          <>
-            <Link href="/offertes" className="hover:underline">
-              Terug naar offertes
-            </Link>
-            {" · "}
-            Configureer één stoel tegelijk. De prijs volgt live mee.
-          </>
+        nav={
+          <PageHeaderNavLink href="/offertes">
+            Terug naar offertes
+          </PageHeaderNavLink>
         }
+        description="Configureer één stoel tegelijk. De prijs volgt live mee."
       />
       <QuoteForm
         catalog={data.catalog}

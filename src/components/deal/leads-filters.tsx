@@ -1,25 +1,12 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type TransitionStartFunction } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TransitionStartFunction } from "react";
+import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
 import { Button } from "@/components/ui/button";
-import {
-  FilterBar,
-  FilterBarSpacer,
-  FilterChip,
-  FilterCountBadge,
-  SearchInput,
-} from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
-import {
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
 import { formatDate, formatEuro } from "@/lib/format";
-import { cn } from "@/lib/cn";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
 import {
   LEAD_SCORE_FILTERS,
@@ -56,6 +43,7 @@ export function LeadsFilters({
   facets,
   isPending,
   startTransition,
+  toolbarStart,
 }: {
   values: DealsFilterValues;
   view: DealsView;
@@ -65,11 +53,11 @@ export function LeadsFilters({
   facets: DealFilterFacets;
   isPending: boolean;
   startTransition: TransitionStartFunction;
+  toolbarStart?: ReactNode;
 }) {
   const router = useRouter();
   const [zoeken, setZoeken] = useState(values.zoeken);
   const [zoekenFromUrl, setZoekenFromUrl] = useState(values.zoeken);
-  const [moreOpen, setMoreOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideStageFilter = view === "kanban";
 
@@ -280,11 +268,18 @@ export function LeadsFilters({
       onRemove: () => navigate({ van: "", tot: "" }),
     });
   }
+  if (values.sortering !== "nieuwste") {
+    chips.push({
+      key: "sortering",
+      label: "Sortering",
+      value:
+        sortOptions.find((option) => option.value === values.sortering)?.label ??
+        values.sortering,
+      onRemove: () => navigate({ sortering: "nieuwste" }),
+    });
+  }
 
-  const hasActiveFilters =
-    chips.length > 0 ||
-    Boolean(values.zoeken) ||
-    values.sortering !== "nieuwste";
+  const hasActiveFilters = chips.length > 0 || Boolean(values.zoeken);
 
   function resetAll() {
     setZoeken("");
@@ -297,217 +292,169 @@ export function LeadsFilters({
   const sourceValue = values.bron || ALL;
 
   return (
-    <div className="list-toolbar" aria-busy={isPending}>
-      <FilterBar>
-        <SearchInput
-          name="zoeken"
-          value={zoeken}
-          onChange={(event) => onSearchChange(event.target.value)}
-          onClear={onSearchClear}
-          placeholder="Titel, bedrijf of contact"
-          aria-label="Zoek leads"
-          autoComplete="off"
-          containerClassName="w-full min-w-0 sm:w-60"
-        />
-
-        {hideStageFilter ? null : (
-          <SelectMenu
-            prefix="Fase"
-            aria-label="Filter op fase"
-            value={values.fase || ALL}
-            onValueChange={(next) => navigate({ fase: next === ALL ? "" : next })}
-            items={stageOptions}
-            contentClassName="min-w-[14rem]"
-            className="w-auto"
-          />
-        )}
-
-        <SelectMenu
-          prefix="Bron"
-          aria-label="Filter op bron"
-          value={sourceValue}
-          onValueChange={(next) =>
-            navigate({ bron: next === ALL ? "" : next })
-          }
-          items={sourceOptions}
-          contentClassName="min-w-[14rem]"
-          className="w-auto"
-        />
-
-        <SelectMenu
-          prefix="Eigenaar"
-          aria-label="Filter op eigenaar"
-          value={values.eigenaar}
-          onValueChange={(next) => navigate({ eigenaar: next })}
-          items={ownerOptions}
-          contentClassName="min-w-[16rem]"
-          className="w-auto max-w-[16rem]"
-        />
-
-        <SelectMenu<DealStatusFilter>
-          prefix="Status"
-          aria-label="Filter op status"
-          value={values.status}
-          onValueChange={(next) => navigate({ status: next })}
-          items={statusOptions}
-          className="w-auto"
-        />
-
-        <SelectMenu<LeadScoreFilter | typeof ALL>
-          prefix="Leadscore"
-          aria-label="Filter op leadscore"
-          value={values.leadscore || ALL}
-          onValueChange={(next) =>
-            navigate({ leadscore: next === ALL ? "" : next })
-          }
-          items={scoreOptions}
-          contentClassName="min-w-[16rem]"
-          className="w-auto max-w-[16rem]"
-        />
-
-        <SelectMenu<DealSort>
-          prefix="Sortering"
-          aria-label="Sorteer leads"
-          value={values.sortering}
-          onValueChange={(next) => navigate({ sortering: next })}
-          items={sortOptions}
-          className="w-auto"
-        />
-
-        <PopoverRoot open={moreOpen} onOpenChange={setMoreOpen}>
-          <PopoverTrigger
-            render={
-              <Button
-                variant="secondary"
-                className={cn(secondaryCount > 0 && "border-border-strong")}
-              />
-            }
-          >
-            <SlidersHorizontal aria-hidden />
-            Meer filters
-            <FilterCountBadge count={secondaryCount} />
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-[19rem] p-3">
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <p className="text-label font-medium text-fg-muted">Datumbereik</p>
-                <SelectMenu<DealDateField>
-                  aria-label="Datumveld"
-                  value={values.datumveld}
-                  onValueChange={(next) => navigate({ datumveld: next })}
-                  items={dateFieldOptions}
-                  className="w-full"
-                />
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="date"
-                    aria-label="Van"
-                    value={values.van}
-                    onChange={(event) => navigate({ van: event.target.value })}
-                    className="min-w-0 flex-1"
-                  />
-                  <span className="shrink-0 text-fg-subtle" aria-hidden>
-                    –
-                  </span>
-                  <Input
-                    type="date"
-                    aria-label="Tot"
-                    value={values.tot}
-                    onChange={(event) => navigate({ tot: event.target.value })}
-                    className="min-w-0 flex-1"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5 border-t border-border pt-3">
-                <p className="text-label font-medium text-fg-muted">Waarde</p>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    step="1"
-                    inputMode="decimal"
-                    placeholder="Min"
-                    aria-label="Minimale waarde"
-                    defaultValue={values.waardeMin}
-                    onBlur={(event) =>
-                      navigate({ waardeMin: event.target.value.trim() })
-                    }
-                    className="min-w-0 flex-1"
-                  />
-                  <span className="shrink-0 text-fg-subtle" aria-hidden>
-                    –
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="1"
-                    inputMode="decimal"
-                    placeholder="Max"
-                    aria-label="Maximale waarde"
-                    defaultValue={values.waardeMax}
-                    onBlur={(event) =>
-                      navigate({ waardeMax: event.target.value.trim() })
-                    }
-                    className="min-w-0 flex-1"
-                  />
-                </div>
-              </div>
-
-              {secondaryCount > 0 ? (
-                <div className="flex justify-end border-t border-border pt-3">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      navigate({
-                        van: "",
-                        tot: "",
-                        waardeMin: "",
-                        waardeMax: "",
-                      })
-                    }
-                  >
-                    Wissen
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </PopoverContent>
-        </PopoverRoot>
-
-        <FilterBarSpacer />
-
-        {isPending ? (
-          <span className="text-xs text-fg-subtle" role="status">
-            Bijwerken…
-          </span>
-        ) : null}
-
-        {hasActiveFilters ? (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isPending}
-            onClick={resetAll}
-          >
-            Filters wissen
-          </Button>
-        ) : null}
-      </FilterBar>
-
-      {chips.length > 0 ? (
-        <div className="list-toolbar-chips">
-          {chips.map((chip) => (
-            <FilterChip
-              key={chip.key}
-              label={chip.label}
-              value={chip.value}
-              onRemove={chip.onRemove}
+    <ListFilterToolbar
+      searchValue={zoeken}
+      onSearchChange={onSearchChange}
+      onSearchClear={onSearchClear}
+      searchPlaceholder="Titel, bedrijf of contact"
+      searchAriaLabel="Zoek leads"
+      chips={chips}
+      moreCount={secondaryCount}
+      moreFilters={
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <p className="text-label font-medium text-fg-muted">Datumbereik</p>
+            <SelectMenu<DealDateField>
+              aria-label="Datumveld"
+              value={values.datumveld}
+              onValueChange={(next) => navigate({ datumveld: next })}
+              items={dateFieldOptions}
+              className="w-full"
             />
-          ))}
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                aria-label="Van"
+                value={values.van}
+                onChange={(event) => navigate({ van: event.target.value })}
+                className="min-w-0 flex-1"
+              />
+              <span className="shrink-0 text-fg-subtle" aria-hidden>
+                –
+              </span>
+              <Input
+                type="date"
+                aria-label="Tot"
+                value={values.tot}
+                onChange={(event) => navigate({ tot: event.target.value })}
+                className="min-w-0 flex-1"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 border-t border-border pt-3">
+            <p className="text-label font-medium text-fg-muted">Waarde</p>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                inputMode="decimal"
+                placeholder="Min"
+                aria-label="Minimale waarde"
+                defaultValue={values.waardeMin}
+                onBlur={(event) =>
+                  navigate({ waardeMin: event.target.value.trim() })
+                }
+                className="min-w-0 flex-1"
+              />
+              <span className="shrink-0 text-fg-subtle" aria-hidden>
+                –
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                inputMode="decimal"
+                placeholder="Max"
+                aria-label="Maximale waarde"
+                defaultValue={values.waardeMax}
+                onBlur={(event) =>
+                  navigate({ waardeMax: event.target.value.trim() })
+                }
+                className="min-w-0 flex-1"
+              />
+            </div>
+          </div>
+
+          {secondaryCount > 0 ? (
+            <div className="flex justify-end border-t border-border pt-3">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  navigate({
+                    van: "",
+                    tot: "",
+                    waardeMin: "",
+                    waardeMax: "",
+                  })
+                }
+              >
+                Wissen
+              </Button>
+            </div>
+          ) : null}
         </div>
-      ) : null}
-    </div>
+      }
+      hasActiveFilters={hasActiveFilters}
+      onReset={resetAll}
+      isPending={isPending}
+      toolbarStart={toolbarStart}
+    >
+      {hideStageFilter ? null : (
+        <SelectMenu
+          prefix="Fase"
+          aria-label="Filter op fase"
+          value={values.fase || ALL}
+          onValueChange={(next) => navigate({ fase: next === ALL ? "" : next })}
+          items={stageOptions}
+          contentClassName="min-w-[14rem]"
+          className="w-full md:w-auto"
+        />
+      )}
+
+      <SelectMenu
+        prefix="Bron"
+        aria-label="Filter op bron"
+        value={sourceValue}
+        onValueChange={(next) =>
+          navigate({ bron: next === ALL ? "" : next })
+        }
+        items={sourceOptions}
+        contentClassName="min-w-[14rem]"
+        className="w-full md:w-auto"
+      />
+
+      <SelectMenu
+        prefix="Eigenaar"
+        aria-label="Filter op eigenaar"
+        value={values.eigenaar}
+        onValueChange={(next) => navigate({ eigenaar: next })}
+        items={ownerOptions}
+        contentClassName="min-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
+      />
+
+      <SelectMenu<DealStatusFilter>
+        prefix="Status"
+        aria-label="Filter op status"
+        value={values.status}
+        onValueChange={(next) => navigate({ status: next })}
+        items={statusOptions}
+        className="w-full md:w-auto"
+      />
+
+      <SelectMenu<LeadScoreFilter | typeof ALL>
+        prefix="Leadscore"
+        aria-label="Filter op leadscore"
+        value={values.leadscore || ALL}
+        onValueChange={(next) =>
+          navigate({ leadscore: next === ALL ? "" : next })
+        }
+        items={scoreOptions}
+        contentClassName="min-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
+      />
+
+      <SelectMenu<DealSort>
+        prefix="Sortering"
+        aria-label="Sorteer leads"
+        value={values.sortering}
+        onValueChange={(next) => navigate({ sortering: next })}
+        items={sortOptions}
+        className="w-full md:w-auto"
+      />
+    </ListFilterToolbar>
   );
 }

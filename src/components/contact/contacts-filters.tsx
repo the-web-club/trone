@@ -86,7 +86,7 @@ export function ContactsFilters({
         onValueChange={(next) => navigate({ bedrijf: next === ALL ? "" : next })}
         items={companyOptions}
         contentClassName="min-w-[14rem]"
-        className="w-auto max-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
       />
     </ListFilterToolbar>
   );

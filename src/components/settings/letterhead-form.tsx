@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateLetterheadAction } from "@/app/(beveiligd)/actions/settings-actions";
 import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import type { Letterhead } from "@/lib/letterhead";
@@ -131,11 +132,11 @@ export function LetterheadForm({
         </p>
       ) : null}
       {canManage ? (
-        <div>
+        <FormFooter>
           <Button type="submit" loading={pending}>
             Opslaan
           </Button>
-        </div>
+        </FormFooter>
       ) : (
         <p className="text-sm text-fg-muted">
           Alleen een beheerder kan de bedrijfsgegevens wijzigen.

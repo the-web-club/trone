@@ -7,10 +7,10 @@ import { controlMotion, focusRingOutline } from "@/components/ui/control-styles"
 import { cn } from "@/lib/cn";
 
 const segmentTrackClassName =
-  "inline-flex h-8 items-center gap-0.5 rounded-sm bg-surface-sunk p-0.5";
+  "inline-flex min-h-11 items-center gap-0.5 rounded-sm bg-surface-sunk p-0.5 md:h-8 md:min-h-8";
 
 const segmentClassName = cn(
-  "inline-flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-sm whitespace-nowrap",
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[4px] px-2 text-sm whitespace-nowrap md:h-7 md:min-h-7 md:min-w-0 md:gap-1.5",
   controlMotion,
   focusRingOutline,
 );
@@ -69,7 +69,9 @@ export function SegmentedControl<Value extends string>({
               segmentStateClassName(active),
             )}
           >
-            {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
+            {Icon ? (
+              <Icon className="size-4 shrink-0 md:size-3.5" aria-hidden />
+            ) : null}
             <span className={cn(item.compactLabel && "hidden sm:inline")}>
               {item.label}
             </span>

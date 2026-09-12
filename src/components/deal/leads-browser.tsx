@@ -9,6 +9,7 @@ import {
   PageHeader,
   pageActionSecondaryClassName,
 } from "@/components/shell/page-header";
+import { cn } from "@/lib/cn";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
 import type { DealsFilterValues, DealsView } from "@/lib/deals-query";
 
@@ -89,7 +90,7 @@ function LeadsBrowserChrome({
         meta={[summary]}
         actions={
           <>
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
               <LeadsViewSwitcher
                 view={view}
                 values={values}
@@ -97,7 +98,10 @@ function LeadsBrowserChrome({
                 disabled={isPending}
               />
             </div>
-            <a href={exportHref} className={pageActionSecondaryClassName()}>
+            <a
+              href={exportHref}
+              className={cn(pageActionSecondaryClassName(), "hidden md:inline-flex")}
+            >
               Exporteren
             </a>
             <CreateLeadListDialog
@@ -109,14 +113,6 @@ function LeadsBrowserChrome({
           </>
         }
       />
-      <div className="sm:hidden">
-        <LeadsViewSwitcher
-          view={view}
-          values={values}
-          startTransition={startTransition}
-          disabled={isPending}
-        />
-      </div>
       <LeadsFilters
         values={values}
         view={view}
@@ -126,6 +122,14 @@ function LeadsBrowserChrome({
         facets={facets}
         isPending={isPending}
         startTransition={startTransition}
+        toolbarStart={
+          <LeadsViewSwitcher
+            view={view}
+            values={values}
+            startTransition={startTransition}
+            disabled={isPending}
+          />
+        }
       />
     </>
   );

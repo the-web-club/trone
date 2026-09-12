@@ -41,7 +41,7 @@ export function PriceBar({
   return (
     <div
       className={cn(
-        "isolate w-full border-t border-border bg-bg px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-sm)] lg:rounded-b-xl",
+        "isolate w-full border-t border-border bg-bg px-3 py-3 shadow-[var(--shadow-sm)] lg:rounded-b-xl",
       )}
     >
       <Collapse open={detailsOpen && showPriceDetails && Boolean(price)}>
@@ -126,8 +126,8 @@ export function PriceBar({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-col items-stretch gap-1.5 sm:max-w-sm sm:items-end">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-col items-stretch gap-2 md:max-w-sm md:items-end">
+          <div className="flex flex-wrap items-center gap-2 md:justify-end">
             <Button
               type="button"
               variant="ghost"
@@ -144,10 +144,15 @@ export function PriceBar({
             >
               Nog een stoel
             </Button>
-            <Button type="submit" loading={pending} disabled={!canSubmit}>
-              {submitLabel}
-            </Button>
           </div>
+          <Button
+            type="submit"
+            className="w-full md:w-auto"
+            loading={pending}
+            disabled={!canSubmit}
+          >
+            {submitLabel}
+          </Button>
           <p className="text-label text-fg-subtle sm:text-right">
             {!canSubmit && submitDisabledReason
               ? submitDisabledReason

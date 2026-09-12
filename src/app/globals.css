@@ -157,24 +157,35 @@
 
   .page-header {
     display: flex;
-    min-height: 2rem;
+    min-height: 2.75rem;
     flex-direction: column;
-    flex-wrap: wrap;
     align-items: stretch;
-    justify-content: space-between;
+    row-gap: 0.25rem;
+  }
+
+  .page-header-main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
     column-gap: 0.75rem;
     row-gap: 0.5rem;
   }
 
-  @media (min-width: 640px) {
-    .page-header {
-      flex-direction: row;
-      align-items: flex-start;
-    }
+  .page-header-copy {
+    min-width: min(12rem, 100%);
+    flex: 1 1 0;
   }
 
-  .page-header-copy {
-    min-width: 0;
+  .page-header-nav {
+    min-height: 2.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-header-nav {
+      min-height: 0;
+    }
   }
 
   .page-header-title {
@@ -211,32 +222,16 @@
 
   .page-actions {
     display: flex;
-    width: 100%;
-    flex-shrink: 0;
+    width: auto;
+    flex: 0 0 auto;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
   }
 
-  @media (min-width: 640px) {
-    .page-actions {
-      width: auto;
-    }
-  }
-
   .page-actions > .inline-flex,
   .page-actions > a.inline-flex {
-    min-height: 2.75rem;
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-
-  @media (min-width: 640px) {
-    .page-actions > .inline-flex,
-    .page-actions > a.inline-flex {
-      min-height: 2rem;
-      flex: 0 0 auto;
-    }
+    flex: 0 0 auto;
   }
 
   .list-toolbar {
@@ -245,11 +240,77 @@
     row-gap: 0.5rem;
   }
 
+  .list-toolbar-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .list-mobile-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .list-mobile-filters [data-field-control] {
+    width: 100%;
+    max-width: none;
+  }
+
   .list-toolbar-chips {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.375rem;
+  }
+
+  .dialog-footer,
+  .form-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .dialog-footer > *,
+  .form-footer > * {
+    display: flex;
+    min-height: 2.75rem;
+  }
+
+  .dialog-footer:not([data-layout="auto"]) > * > *,
+  .form-footer:not([data-layout="auto"]) > * > * {
+    width: 100%;
+  }
+
+  .dialog-footer:has(> :only-child) > *,
+  .form-footer:has(> :only-child) > * {
+    flex: 1 1 100%;
+  }
+
+  .dialog-footer:has(> :first-child + :last-child) > *,
+  .form-footer:has(> :first-child + :last-child) > * {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: min(100%, 8.5rem);
+  }
+
+  .dialog-footer[data-layout="auto"] > *,
+  .form-footer[data-layout="auto"] > * {
+    flex: 0 1 auto;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 768px) {
+    .dialog-footer > *,
+    .form-footer > * {
+      min-height: 2rem;
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 0;
+    }
   }
 
   .list-body {
@@ -351,16 +412,22 @@
     }
   }
 
+  .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .detail-actions > a.detail-action-primary {
     min-height: 2.75rem;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     justify-content: center;
   }
 
-  @media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+  @media (min-width: 768px) {
     .detail-actions > a.detail-action-primary {
       min-height: 2rem;
-      flex: 0 0 auto;
     }
   }
 

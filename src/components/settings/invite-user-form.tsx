@@ -38,7 +38,7 @@ export function InviteUserForm() {
     <DialogRoot open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="primary" size="sm">
+          <Button variant="primary" aria-label="Teamlid toevoegen">
             Teamlid toevoegen
           </Button>
         }

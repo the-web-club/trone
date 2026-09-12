@@ -120,7 +120,7 @@ export function ComboboxMenu<Value extends string = string>({
           controlSize[size],
           "data-[popup-open]:border-border-strong",
           "data-[disabled]:cursor-not-allowed data-[disabled]:text-fg-muted data-[disabled]:opacity-70 data-[disabled]:hover:border-border",
-          wrap && "h-auto min-h-8 items-start py-1",
+          wrap && "h-auto min-h-11 items-start py-1 md:min-h-8",
           className,
         )}
       >

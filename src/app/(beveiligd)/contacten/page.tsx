@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContactsFilters } from "@/components/contact/contacts-filters";
 import { ContactsList } from "@/components/contact/contacts-list";
 import { CreateContactListDialog } from "@/components/contact/create-contact-list-dialog";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
-import {
-  PageHeader,
-  pageActionSecondaryClassName,
-} from "@/components/shell/page-header";
+import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactRows } from "@/lib/contact-service";
 import {
@@ -45,6 +41,7 @@ export default async function ContactenPage({
     <ListBrowser>
       <PageHeader
         title="Contacten"
+        nav={<PageHeaderNavLink href="/bedrijven">Naar bedrijven</PageHeaderNavLink>}
         description="Personen, met of zonder koppeling aan een bedrijf."
         meta={[
           result.total === 0 && hasFilters
@@ -52,15 +49,10 @@ export default async function ContactenPage({
             : listSummary(result.total, "contact", "contacten"),
         ]}
         actions={
-          <>
-            <CreateContactListDialog
-              companies={companies}
-              defaultCompanyId={parsed.bedrijf}
-            />
-            <Link href="/bedrijven" className={pageActionSecondaryClassName()}>
-              Naar bedrijven
-            </Link>
-          </>
+          <CreateContactListDialog
+            companies={companies}
+            defaultCompanyId={parsed.bedrijf}
+          />
         }
       />
       <ContactsFilters values={parsed} companies={companies} />

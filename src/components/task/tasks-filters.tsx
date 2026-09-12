@@ -159,7 +159,7 @@ export function TasksFilters({
         onValueChange={(next) => navigate({ eigenaar: next })}
         items={assigneeOptions}
         contentClassName="min-w-[14rem]"
-        className="w-auto max-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
       />
       <SelectMenu
         prefix="Wanneer"
@@ -169,9 +169,9 @@ export function TasksFilters({
           navigate({ wanneer: next as TaskWhenFilter })
         }
         items={whenOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
-      <label className="flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-border bg-surface px-2.5 text-sm text-fg shadow-[var(--shadow-xs)]">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm border border-border bg-surface px-3.5 text-sm text-fg shadow-[var(--shadow-xs)] md:h-8 md:min-h-8 md:px-2.5">
         <input
           type="checkbox"
           checked={values.afgerond}

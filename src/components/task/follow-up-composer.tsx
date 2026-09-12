@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createFollowUpTaskAction } from "@/app/(beveiligd)/actions/task-actions";
 import { FollowUpFields } from "@/components/task/follow-up-fields";
 import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 
 export function FollowUpComposer({
   dealId,
@@ -62,11 +63,11 @@ export function FollowUpComposer({
           {state.error}
         </p>
       ) : null}
-      <div>
+      <FormFooter>
         <Button type="submit" loading={pending}>
           Plannen
         </Button>
-      </div>
+      </FormFooter>
     </form>
   );
 }

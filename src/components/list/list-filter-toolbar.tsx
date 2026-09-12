@@ -1,8 +1,16 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   FilterBar,
   FilterBarSpacer,
@@ -42,35 +50,74 @@ export function ListFilterToolbar({
   onReset,
   isPending,
   statusMessage,
+  toolbarStart,
+  filterCount,
 }: {
   searchValue: string;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
   searchPlaceholder: string;
   searchAriaLabel: string;
-  children?: React.ReactNode;
-  moreFilters?: React.ReactNode;
+  children?: ReactNode;
+  moreFilters?: ReactNode;
   moreCount?: number;
   chips: ListFilterChip[];
   hasActiveFilters: boolean;
   onReset: () => void;
   isPending: boolean;
   statusMessage?: string;
+  toolbarStart?: ReactNode;
+  filterCount?: number;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const mobileFilterCount = filterCount ?? chips.length;
+  const hasSheetFilters = Boolean(children || moreFilters);
+
+  const searchField = (
+    <SearchInput
+      value={searchValue}
+      onChange={(event) => onSearchChange(event.target.value)}
+      onClear={onSearchClear}
+      placeholder={searchPlaceholder}
+      aria-label={searchAriaLabel}
+      autoComplete="off"
+      containerClassName="w-full min-w-0 md:w-60"
+    />
+  );
+
+  const status = isPending || statusMessage ? (
+    <span className="text-xs text-fg-subtle" role="status">
+      {isPending ? "Bijwerken…" : statusMessage}
+    </span>
+  ) : null;
 
   return (
     <div className="list-toolbar" aria-busy={isPending}>
-      <FilterBar>
-        <SearchInput
-          value={searchValue}
-          onChange={(event) => onSearchChange(event.target.value)}
-          onClear={onSearchClear}
-          placeholder={searchPlaceholder}
-          aria-label={searchAriaLabel}
-          autoComplete="off"
-          containerClassName="w-full min-w-0 sm:w-60"
-        />
+      <div className="flex flex-col gap-2 md:hidden">
+        {searchField}
+        {hasSheetFilters || toolbarStart ? (
+          <div className="list-toolbar-actions">
+            {toolbarStart}
+            {hasSheetFilters ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(mobileFilterCount > 0 && "border-border-strong")}
+                onClick={() => setFiltersOpen(true)}
+              >
+                <SlidersHorizontal aria-hidden />
+                Filters
+                <FilterCountBadge count={mobileFilterCount} />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {status}
+      </div>
+
+      <FilterBar className="hidden md:flex">
+        {searchField}
         {children}
         {moreFilters ? (
           <PopoverRoot open={moreOpen} onOpenChange={setMoreOpen}>
@@ -92,17 +139,45 @@ export function ListFilterToolbar({
           </PopoverRoot>
         ) : null}
         <FilterBarSpacer />
-        {isPending || statusMessage ? (
-          <span className="text-xs text-fg-subtle" role="status">
-            {isPending ? "Bijwerken…" : statusMessage}
-          </span>
-        ) : null}
+        {status}
         {hasActiveFilters ? (
           <Button type="button" variant="ghost" disabled={isPending} onClick={onReset}>
             Filters wissen
           </Button>
         ) : null}
       </FilterBar>
+
+      {hasSheetFilters ? (
+        <DialogRoot open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Filters</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <div className="list-mobile-filters">
+                {children}
+                {moreFilters}
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              {hasActiveFilters ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isPending}
+                  onClick={onReset}
+                >
+                  Wissen
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => setFiltersOpen(false)}>
+                Toon resultaten
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </DialogRoot>
+      ) : null}
+
       {chips.length > 0 ? (
         <div className="list-toolbar-chips">
           {chips.map((chip) => (

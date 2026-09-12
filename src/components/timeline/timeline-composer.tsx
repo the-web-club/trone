@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createTimelineEventAction } from "@/app/(beveiligd)/actions/timeline-actions";
 import { FollowUpFields } from "@/components/task/follow-up-fields";
 import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -150,11 +151,11 @@ export function TimelineComposer({
           {state.error}
         </p>
       ) : null}
-      <div>
+      <FormFooter>
         <Button type="submit" loading={pending}>
           Vastleggen
         </Button>
-      </div>
+      </FormFooter>
     </form>
   );
 }

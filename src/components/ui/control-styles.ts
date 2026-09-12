@@ -3,7 +3,7 @@ import { controlMotion, overlayMotion } from "@/components/motion/styles";
 export const controlSize = {
   xs: "h-6 px-1.5 text-xs",
   sm: "h-7 px-2 text-sm",
-  md: "h-8 px-2.5 text-sm",
+  md: "min-h-11 px-3.5 text-sm md:h-8 md:min-h-8 md:px-2.5",
 } as const;
 
 export type ControlSize = keyof typeof controlSize;

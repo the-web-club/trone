@@ -121,7 +121,7 @@ export function CreateOrderDialog({
               </p>
             ) : null}
           </DialogBody>
-          <DialogFooter className="justify-between">
+          <DialogFooter layout="auto" className="justify-between">
             <p className="text-sm text-fg-muted">
               {selectedItems.length}{" "}
               {selectedItems.length === 1 ? "regel" : "regels"} ·{" "}

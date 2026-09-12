@@ -143,7 +143,7 @@ export function OrdersFilters({
         value={values.status || ALL}
         onValueChange={(next) => navigate({ status: next === ALL ? "" : next })}
         items={statusOptions}
-        className="w-auto"
+        className="w-full md:w-auto"
       />
       <SelectMenu
         prefix="Klant"
@@ -152,7 +152,7 @@ export function OrdersFilters({
         onValueChange={(next) => navigate({ klant: next === ALL ? "" : next })}
         items={companyOptions}
         contentClassName="min-w-[14rem]"
-        className="w-auto max-w-[16rem]"
+        className="w-full max-w-none md:w-auto md:max-w-[16rem]"
       />
     </ListFilterToolbar>
   );
