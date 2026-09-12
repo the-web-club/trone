@@ -45,6 +45,9 @@ model User {
   timelineEvents TimelineEvent[]
   assignedTasks  Task[]          @relation("TaskAssignee")
   createdTasks   Task[]          @relation("TaskCreator")
+  featureRequests FeatureRequest[] @relation("FeatureRequestAuthor")
+  featureRequestVotes FeatureRequestVote[]
+  featureRequestComments FeatureRequestComment[]
 
   @@map("user")
 }
@@ -851,4 +854,78 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 
   @@map("app_setting")
+}
+
+// ---------------------------------------------------------------------
+// Feedback & verbeteringen — interne workspace, niet het klantportaal.
+// Single-tenant: zichtbaar voor alle interne Users, niet voor Contact/CustomerUser.
+// ---------------------------------------------------------------------
+enum FeatureRequestType {
+  BUG
+  FEATURE
+  UX_DESIGN
+  IMPROVEMENT
+}
+
+enum FeatureRequestStatus {
+  OPEN
+  PLANNED
+  IN_PROGRESS
+  DONE
+  MERGED
+}
+
+model FeatureRequest {
+  id           String                @id
+  slug         String                @unique
+  type         FeatureRequestType
+  status       FeatureRequestStatus  @default(OPEN)
+  title        String                @db.VarChar(160)
+  description  String?               @db.Text
+  authorUserId String
+  mergedIntoId String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  author     User                   @relation("FeatureRequestAuthor", fields: [authorUserId], references: [id])
+  mergedInto FeatureRequest?        @relation("FeatureRequestMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
+  mergedFrom FeatureRequest[]       @relation("FeatureRequestMerge")
+  votes      FeatureRequestVote[]
+  comments   FeatureRequestComment[]
+
+  @@index([status, createdAt])
+  @@index([type])
+  @@index([authorUserId])
+  @@index([mergedIntoId])
+  @@map("feature_request")
+}
+
+model FeatureRequestVote {
+  id        String   @id
+  requestId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  request FeatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, userId])
+  @@index([userId])
+  @@map("feature_request_vote")
+}
+
+model FeatureRequestComment {
+  id           String   @id
+  requestId    String
+  authorUserId String
+  body         String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  request FeatureRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  author  User           @relation(fields: [authorUserId], references: [id])
+
+  @@index([requestId, createdAt])
+  @@index([authorUserId])
+  @@map("feature_request_comment")
 }

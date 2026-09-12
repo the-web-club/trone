@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
+  MessageSquarePlus,
   SlidersHorizontal,
   Users,
 } from "lucide-react";
@@ -75,6 +76,12 @@ export default async function InstellingenPage() {
               ? "Pas stilte, opvolging en hot-waarde aan voor het kansen-overzicht."
               : "Bekijk de drempels voor stilte, opvolging en hot leads."
           }
+        />
+        <SettingsCard
+          href="/instellingen/feedback"
+          icon={MessageSquarePlus}
+          title="Feedback"
+          description="Stel verbeteringen voor en stem op ideeën van anderen."
         />
       </SettingsSection>
     </div>

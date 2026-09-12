@@ -46,6 +46,8 @@ describe("navTitleForPath", () => {
     expect(navTitleForPath("/kansen")).toBe("Kansen");
     expect(navTitleForPath("/producten")).toBe("Producten");
     expect(navTitleForPath("/instellingen/drempels")).toBe("Instellingen");
+    expect(navTitleForPath("/instellingen/feedback")).toBe("Feedback");
+    expect(navTitleForPath("/instellingen/feedback/demo")).toBe("Feedback");
   });
 });
 
@@ -60,6 +62,7 @@ describe("isOverviewNavPath", () => {
     expect(isOverviewNavPath("/leads/demo")).toBe(false);
     expect(isOverviewNavPath("/bedrijven/nieuw")).toBe(false);
     expect(isOverviewNavPath("/instellingen/medewerkers")).toBe(false);
+    expect(isOverviewNavPath("/instellingen/feedback")).toBe(false);
   });
 });
 
@@ -69,6 +72,9 @@ describe("parentNavPath", () => {
     expect(parentNavPath("/bedrijven/nieuw")).toBe("/bedrijven");
     expect(parentNavPath("/offertes/Q-1/bewerken")).toBe("/offertes/Q-1");
     expect(parentNavPath("/instellingen/medewerkers")).toBe("/instellingen");
+    expect(parentNavPath("/instellingen/feedback/demo")).toBe(
+      "/instellingen/feedback",
+    );
     expect(parentNavPath("/overzicht")).toBe("/overzicht");
   });
 });

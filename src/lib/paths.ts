@@ -14,6 +14,14 @@ export function staffPath(user: { slug: string }): string {
   return `/instellingen/medewerkers/${user.slug}`;
 }
 
+export function featureRequestListPath(): string {
+  return "/instellingen/feedback";
+}
+
+export function featureRequestPath(request: { slug: string }): string {
+  return `/instellingen/feedback/${request.slug}`;
+}
+
 export function quotePath(quote: { quoteNumber: string }): string {
   return `/offertes/${quote.quoteNumber}`;
 }
