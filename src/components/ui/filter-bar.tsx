@@ -4,7 +4,6 @@ import { Search, X } from "lucide-react";
 import * as React from "react";
 import {
   controlMotion,
-  controlSize,
   fieldBase,
   focusRingOutline,
 } from "@/components/ui/control-styles";
@@ -60,11 +59,11 @@ export function SearchInput({
         value={value}
         data-field-control=""
         className={cn(
-          "flex",
+          "block w-full",
           fieldBase,
-          controlSize.md,
-          "pr-8 pl-8",
-          "[&::-webkit-search-cancel-button]:hidden",
+          "h-auto min-h-11 text-sm md:h-8 md:min-h-8",
+          "pr-8 pl-8 md:pr-8 md:pl-8",
+          "appearance-none [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
           className,
         )}
         {...props}
