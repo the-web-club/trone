@@ -36,10 +36,10 @@ export function DialogContent({
           dialogBackdropMotion,
         )}
       />
-      <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center overflow-y-auto p-0 pb-[var(--bottom-nav-h)] sm:items-center sm:px-6 sm:pt-6 desktop-nav:pb-6">
+      <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center overflow-y-auto px-3.5 pt-3 pb-[calc(var(--bottom-nav-h)+0.75rem)] sm:items-center sm:px-6 sm:pt-6 sm:pb-[var(--bottom-nav-h)] desktop-nav:pb-6">
         <Dialog.Popup
           className={cn(
-            "my-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--bottom-nav-h))] w-full flex-col overflow-hidden rounded-t-lg border border-border bg-surface shadow-[var(--shadow-pop)] outline-none sm:max-h-[calc(100dvh-3rem)] sm:rounded-lg",
+            "my-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--bottom-nav-h)-1.5rem)] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-pop)] outline-none sm:max-h-[calc(100dvh-3rem)]",
             dialogPopupMotion,
             dialogSizes[size],
             className,
