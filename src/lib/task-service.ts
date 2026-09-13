@@ -222,7 +222,14 @@ export async function getTaskFilterFacets(
   };
 }
 
-export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
+async function resolveFollowUpLinks(
+  input: {
+    dealId?: string | null;
+    contactId?: string | null;
+    companyId?: string | null;
+  },
+  options?: { preferDealLinks?: boolean },
+) {
   const prisma = getPrismaClient();
   let dealId = input.dealId ?? null;
   let contactId = input.contactId ?? null;
@@ -236,8 +243,13 @@ export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
     if (!deal) {
       throw new AppError("Lead niet gevonden.", "NOT_FOUND", 404);
     }
-    contactId = contactId ?? deal.contactId;
-    companyId = companyId ?? deal.companyId;
+    if (options?.preferDealLinks) {
+      contactId = deal.contactId;
+      companyId = deal.companyId;
+    } else {
+      contactId = contactId ?? deal.contactId;
+      companyId = companyId ?? deal.companyId;
+    }
   }
 
   if (!dealId && !contactId && !companyId) {
@@ -247,8 +259,19 @@ export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
     );
   }
 
+  return { dealId, contactId, companyId };
+}
+
+export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
+  const { dealId, contactId, companyId } = await resolveFollowUpLinks({
+    dealId: input.dealId,
+    contactId: input.contactId,
+    companyId: input.companyId,
+  });
+
   const title = input.title.trim();
   const dueLabel = followUpDueLabel(input);
+  const prisma = getPrismaClient();
 
   return prisma.$transaction(async (tx) => {
     const task = await tx.task.create({
@@ -282,6 +305,42 @@ export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
       },
     });
     return task;
+  });
+}
+
+export type UpdateFollowUpTaskInput = FollowUpInput & {
+  dealId?: string | null;
+  contactId?: string | null;
+  companyId?: string | null;
+};
+
+export async function updateFollowUpTask(
+  id: string,
+  input: UpdateFollowUpTaskInput,
+) {
+  const existing = await getTask(id);
+  const links = await resolveFollowUpLinks(
+    {
+      dealId: input.dealId,
+      contactId: input.contactId ?? existing.contactId,
+      companyId: input.companyId ?? existing.companyId,
+    },
+    { preferDealLinks: Boolean(input.dealId) },
+  );
+
+  const prisma = getPrismaClient();
+  return prisma.task.update({
+    where: { id },
+    data: {
+      title: input.title.trim(),
+      kind: input.kind,
+      dueAt: input.dueAt,
+      dueDateOnly: input.dueDateOnly,
+      dealId: links.dealId,
+      contactId: links.contactId,
+      companyId: links.companyId,
+    },
+    include: taskInclude,
   });
 }
 

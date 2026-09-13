@@ -14,11 +14,19 @@ export function FollowUpFields({
   onDateOnlyChange,
   idPrefix = "",
   dateRequired = false,
+  initialKind = "FOLLOW_UP",
+  initialTitle = DEFAULT_FOLLOW_UP_TITLE,
+  initialDate,
+  initialTime = "09:00",
 }: {
   dateOnly: boolean;
   onDateOnlyChange: (value: boolean) => void;
   idPrefix?: string;
   dateRequired?: boolean;
+  initialKind?: string;
+  initialTitle?: string;
+  initialDate?: string;
+  initialTime?: string;
 }) {
   const fieldId = (name: string) => `${idPrefix}${name}`;
 
@@ -28,7 +36,7 @@ export function FollowUpFields({
         <FormField id={fieldId("followUpKind")} label="Type">
           <SelectMenu
             name="followUpKind"
-            defaultValue="FOLLOW_UP"
+            defaultValue={initialKind}
             items={followUpKindItems}
             searchPlaceholder="Zoek een type…"
           />
@@ -36,17 +44,26 @@ export function FollowUpFields({
         <FormField id={fieldId("followUpTitle")} label="Titel">
           <Input
             name="followUpTitle"
-            defaultValue={DEFAULT_FOLLOW_UP_TITLE}
+            defaultValue={initialTitle}
           />
         </FormField>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <FormField id={fieldId("followUpDate")} label="Datum">
-          <Input type="date" name="followUpDate" required={dateRequired} />
+          <Input
+            type="date"
+            name="followUpDate"
+            required={dateRequired}
+            defaultValue={initialDate}
+          />
         </FormField>
         {dateOnly ? null : (
           <FormField id={fieldId("followUpTime")} label="Tijd">
-            <Input type="time" name="followUpTime" defaultValue="09:00" />
+            <Input
+              type="time"
+              name="followUpTime"
+              defaultValue={initialTime}
+            />
           </FormField>
         )}
       </div>

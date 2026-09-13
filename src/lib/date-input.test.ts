@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calendarDateInTimeZone,
+  clockTimeInTimeZone,
   normalizeTimeInput,
   startOfWeekInTimeZone,
   zonedLocalToUtc,
@@ -39,6 +40,15 @@ describe("calendar helpers", () => {
     expect(
       calendarDateInTimeZone(new Date("2026-09-12T22:00:00.000Z")),
     ).toBe("2026-09-13");
+  });
+
+  it("reads the Amsterdam clock time from a UTC instant", () => {
+    expect(clockTimeInTimeZone(new Date("2026-09-13T07:00:00.000Z"))).toBe(
+      "09:00",
+    );
+    expect(clockTimeInTimeZone(new Date("2026-01-15T08:00:00.000Z"))).toBe(
+      "09:00",
+    );
   });
 
   it("starts the week on Monday", () => {

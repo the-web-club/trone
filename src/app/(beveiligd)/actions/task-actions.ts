@@ -3,8 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { requireWritableSession } from "@/lib/auth-session";
 import { toActionError } from "@/lib/errors";
-import { completeTask, createFollowUpTask, reopenTask } from "@/lib/task-service";
-import { parseCreateFollowUpForm, parseTaskId } from "@/lib/task-validation";
+import {
+  completeTask,
+  createFollowUpTask,
+  reopenTask,
+  updateFollowUpTask,
+} from "@/lib/task-service";
+import {
+  parseCreateFollowUpForm,
+  parseTaskId,
+  parseUpdateFollowUpForm,
+} from "@/lib/task-validation";
 
 function revalidateTaskPaths() {
   revalidatePath("/taken");
@@ -27,6 +36,21 @@ export async function createFollowUpTaskAction(
     });
     revalidateTaskPaths();
     return { createdAt: Date.now() };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateFollowUpTaskAction(
+  _prev: { error?: string; savedAt?: number } | null,
+  formData: FormData,
+): Promise<{ error?: string; savedAt?: number }> {
+  try {
+    await requireWritableSession();
+    const input = parseUpdateFollowUpForm(formData);
+    await updateFollowUpTask(input.id, input);
+    revalidateTaskPaths();
+    return { savedAt: Date.now() };
   } catch (error) {
     return toActionError(error);
   }

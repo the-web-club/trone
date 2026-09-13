@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/errors";
 import {
   buildFollowUpInput,
+  dealsIncludingCurrent,
+  followUpDefaultsFromTask,
   parseCreateFollowUpForm,
+  parseUpdateFollowUpForm,
+  toTaskEditFormValues,
 } from "@/lib/task-validation";
 
 function form(entries: Record<string, string>) {
@@ -76,5 +80,79 @@ describe("parseCreateFollowUpForm", () => {
         form({ followUpDate: "2026-09-13", followUpTime: "09:00" }),
       ),
     ).toThrow(AppError);
+  });
+});
+
+describe("parseUpdateFollowUpForm", () => {
+  it("leest het taak-id mee", () => {
+    const parsed = parseUpdateFollowUpForm(
+      form({
+        id: "task-1",
+        dealId: "deal-1",
+        followUpTitle: "Offerte nazenden",
+        followUpDate: "2026-09-14",
+        followUpTime: "10:30",
+      }),
+    );
+    expect(parsed.id).toBe("task-1");
+    expect(parsed.title).toBe("Offerte nazenden");
+    expect(parsed.dueAt.toISOString()).toBe("2026-09-14T08:30:00.000Z");
+  });
+
+  it("eist een taak-id", () => {
+    expect(() =>
+      parseUpdateFollowUpForm(
+        form({
+          dealId: "deal-1",
+          followUpDate: "2026-09-13",
+          followUpTime: "09:00",
+        }),
+      ),
+    ).toThrow(AppError);
+  });
+});
+
+describe("toTaskEditFormValues", () => {
+  it("zet dueAt om naar ISO voor het formulier", () => {
+    const values = toTaskEditFormValues({
+      id: "task-1",
+      title: "Prospect opvolgen",
+      kind: "FOLLOW_UP",
+      dueAt: new Date("2026-09-13T07:00:00.000Z"),
+      dueDateOnly: false,
+      dealId: "deal-1",
+      contactId: "contact-1",
+      companyId: null,
+      deal: { id: "deal-1", title: "Caterpillar" },
+    });
+
+    expect(values.dueAt).toBe("2026-09-13T07:00:00.000Z");
+    expect(values.dealTitle).toBe("Caterpillar");
+    expect(followUpDefaultsFromTask(values)).toEqual({
+      kind: "FOLLOW_UP",
+      title: "Prospect opvolgen",
+      date: "2026-09-13",
+      time: "09:00",
+      dateOnly: false,
+    });
+  });
+});
+
+describe("dealsIncludingCurrent", () => {
+  const openDeals = [{ id: "deal-1", title: "Open lead", hint: "Acme" }];
+
+  it("houdt de huidige lead zichtbaar als die niet meer open is", () => {
+    expect(
+      dealsIncludingCurrent(openDeals, { id: "deal-2", title: "Gesloten lead" }),
+    ).toEqual([
+      { id: "deal-2", title: "Gesloten lead", hint: null },
+      ...openDeals,
+    ]);
+  });
+
+  it("dubbeleert een al aanwezige lead niet", () => {
+    expect(
+      dealsIncludingCurrent(openDeals, { id: "deal-1", title: "Open lead" }),
+    ).toEqual(openDeals);
   });
 });

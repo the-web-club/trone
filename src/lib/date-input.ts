@@ -142,6 +142,25 @@ export function calendarDateInTimeZone(
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+/** Wall-clock `HH:mm` in `timeZone` for a UTC instant. */
+export function clockTimeInTimeZone(
+  value: Date,
+  timeZone = APP_TIME_ZONE,
+): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(value)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.hour}:${parts.minute}`;
+}
+
 export function todayInTimeZone(timeZone = APP_TIME_ZONE, now = new Date()): string {
   return calendarDateInTimeZone(now, timeZone);
 }

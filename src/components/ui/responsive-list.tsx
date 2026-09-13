@@ -22,14 +22,17 @@ export function ListCard({
   children,
   className,
   href,
+  onClick,
 }: {
   children: React.ReactNode;
   className?: string;
   href?: string;
+  onClick?: React.MouseEventHandler<HTMLElement>;
 }) {
   const classes = cn(
     "rounded-md border border-border bg-surface px-3 py-2",
-    href && "relative transition-colors hover:bg-hover-subtle",
+    (href || onClick) && "relative transition-colors hover:bg-hover-subtle",
+    onClick && "cursor-pointer",
     className,
   );
 
@@ -38,6 +41,14 @@ export function ListCard({
       <Link href={href} className={classes}>
         {children}
       </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <article className={classes} onClick={onClick}>
+        {children}
+      </article>
     );
   }
 

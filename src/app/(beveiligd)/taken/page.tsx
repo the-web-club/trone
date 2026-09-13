@@ -80,6 +80,7 @@ export default async function TakenPage({
       <ListBody>
         <TasksList
           items={result.items}
+          deals={deals}
           emptyMessage={emptyMessage}
           emptyAction={
             canWrite && !hasFilters ? (

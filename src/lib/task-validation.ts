@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  calendarDateInTimeZone,
+  clockTimeInTimeZone,
   normalizeDateOnlyInput,
   normalizeTimeInput,
   zonedLocalToUtc,
@@ -125,6 +127,95 @@ export type CreateFollowUpFormInput = FollowUpInput & {
   companyId?: string;
 };
 
+export type UpdateFollowUpFormInput = CreateFollowUpFormInput & {
+  id: string;
+};
+
+export type TaskEditFormValues = {
+  id: string;
+  title: string;
+  kind: TaskKind;
+  dueAt: string | null;
+  dueDateOnly: boolean;
+  dealId: string | null;
+  dealTitle: string | null;
+  contactId: string | null;
+  companyId: string | null;
+};
+
+export function toTaskEditFormValues(task: {
+  id: string;
+  title: string;
+  kind: TaskKind;
+  dueAt: Date | string | null;
+  dueDateOnly: boolean;
+  dealId?: string | null;
+  contactId?: string | null;
+  companyId?: string | null;
+  deal?: { id: string; title: string } | null;
+}): TaskEditFormValues {
+  const dueAt = task.dueAt
+    ? task.dueAt instanceof Date
+      ? task.dueAt
+      : new Date(task.dueAt)
+    : null;
+  const dueAtIso =
+    dueAt && !Number.isNaN(dueAt.getTime()) ? dueAt.toISOString() : null;
+
+  return {
+    id: task.id,
+    title: task.title,
+    kind: task.kind,
+    dueAt: dueAtIso,
+    dueDateOnly: task.dueDateOnly,
+    dealId: task.deal?.id ?? task.dealId ?? null,
+    dealTitle: task.deal?.title ?? null,
+    contactId: task.contactId ?? null,
+    companyId: task.companyId ?? null,
+  };
+}
+
+export type TaskDealOption = {
+  id: string;
+  title: string;
+  hint: string | null;
+};
+
+export function dealsIncludingCurrent(
+  deals: TaskDealOption[],
+  current: { id: string; title: string } | null,
+): TaskDealOption[] {
+  if (!current) return deals;
+  if (deals.some((deal) => deal.id === current.id)) return deals;
+  return [{ id: current.id, title: current.title, hint: null }, ...deals];
+}
+
+export function followUpDefaultsFromTask(task: TaskEditFormValues): {
+  kind: TaskKind;
+  title: string;
+  date?: string;
+  time: string;
+  dateOnly: boolean;
+} {
+  if (!task.dueAt) {
+    return {
+      kind: task.kind,
+      title: task.title,
+      time: "09:00",
+      dateOnly: task.dueDateOnly,
+    };
+  }
+
+  const dueAt = new Date(task.dueAt);
+  return {
+    kind: task.kind,
+    title: task.title,
+    date: calendarDateInTimeZone(dueAt),
+    time: clockTimeInTimeZone(dueAt),
+    dateOnly: task.dueDateOnly,
+  };
+}
+
 export function parseCreateFollowUpForm(
   formData: FormData,
 ): CreateFollowUpFormInput {
@@ -179,4 +270,13 @@ export function parseTaskId(formData: FormData): string {
   }
 
   return parsed.data;
+}
+
+export function parseUpdateFollowUpForm(
+  formData: FormData,
+): UpdateFollowUpFormInput {
+  return {
+    id: parseTaskId(formData),
+    ...parseCreateFollowUpForm(formData),
+  };
 }
