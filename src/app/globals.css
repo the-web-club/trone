@@ -191,24 +191,6 @@
     color: var(--btn-secondary-fg);
   }
 
-  @media (min-width: 640px) {
-    :root {
-      --page-pad-x: 1rem;
-    }
-  }
-
-  @media (min-width: 768px) {
-    :root {
-      --page-pad-x: 1.5rem;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    :root {
-      --page-pad-x: 2rem;
-    }
-  }
-
   .page-shell {
     min-height: 0;
     flex: 1 1 0%;
@@ -227,6 +209,12 @@
     }
   }
 
+  .chrome-bar {
+    padding-inline: var(--page-pad-x);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
   .chrome-bar-inner {
     display: flex;
     align-items: center;
@@ -236,7 +224,6 @@
     min-width: 0;
     max-width: var(--content-max);
     margin-inline: auto;
-    padding-inline: var(--page-pad-x);
   }
 
   .page-shell-inner {

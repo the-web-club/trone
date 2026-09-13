@@ -21,9 +21,9 @@ describe("list query helpers", () => {
         pagina: 1,
       }),
     ).toBe("/bedrijven");
-    expect(buildContactsHref({ zoeken: "", bedrijf: "", pagina: 1 })).toBe(
-      "/contacten",
-    );
+    expect(
+      buildContactsHref({ zoeken: "", bedrijf: "", eigenaar: "alle", pagina: 1 }),
+    ).toBe("/contacten");
     expect(
       buildQuotesHref({
         zoeken: "",
@@ -63,8 +63,15 @@ describe("list query helpers", () => {
       "/bedrijven?zoeken=trone&plaats=Amsterdam&land=NL&eigenaar=niet-toegewezen&leads=5plus&pagina=2",
     );
     expect(
-      buildContactsHref({ zoeken: "jan", bedrijf: "co-1", pagina: 3 }),
-    ).toBe("/contacten?zoeken=jan&bedrijf=co-1&pagina=3");
+      buildContactsHref({
+        zoeken: "jan",
+        bedrijf: "co-1",
+        eigenaar: "niet-toegewezen",
+        pagina: 3,
+      }),
+    ).toBe(
+      "/contacten?zoeken=jan&bedrijf=co-1&eigenaar=niet-toegewezen&pagina=3",
+    );
     expect(
       buildQuotesHref({
         zoeken: "Q-1",
@@ -110,14 +117,23 @@ describe("list query helpers", () => {
     expect(parseContactsSearchParams({ bedrijf: "co-1" })).toEqual({
       zoeken: "",
       bedrijf: "co-1",
+      eigenaar: "alle",
       pagina: 1,
     });
+    expect(parseContactsSearchParams({ eigenaar: "aan-mij" }).eigenaar).toBe(
+      "aan-mij",
+    );
     expect(parseContactsSearchParams({ zoeken: "ab" }).zoeken).toBe("");
     expect(parseContactsSearchParams({ zoeken: "jan" }).zoeken).toBe("jan");
     expect(parseContactsSearchParams({ zoeken: "a1b" }).zoeken).toBe("a1b");
-    expect(buildContactsHref({ zoeken: "ab", bedrijf: "", pagina: 1 })).toBe(
-      "/contacten",
-    );
+    expect(
+      buildContactsHref({
+        zoeken: "ab",
+        bedrijf: "",
+        eigenaar: "alle",
+        pagina: 1,
+      }),
+    ).toBe("/contacten");
     expect(parseQuotesSearchParams({ status: "expired" }).status).toBe("EXPIRED");
     expect(parseQuotesSearchParams({ status: "foo" }).status).toBe("");
     expect(parseOrdersSearchParams({ status: "ready" }).status).toBe("READY");

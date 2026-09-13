@@ -175,6 +175,24 @@
   }
 }
 
+@media (min-width: 640px) {
+  :root {
+    --page-pad-x: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-pad-x: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-pad-x: 2rem;
+  }
+}
+
 /* Dark application + login: mandatory TRÔNE charcoal/orange. */
 [data-theme="dark"],
 [data-theme="login"] {

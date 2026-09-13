@@ -71,7 +71,7 @@ export function AppTopbar({
           />
         </div>
       </div>
-      <div className="hidden h-full min-w-0 flex-1 desktop-nav:flex">
+      <div className="chrome-bar hidden h-full min-w-0 flex-1 desktop-nav:flex">
         <div className="chrome-bar-inner">
           <DesktopRouteContext pathname={pathname} />
         </div>
