@@ -186,13 +186,13 @@
   --fg-invert: var(--brand-primary-fg);
 
   --accent: var(--brand-accent);
-  --accent-fg: var(--brand-primary-fg);
+  --accent-fg: var(--gray-0);
   --accent-hover: color-mix(in srgb, var(--brand-accent) 86%, white);
 
   --overlay: rgb(0 0 0 / 0.56);
 
   --btn-primary-bg: var(--brand-accent);
-  --btn-primary-fg: var(--brand-primary-fg);
+  --btn-primary-fg: var(--gray-0);
   --btn-primary-hover: color-mix(in srgb, var(--brand-accent) 86%, white);
   --btn-primary-active: color-mix(in srgb, var(--brand-accent) 84%, #17171b);
   --btn-secondary-bg: var(--brand-surface-raised);
