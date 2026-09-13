@@ -75,6 +75,11 @@ function createAuth() {
           required: false,
           input: false,
         },
+        themePreference: {
+          type: "string",
+          required: false,
+          input: false,
+        },
       },
     },
     databaseHooks: {

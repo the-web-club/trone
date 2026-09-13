@@ -32,14 +32,14 @@ export function DialogContent({
     <Dialog.Portal>
       <Dialog.Backdrop
         className={cn(
-          "fixed inset-0 z-[var(--z-overlay)] bg-fg/25",
+          "fixed inset-0 z-[var(--z-overlay)] bg-overlay",
           dialogBackdropMotion,
         )}
       />
       <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center overflow-y-auto px-3.5 pt-3 pb-[calc(var(--bottom-nav-h)+0.75rem)] sm:items-center sm:px-6 sm:pt-6 sm:pb-[var(--bottom-nav-h)] desktop-nav:pb-6">
         <Dialog.Popup
           className={cn(
-            "my-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--bottom-nav-h)-1.5rem)] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-[var(--shadow-pop)] outline-none sm:max-h-[calc(100dvh-3rem)]",
+            "my-auto flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--bottom-nav-h)-1.5rem)] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface-raised shadow-[var(--shadow-pop)] outline-none sm:max-h-[calc(100dvh-3rem)]",
             dialogPopupMotion,
             dialogSizes[size],
             className,

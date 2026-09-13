@@ -26,7 +26,7 @@ export function sidebarNavItemClassName(
     controlMotion,
     "[&_svg]:size-4 [&_svg]:shrink-0",
     active
-      ? "bg-hover font-medium text-fg [&_svg]:text-fg"
+      ? "bg-selected-bg font-medium text-fg [&_svg]:text-fg"
       : "text-fg-muted hover:bg-hover hover:text-fg [&_svg]:text-fg-subtle hover:[&_svg]:text-fg-muted",
   );
 }

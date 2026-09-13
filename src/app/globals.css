@@ -8,7 +8,10 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-emphasized: var(--surface-emphasized);
   --color-surface-sunk: var(--surface-sunk);
+  --color-input: var(--input-bg);
+  --color-overlay: var(--overlay);
   --color-hover: var(--hover);
   --color-hover-subtle: var(--hover-subtle);
   --color-selected: var(--selected);
@@ -71,6 +74,13 @@
 @layer base {
   html {
     height: 100%;
+    color-scheme: light;
+    scrollbar-color: var(--border-strong) var(--bg);
+  }
+
+  html[data-theme="dark"],
+  html[data-theme="login"] {
+    color-scheme: dark;
   }
 
   body {
@@ -110,9 +120,71 @@
     }
   }
 
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent);
+  }
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    color-scheme: inherit;
+  }
+
 }
 
 @layer components {
+  .btn-primary-skin {
+    box-sizing: border-box;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .btn-primary-skin:hover {
+    background: var(--btn-primary-hover);
+  }
+
+  .btn-primary-skin:active {
+    background: var(--btn-primary-active);
+  }
+
+  .btn-primary-skin:disabled,
+  .btn-primary-skin[aria-disabled="true"],
+  .btn-primary-skin[data-loading] {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+  }
+
+  .btn-secondary-skin {
+    box-sizing: border-box;
+    border-width: var(--btn-secondary-border-width);
+    border-style: solid;
+    border-color: var(--btn-secondary-border);
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-fg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .btn-secondary-skin:hover {
+    border-color: var(--btn-secondary-hover-border);
+    background: var(--btn-secondary-hover-bg);
+  }
+
+  .btn-secondary-skin:active {
+    border-color: var(--btn-secondary-hover-border);
+    background: var(--btn-secondary-active-bg);
+  }
+
+  .btn-secondary-skin:disabled,
+  .btn-secondary-skin[aria-disabled="true"],
+  .btn-secondary-skin[data-loading] {
+    border-width: var(--btn-secondary-border-width);
+    border-color: var(--btn-secondary-border);
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-fg);
+  }
+
   .page-shell {
     min-height: 0;
     flex: 1 1 0%;
@@ -332,6 +404,11 @@
     background: var(--surface);
   }
 
+  [data-theme="dark"] .data-table thead,
+  [data-theme="login"] .data-table thead {
+    background: var(--surface-emphasized);
+  }
+
   .page-pagination {
     margin-top: 0.75rem;
     display: flex;
@@ -494,6 +571,8 @@
   }
 }
 
+[data-theme="dark"] [data-field-control]:focus,
+[data-theme="dark"] [data-field-control]:focus-visible,
 [data-theme="login"] [data-field-control]:focus,
 [data-theme="login"] [data-field-control]:focus-visible {
   border-color: var(--accent);
@@ -507,5 +586,6 @@ html:has([data-theme="login"]) body {
   max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: var(--brand-bg);
+  background: var(--brand-app-bg);
+  color-scheme: dark;
 }

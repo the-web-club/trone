@@ -46,6 +46,7 @@ describe("navTitleForPath", () => {
     expect(navTitleForPath("/kansen")).toBe("Kansen");
     expect(navTitleForPath("/producten")).toBe("Producten");
     expect(navTitleForPath("/instellingen/drempels")).toBe("Instellingen");
+    expect(navTitleForPath("/instellingen/weergave")).toBe("Weergave");
     expect(navTitleForPath("/instellingen/feedback")).toBe("Feedback");
     expect(navTitleForPath("/instellingen/feedback/demo")).toBe("Feedback");
   });

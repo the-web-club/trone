@@ -172,7 +172,7 @@ export function ComboboxMenu<Value extends string = string>({
               <ComboboxPrimitive.Input
                 placeholder={searchPlaceholder}
                 className={cn(
-                  "h-8 w-full rounded-sm border border-border bg-surface px-2 text-sm text-fg",
+                  "h-8 w-full rounded-sm border border-border bg-input px-2 text-sm text-fg",
                   "placeholder:text-fg-subtle",
                   "hover:border-border-strong",
                   "focus-visible:border-fg focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",

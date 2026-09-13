@@ -19,7 +19,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       data-field-control=""
-      className={cn("flex appearance-none bg-surface", fieldBase, controlSize.md, className)}
+      className={cn("flex appearance-none", fieldBase, controlSize.md, className)}
       {...props}
     >
       {children}

@@ -18,10 +18,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:
-          "bg-accent text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover",
-        secondary:
-          "border border-border bg-surface text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover active:bg-selected",
+        primary: "btn-primary-skin",
+        secondary: "btn-secondary-skin",
         ghost:
           "bg-transparent text-fg-muted hover:bg-hover hover:text-fg active:bg-selected",
         destructive:

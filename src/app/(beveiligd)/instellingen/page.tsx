@@ -5,6 +5,7 @@ import {
   Building2,
   MessageSquarePlus,
   SlidersHorizontal,
+  SunMoon,
   Users,
 } from "lucide-react";
 import { Lift } from "@/components/motion";
@@ -44,6 +45,15 @@ export default async function InstellingenPage() {
             }
           />
         ))}
+      </SettingsSection>
+
+      <SettingsSection title="Account">
+        <SettingsCard
+          href="/instellingen/weergave"
+          icon={SunMoon}
+          title="Weergave"
+          description="Licht, donker of systeem. Deze keuze geldt overal waar je bent ingelogd."
+        />
       </SettingsSection>
 
       <SettingsSection title="Workspace">

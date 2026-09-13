@@ -157,7 +157,7 @@ export function RichTextEditor({
       data-field-control=""
       aria-invalid={invalid || undefined}
       className={cn(
-        "flex w-full flex-col overflow-hidden rounded-sm border border-border bg-surface text-fg",
+        "flex w-full flex-col overflow-hidden rounded-sm border border-border bg-input text-fg",
         tall ? "min-h-36" : "min-h-20",
         controlMotion,
         "hover:border-border-strong",

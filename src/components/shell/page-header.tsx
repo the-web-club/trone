@@ -77,14 +77,14 @@ export function pageHeaderNavClassName() {
 
 export function pageActionPrimaryClassName() {
   return cn(
-    "inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm bg-accent px-3.5 text-sm font-medium whitespace-nowrap text-accent-fg shadow-[var(--shadow-xs)] hover:bg-accent-hover md:min-h-8 md:px-3",
+    "btn-primary-skin inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm px-3.5 text-sm font-medium whitespace-nowrap md:min-h-8 md:px-3",
     pressableLinkMotion,
   );
 }
 
 export function pageActionSecondaryClassName() {
   return cn(
-    "inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm border border-border bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-fg shadow-[var(--shadow-xs)] hover:border-border-strong hover:bg-hover md:min-h-8 md:px-3",
+    "btn-secondary-skin inline-flex min-h-11 shrink-0 items-center justify-center rounded-sm px-3.5 text-sm font-medium whitespace-nowrap md:min-h-8 md:px-3",
     pressableLinkMotion,
   );
 }

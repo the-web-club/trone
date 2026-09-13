@@ -1,5 +1,5 @@
 /* TRÔNE design tokens — light default, overgenomen van crm.thewebclub.nl.
-   Merkkleuren en [data-theme="login"] zijn extra; light-schermen blijven gelijk. */
+   [data-theme="dark"] en [data-theme="login"] delen het charcoal-palet. Light blijft gelijk. */
 
 :root {
   --gray-0: #ffffff;
@@ -16,13 +16,22 @@
   --gray-1000: #0a0a0a;
 
   --brand-accent: #ed7845;
+  --brand-app-bg: #303037;
   --brand-bg: #35353c;
-  --brand-surface-raised: #505059;
+  --brand-surface: #35353c;
+  --brand-surface-raised: #3a3b45;
+  --brand-surface-emphasized: #4e4e57;
+  --brand-primary-fg: #17171b;
+  --brand-fg: #f5f5f7;
+  --brand-fg-muted: #cacad0;
+  --brand-fg-subtle: #b3b3be;
 
   --bg: var(--gray-50);
   --surface: var(--gray-0);
   --surface-raised: var(--gray-0);
+  --surface-emphasized: var(--gray-100);
   --surface-sunk: var(--gray-100);
+  --input-bg: var(--gray-0);
   --hover: var(--gray-100);
   --hover-subtle: var(--gray-50);
   --selected: var(--gray-100);
@@ -40,6 +49,20 @@
   --accent: var(--gray-1000);
   --accent-fg: var(--gray-0);
   --accent-hover: var(--gray-800);
+
+  --overlay: rgb(10 10 10 / 0.28);
+
+  --btn-primary-bg: var(--accent);
+  --btn-primary-fg: var(--accent-fg);
+  --btn-primary-hover: var(--accent-hover);
+  --btn-primary-active: var(--gray-900);
+  --btn-secondary-bg: var(--surface);
+  --btn-secondary-fg: var(--fg);
+  --btn-secondary-border: var(--border);
+  --btn-secondary-border-width: 1px;
+  --btn-secondary-hover-bg: var(--hover);
+  --btn-secondary-hover-border: var(--border-strong);
+  --btn-secondary-active-bg: var(--selected);
 
   --info: #1d4ed8;
   --info-dot: #2563eb;
@@ -128,6 +151,8 @@
   --ease-standard: var(--ease-in-out);
   --ease-enter: var(--ease-out-expo);
   --ease-exit: var(--ease-in-quart);
+
+  color-scheme: light;
 }
 
 @media not ((hover: hover) and (pointer: fine) and (min-width: 1024px)) {
@@ -137,43 +162,73 @@
   }
 }
 
-/* Dark theme — alleen scoped toepassen (nu: inlogpagina). Light-schermen blijven ongewijzigd. */
+/* Dark application + login: mandatory TRÔNE charcoal/orange. */
+[data-theme="dark"],
 [data-theme="login"] {
-  --bg: var(--brand-bg);
-  --surface: var(--brand-bg);
+  --bg: var(--brand-app-bg);
+  --surface: var(--brand-surface);
   --surface-raised: var(--brand-surface-raised);
-  --surface-sunk: color-mix(in srgb, var(--brand-bg) 78%, black);
-  --hover: color-mix(in srgb, white 7%, var(--surface-raised));
-  --hover-subtle: color-mix(in srgb, white 4%, var(--surface-raised));
-  --selected: color-mix(in srgb, white 9%, var(--surface-raised));
-  --selected-bg: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
-  --selected-ring: color-mix(in srgb, var(--accent) 42%, transparent);
+  --surface-emphasized: var(--brand-surface-emphasized);
+  --surface-sunk: #2a2a30;
+  --input-bg: #2a2a30;
+  --hover: color-mix(in srgb, white 6%, var(--surface));
+  --hover-subtle: color-mix(in srgb, white 3.5%, var(--surface));
+  --selected: color-mix(in srgb, white 8%, var(--surface));
+  --selected-bg: color-mix(in srgb, var(--brand-accent) 16%, var(--surface));
+  --selected-ring: color-mix(in srgb, var(--brand-accent) 42%, transparent);
 
-  --border: color-mix(in srgb, white 14%, transparent);
-  --border-strong: color-mix(in srgb, white 24%, transparent);
+  --border: color-mix(in srgb, var(--brand-surface-emphasized) 72%, transparent);
+  --border-strong: var(--brand-surface-emphasized);
 
-  --fg: #f4f4f5;
-  --fg-muted: #d0d0d4;
-  --fg-subtle: #b4b4ba;
-  --fg-invert: #1a1a1c;
+  --fg: var(--brand-fg);
+  --fg-muted: var(--brand-fg-muted);
+  --fg-subtle: var(--brand-fg-subtle);
+  --fg-invert: var(--brand-primary-fg);
 
   --accent: var(--brand-accent);
-  --accent-fg: var(--gray-0);
-  --accent-hover: color-mix(in srgb, var(--brand-accent) 78%, #1a1a1c);
+  --accent-fg: var(--brand-primary-fg);
+  --accent-hover: color-mix(in srgb, var(--brand-accent) 86%, white);
 
+  --overlay: rgb(0 0 0 / 0.56);
+
+  --btn-primary-bg: var(--brand-accent);
+  --btn-primary-fg: var(--brand-primary-fg);
+  --btn-primary-hover: color-mix(in srgb, var(--brand-accent) 86%, white);
+  --btn-primary-active: color-mix(in srgb, var(--brand-accent) 84%, #17171b);
+  --btn-secondary-bg: var(--brand-surface-raised);
+  --btn-secondary-fg: var(--brand-fg);
+  --btn-secondary-border: var(--brand-accent);
+  --btn-secondary-border-width: 2px;
+  --btn-secondary-hover-bg: color-mix(in srgb, white 7%, var(--brand-surface-raised));
+  --btn-secondary-hover-border: var(--brand-accent);
+  --btn-secondary-active-bg: color-mix(in srgb, white 10%, var(--brand-surface-raised));
+
+  --info: #93c5fd;
+  --info-dot: #60a5fa;
+  --info-bg: color-mix(in srgb, #60a5fa 16%, var(--surface));
+  --info-border: color-mix(in srgb, #60a5fa 34%, var(--surface));
   --success: #6ee7b7;
   --success-dot: #34d399;
-  --danger: #f0b4b0;
-  --danger-dot: #f0b4b0;
-  --danger-bg: color-mix(in srgb, #f0b4b0 16%, var(--surface-raised));
-  --danger-border: color-mix(in srgb, #f0b4b0 32%, var(--surface-raised));
+  --success-bg: color-mix(in srgb, #34d399 16%, var(--surface));
+  --success-border: color-mix(in srgb, #34d399 34%, var(--surface));
+  --warning: #fcd34d;
+  --warning-dot: #f59e0b;
+  --warning-bg: color-mix(in srgb, #f59e0b 16%, var(--surface));
+  --warning-border: color-mix(in srgb, #f59e0b 34%, var(--surface));
+  --danger: #fca5a5;
+  --danger-dot: #f87171;
+  --danger-bg: color-mix(in srgb, #f87171 16%, var(--surface));
+  --danger-border: color-mix(in srgb, #f87171 34%, var(--surface));
 
   --ring: color-mix(in srgb, var(--brand-accent) 45%, transparent);
-  --ring-danger: color-mix(in srgb, var(--danger) 28%, transparent);
+  --ring-danger: color-mix(in srgb, var(--danger) 32%, transparent);
 
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.28);
   --shadow-sm: 0 10px 28px -8px rgb(0 0 0 / 0.4);
   --shadow-pop: 0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.45);
+  --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.04), 0 18px 36px -14px rgb(0 0 0 / 0.5);
+
+  color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {

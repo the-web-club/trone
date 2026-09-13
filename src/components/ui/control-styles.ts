@@ -17,7 +17,7 @@ export const focusRingOutline =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 export const fieldBase =
-  "w-full rounded-sm border border-border bg-surface text-fg " +
+  "w-full rounded-sm border border-border bg-input text-fg " +
   controlMotion +
   " placeholder:text-fg-subtle hover:border-border-strong " +
   focusRingField +
@@ -26,7 +26,7 @@ export const fieldBase =
   " data-[invalid]:border-danger";
 
 export const popupSurface =
-  "rounded-md border border-border bg-surface p-1 shadow-[var(--shadow-pop)] outline-none";
+  "rounded-md border border-border bg-surface-raised p-1 shadow-[var(--shadow-pop)] outline-none";
 
 export const popupMotion = overlayMotion;
 

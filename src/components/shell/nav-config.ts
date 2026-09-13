@@ -82,6 +82,7 @@ const pageTitles: Array<{ href: string; label: string }> = [
   { href: "/kansen", label: "Kansen" },
   { href: "/producten", label: "Producten" },
   { href: "/instellingen", label: "Instellingen" },
+  { href: "/instellingen/weergave", label: "Weergave" },
   { href: "/instellingen/feedback", label: "Feedback" },
 ];
 
