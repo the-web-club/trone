@@ -100,11 +100,11 @@ export function LeadQualification({
                   onSave={(next) => saveAnswer(question.id, next)}
                 />
               ) : (
-                <div className="inline-field flex min-w-0 flex-col gap-0.5">
-                  <span className="text-label text-pretty font-medium break-words text-fg-muted">
+                <div className="inline-field flex min-w-0 flex-col gap-1">
+                  <span className="inline-field-label">
                     {question.question}
                   </span>
-                  <div className="min-h-8 px-1 py-1 text-sm break-words text-fg">
+                  <div className="inline-field-value">
                     {selected?.label ?? LEAD_SCORE_UNKNOWN_LABEL}
                   </div>
                 </div>

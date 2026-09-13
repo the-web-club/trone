@@ -110,6 +110,7 @@ export default async function OfferteDetailPage({
     <DetailPage>
       <DetailHeader
         back={<DetailBackLink href="/offertes">Offertes</DetailBackLink>}
+        chromeTitle={versionLabel}
         title={<h1 className="page-header-title">{versionLabel}</h1>}
         status={
           <Badge tone={quoteStatusTones[displayStatus]}>

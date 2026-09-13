@@ -182,6 +182,7 @@ export function LeadDetail({
     <DetailPage>
       <DetailHeader
         back={<DetailBackLink href="/leads">Leads</DetailBackLink>}
+        chromeTitle={deal.title}
         title={
           <InlineTextField
             label="Titel"
@@ -198,6 +199,7 @@ export function LeadDetail({
             items={stageItems}
             hideLabel
             compact
+            surface="plain"
             triggerClassName={cn(
               "h-6 w-auto min-w-0 max-w-[14rem] rounded-sm border-transparent px-2 text-xs font-medium",
               stageToneClass,

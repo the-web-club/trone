@@ -7,6 +7,7 @@ import { CompanyTimeline } from "@/components/detail/entity-activity";
 import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
+import { listDealTeamMembers } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
 import { companyPath } from "@/lib/paths";
 
@@ -30,12 +31,13 @@ export default async function BedrijfDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [session, company] = await Promise.all([
+  const [session, company, members] = await Promise.all([
     requireSession(),
     getCompany(slug).catch((error) => {
       if (isAppError(error) && error.status === 404) notFound();
       throw error;
     }),
+    listDealTeamMembers(),
   ]);
   if (slug !== company.slug) redirect(companyPath(company));
 
@@ -61,7 +63,9 @@ export default async function BedrijfDetailPage({
           : null,
         viesCheckedName: company.viesCheckedName,
         notes: company.notes,
+        ownerUserId: company.ownerUserId,
       }}
+      members={members}
       contacts={company.contacts.map((contact) => ({
         id: contact.id,
         slug: contact.slug,

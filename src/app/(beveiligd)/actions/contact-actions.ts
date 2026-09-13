@@ -15,6 +15,7 @@ import {
   getContact,
   listContactsForSelect,
   setContactCompany,
+  setContactOwner,
   updateContact,
 } from "@/lib/contact-service";
 import {
@@ -38,12 +39,12 @@ export async function createContactAction(
   };
 }> {
   try {
-    await requireSession();
+    const session = await requireSession();
     const companyId = normalizeCompanyId(
       String(formData.get("companyId") ?? ""),
     );
     const input = parseContactForm(formData);
-    const contact = await createContact(companyId, input);
+    const contact = await createContact(companyId, input, session.user.id);
     revalidatePath("/bedrijven");
     revalidatePath("/bedrijven/[slug]", "page");
     revalidatePath("/contacten");
@@ -108,6 +109,20 @@ export async function patchContactAction(
     }
     revalidateContactPaths(contact);
     return { slug: contact.slug };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function setContactOwnerAction(
+  contactId: string,
+  ownerUserId: string | null,
+): Promise<{ error?: string }> {
+  try {
+    await requireSession();
+    const contact = await setContactOwner(contactId, ownerUserId);
+    revalidateContactPaths(contact);
+    return {};
   } catch (error) {
     return toActionError(error);
   }

@@ -145,18 +145,19 @@ model Company {
 }
 
 model Contact {
-  id        String   @id
-  slug      String   @unique
-  companyId String?
-  firstName String
-  lastName  String?
-  jobTitle  String?
-  email     String?
-  phone     String?
-  isPrimary Boolean  @default(false)
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id
+  slug        String   @unique
+  companyId   String?
+  firstName   String
+  lastName    String?
+  jobTitle    String?
+  email       String?
+  phone       String?
+  isPrimary   Boolean  @default(false)
+  notes       String?  @db.Text
+  ownerUserId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   company        Company?        @relation(fields: [companyId], references: [id])
   deals          Deal[]
@@ -166,6 +167,7 @@ model Contact {
   tasks          Task[]
 
   @@index([companyId])
+  @@index([ownerUserId])
   @@map("contact")
 }
 
@@ -347,6 +349,13 @@ enum TaskPriority {
 
 enum TaskKind {
   FOLLOW_UP
+  CALL
+  EMAIL
+  MEETING
+  DEMO
+  QUOTE
+  VISIT
+  OTHER
 }
 
 model Task {

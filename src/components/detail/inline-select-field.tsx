@@ -4,6 +4,11 @@ import { useId, useState } from "react";
 import { SavedIndicator } from "@/components/detail/saved-indicator";
 import { useSavedFlash } from "@/components/detail/use-saved-flash";
 import { ComboboxMenu } from "@/components/ui/combobox";
+import {
+  inlineFieldChrome,
+  inlineFieldControl,
+  inlineFieldLabel,
+} from "@/components/ui/control-styles";
 import type { SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
@@ -16,6 +21,7 @@ export function InlineSelectField({
   disabled,
   hideLabel = false,
   compact = false,
+  surface = "field",
   layout = "stack",
   span = "auto",
   searchPlaceholder,
@@ -32,6 +38,7 @@ export function InlineSelectField({
   disabled?: boolean;
   hideLabel?: boolean;
   compact?: boolean;
+  surface?: "field" | "plain";
   layout?: "stack" | "row";
   span?: "auto" | "full";
   searchPlaceholder?: string;
@@ -94,7 +101,7 @@ export function InlineSelectField({
         compact
           ? "flex flex-row items-center gap-2"
           : isCell
-            ? "inline-field flex flex-col gap-0.5"
+            ? "inline-field flex flex-col gap-1"
             : "flex flex-col gap-1",
       )}
     >
@@ -103,7 +110,7 @@ export function InlineSelectField({
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className="text-label text-pretty font-medium break-words text-fg-muted">
+        <label htmlFor={id} className={inlineFieldLabel}>
           {label}
         </label>
       )}
@@ -118,9 +125,15 @@ export function InlineSelectField({
           searchPlaceholder={searchPlaceholder}
           wrap={!compact}
           className={cn(
-            "inline-editable w-full max-w-full cursor-pointer border-transparent bg-transparent px-1",
-            "hover:border-border hover:bg-surface",
-            "data-[popup-open]:border-border-strong data-[popup-open]:bg-surface",
+            "inline-editable w-full max-w-full cursor-pointer",
+            surface === "field"
+              ? cn(
+                  inlineFieldChrome,
+                  compact
+                    ? "h-6 min-h-6 w-auto px-2 py-0 md:h-6 md:min-h-6"
+                    : inlineFieldControl,
+                )
+              : "border-transparent bg-transparent px-1 shadow-none hover:border-border hover:bg-surface",
             compact && "w-auto",
             triggerClassName,
           )}

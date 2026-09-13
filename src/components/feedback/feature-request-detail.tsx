@@ -115,6 +115,7 @@ export function FeatureRequestDetailView({
     <DetailPage>
       <DetailHeader
         back={<FeatureRequestBackLink />}
+        chromeTitle={request.title}
         title={
           canEdit ? (
             <InlineTextField

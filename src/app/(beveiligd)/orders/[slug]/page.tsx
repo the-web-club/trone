@@ -51,6 +51,7 @@ export default async function OrderDetailPage({
     <DetailPage>
       <DetailHeader
         back={<DetailBackLink href="/orders">Orders</DetailBackLink>}
+        chromeTitle={order.orderNumber}
         title={<h1 className="page-header-title">{order.orderNumber}</h1>}
         status={
           <Badge tone={orderStatusTones[order.status]}>

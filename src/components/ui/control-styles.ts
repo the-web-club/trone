@@ -25,6 +25,27 @@ export const fieldBase =
   " aria-invalid:border-danger aria-invalid:focus-visible:border-danger aria-invalid:focus-visible:ring-ring-danger" +
   " data-[invalid]:border-danger";
 
+/** Permanent surface for inline-editable detail fields. */
+export const inlineFieldMotion =
+  "transition-[background-color,border-color,box-shadow] duration-[var(--inline-field-duration)] ease-[var(--ease-in-out)]";
+
+export const inlineFieldChrome =
+  "inline-field-control rounded-sm border border-inline-field-border bg-inline-field text-fg shadow-[var(--inline-field-shadow)] " +
+  inlineFieldMotion +
+  " hover:border-inline-field-hover-border hover:bg-inline-field-hover hover:shadow-[var(--inline-field-hover-shadow)] " +
+  "data-[popup-open]:border-inline-field-open-border data-[popup-open]:bg-inline-field-hover " +
+  "data-[editing]:border-inline-field-open-border data-[editing]:bg-inline-field " +
+  focusRingField +
+  " disabled:cursor-not-allowed disabled:border-inline-field-border disabled:bg-inline-field disabled:text-fg-muted disabled:opacity-70 disabled:hover:border-inline-field-border disabled:hover:bg-inline-field" +
+  " data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70 data-[disabled]:hover:border-inline-field-border data-[disabled]:hover:bg-inline-field" +
+  " aria-invalid:border-danger aria-invalid:focus-visible:border-danger aria-invalid:focus-visible:ring-ring-danger";
+
+export const inlineFieldControl =
+  "min-h-11 items-center px-2.5 py-1.5 text-sm md:min-h-9 md:h-auto";
+
+export const inlineFieldLabel =
+  "inline-field-label text-label font-medium text-pretty break-words text-fg-muted";
+
 export const popupSurface =
   "rounded-md border border-border bg-surface-raised p-1 shadow-[var(--shadow-pop)] outline-none";
 

@@ -1,3 +1,4 @@
+import { ContactOwnerSelect } from "@/components/contact/contact-owner-select";
 import { CompanyLink, ContactLink } from "@/components/entity-links";
 import {
   ListCard,
@@ -18,6 +19,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import type { DealTeamMember } from "@/lib/deal-service";
 
 export type ContactListRow = {
   id: string;
@@ -25,15 +27,22 @@ export type ContactListRow = {
   firstName: string;
   lastName: string | null;
   email: string | null;
+  ownerUserId: string | null;
   company: { slug: string; name: string } | null;
 };
 
 export function ContactsList({
   items,
+  members,
+  ownerNames,
+  ownerImages,
   emptyMessage,
   emptyAction,
 }: {
   items: ContactListRow[];
+  members: DealTeamMember[];
+  ownerNames: Map<string, string | null | undefined>;
+  ownerImages: Map<string, string | null | undefined>;
   emptyMessage: React.ReactNode;
   emptyAction?: React.ReactNode;
 }) {
@@ -45,11 +54,12 @@ export function ContactsList({
             <TableHeaderCell>Naam</TableHeaderCell>
             <TableHeaderCell>E-mail</TableHeaderCell>
             <TableHeaderCell>Bedrijf</TableHeaderCell>
+            <TableHeaderCell>Eigenaar</TableHeaderCell>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
-            <TableEmptyRow colSpan={3}>
+            <TableEmptyRow colSpan={4}>
               {emptyMessage}
               {emptyAction}
             </TableEmptyRow>
@@ -64,6 +74,23 @@ export function ContactsList({
                 </TableCell>
                 <TableCell className="text-fg-muted">
                   <CompanyLink company={contact.company} />
+                </TableCell>
+                <TableCell>
+                  <ContactOwnerSelect
+                    contactId={contact.id}
+                    ownerUserId={contact.ownerUserId}
+                    ownerName={
+                      contact.ownerUserId
+                        ? (ownerNames.get(contact.ownerUserId) ?? null)
+                        : null
+                    }
+                    ownerImage={
+                      contact.ownerUserId
+                        ? (ownerImages.get(contact.ownerUserId) ?? null)
+                        : null
+                    }
+                    members={members}
+                  />
                 </TableCell>
               </TableRow>
             ))
@@ -91,6 +118,23 @@ export function ContactsList({
             <ListCardRow label="E-mail">{contact.email || "—"}</ListCardRow>
             <ListCardRow label="Bedrijf">
               <CompanyLink company={contact.company} />
+            </ListCardRow>
+            <ListCardRow label="Eigenaar">
+              <ContactOwnerSelect
+                contactId={contact.id}
+                ownerUserId={contact.ownerUserId}
+                ownerName={
+                  contact.ownerUserId
+                    ? (ownerNames.get(contact.ownerUserId) ?? null)
+                    : null
+                }
+                ownerImage={
+                  contact.ownerUserId
+                    ? (ownerImages.get(contact.ownerUserId) ?? null)
+                    : null
+                }
+                members={members}
+              />
             </ListCardRow>
           </ListCardRows>
         </ListCard>

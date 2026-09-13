@@ -114,7 +114,7 @@ export function LeadFieldsSkeleton() {
       {Array.from({ length: 4 }, (_, index) => (
         <div key={index} className="inline-field">
           <SkeletonPulse className="h-3 w-16" />
-          <SkeletonPulse className="h-8 w-full" />
+          <SkeletonPulse className="h-9 w-full rounded-sm border border-inline-field-border bg-inline-field" />
         </div>
       ))}
     </div>
@@ -128,7 +128,7 @@ export function CompanyFieldsSkeleton() {
         {Array.from({ length: 8 }, (_, index) => (
           <div key={index} className="inline-field">
             <SkeletonPulse className="h-3 w-16" />
-            <SkeletonPulse className="h-8 w-full" />
+            <SkeletonPulse className="h-9 w-full rounded-sm border border-inline-field-border bg-inline-field" />
           </div>
         ))}
       </div>
@@ -165,7 +165,7 @@ export function ContactFieldsSkeleton() {
         {Array.from({ length: 4 }, (_, index) => (
           <div key={index} className="inline-field">
             <SkeletonPulse className="h-3 w-16" />
-            <SkeletonPulse className="h-8 w-full" />
+            <SkeletonPulse className="h-9 w-full rounded-sm border border-inline-field-border bg-inline-field" />
           </div>
         ))}
       </div>
@@ -198,7 +198,7 @@ export function LeadDetailSkeleton() {
                 {Array.from({ length: 5 }, (_, index) => (
                   <div key={index} className="inline-field">
                     <SkeletonPulse className="h-3 w-40" />
-                    <SkeletonPulse className="h-8 w-full" />
+                    <SkeletonPulse className="h-9 w-full rounded-sm border border-inline-field-border bg-inline-field" />
                   </div>
                 ))}
               </div>

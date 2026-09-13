@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   deleteContactAction,
   patchContactAction,
+  setContactOwnerAction,
 } from "@/app/(beveiligd)/actions/contact-actions";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import { ContactNameTitle } from "@/components/contact/contact-name-title";
@@ -27,6 +28,7 @@ import {
 import { InlineTextField } from "@/components/detail/inline-text-field";
 import type { SelectOption } from "@/components/ui/select";
 import type { ContactPatch } from "@/lib/contact-validation";
+import type { DealTeamMember } from "@/lib/deal-service";
 import { formatPersonName } from "@/lib/format";
 import { contactPath } from "@/lib/paths";
 
@@ -40,18 +42,21 @@ export type ContactDetailRecord = {
   phone: string | null;
   notes: string | null;
   isPrimary: boolean;
+  ownerUserId: string | null;
   company: { id: string; slug: string; name: string } | null;
 };
 
 export function ContactDetail({
   contact,
   companies,
+  members,
   leads,
   activity,
   isAdmin = false,
 }: {
   contact: ContactDetailRecord;
   companies: Array<{ id: string; slug: string; name: string }>;
+  members: DealTeamMember[];
   leads: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
@@ -75,6 +80,7 @@ export function ContactDetail({
     <DetailPage>
       <DetailHeader
         back={<DetailBackLink href="/contacten">Contacten</DetailBackLink>}
+        chromeTitle={formatPersonName(contact.firstName, contact.lastName)}
         title={
           <ContactNameTitle
             firstName={contact.firstName}
@@ -135,6 +141,7 @@ export function ContactDetail({
             <ContactDetailFields
               contact={contact}
               companies={companies}
+              members={members}
               save={save}
             />
             {leads}
@@ -149,12 +156,15 @@ export function ContactDetail({
 function ContactDetailFields({
   contact,
   companies,
+  members,
   save,
 }: {
   contact: ContactDetailRecord;
   companies: Array<{ id: string; slug: string; name: string }>;
+  members: DealTeamMember[];
   save: (patch: ContactPatch) => Promise<string | null>;
 }) {
+  const router = useRouter();
   const [companyList, setCompanyList] = useState(companies);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [companyQuery, setCompanyQuery] = useState("");
@@ -179,10 +189,47 @@ function ContactDetailFields({
     return items;
   }, [companyList, contact.company]);
 
+  const ownerItems = useMemo<SelectOption[]>(() => {
+    const items: SelectOption[] = [
+      { value: INLINE_SELECT_EMPTY, label: "Niet toegewezen" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ];
+    if (
+      contact.ownerUserId &&
+      !items.some((item) => item.value === contact.ownerUserId)
+    ) {
+      items.splice(1, 0, {
+        value: contact.ownerUserId,
+        label: contact.ownerUserId,
+      });
+    }
+    return items;
+  }, [contact.ownerUserId, members]);
+
   return (
     <>
       <DetailSection title="Gegevens">
         <DetailFieldGrid>
+          <InlineSelectField
+            label="Eigenaar"
+            value={contact.ownerUserId ?? ""}
+            items={ownerItems}
+            layout="row"
+            searchPlaceholder="Zoek een eigenaar…"
+            onSave={async (next) => {
+              const result = await setContactOwnerAction(
+                contact.id,
+                next || null,
+              );
+              if (result.error) return result.error;
+              router.refresh();
+              return null;
+            }}
+          />
           <InlineTextField
             label="Functie"
             value={contact.jobTitle ?? ""}

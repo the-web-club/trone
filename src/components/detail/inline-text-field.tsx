@@ -13,14 +13,19 @@ import { SavedIndicator } from "@/components/detail/saved-indicator";
 import { useSavedFlash } from "@/components/detail/use-saved-flash";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { focusRingOutline } from "@/components/ui/control-styles";
+import {
+  focusRingOutline,
+  inlineFieldChrome,
+  inlineFieldControl,
+  inlineFieldLabel,
+} from "@/components/ui/control-styles";
 import { cn } from "@/lib/cn";
 
 export function InlineTextField({
   label,
   value,
   displayValue,
-  placeholder = "—",
+  placeholder = "Niet ingevuld",
   inputPlaceholder,
   type = "text",
   required = false,
@@ -158,12 +163,14 @@ export function InlineTextField({
         ref={textareaRef}
         id={id}
         value={draft}
-        placeholder={inputPlaceholder}
+        placeholder={inputPlaceholder ?? placeholder}
+        data-editing=""
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={onKeyDown}
         onBlur={onBlur}
+        className={inlineFieldChrome}
       />
     ) : (
       <Input
@@ -174,7 +181,8 @@ export function InlineTextField({
         min={min}
         step={step}
         value={draft}
-        placeholder={inputPlaceholder}
+        placeholder={inputPlaceholder ?? placeholder}
+        data-editing=""
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => setDraft(event.target.value)}
@@ -183,7 +191,7 @@ export function InlineTextField({
         className={
           isTitle
             ? "h-auto border-transparent bg-transparent px-1 py-0 text-[length:inherit] leading-[inherit] tracking-[inherit] shadow-none"
-            : "h-8 px-1"
+            : cn(inlineFieldChrome, inlineFieldControl)
         }
       />
     )
@@ -191,15 +199,21 @@ export function InlineTextField({
     <button
       type="button"
       id={id}
+      data-field-control=""
       aria-label={`${label} bewerken`}
       onClick={startEditing}
       className={cn(
-        "inline-editable max-w-full rounded-sm text-left",
-        isTitle ? "-mx-1 px-1" : "min-h-8 w-full px-1 py-1 text-sm break-words",
+        "inline-editable max-w-full text-left",
+        isTitle
+          ? cn("-mx-1 rounded-sm px-1", "hover:bg-hover", focusRingOutline)
+          : cn(
+              inlineFieldChrome,
+              inlineFieldControl,
+              "flex w-full items-center break-words",
+              multiline && "h-auto items-start",
+            ),
         multiline && !isEmpty && "whitespace-pre-wrap",
         isEmpty ? "text-fg-muted" : "text-fg",
-        "hover:bg-hover",
-        focusRingOutline,
       )}
     >
       {shown}
@@ -224,7 +238,7 @@ export function InlineTextField({
         isTitle
           ? "w-full"
           : isCell
-            ? "inline-field flex flex-col gap-0.5"
+            ? "inline-field flex flex-col gap-1"
             : "flex flex-col gap-1",
       )}
     >
@@ -233,7 +247,7 @@ export function InlineTextField({
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className="text-label font-medium text-fg-muted">
+        <label htmlFor={id} className={inlineFieldLabel}>
           {label}
         </label>
       )}

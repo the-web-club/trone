@@ -84,6 +84,9 @@ const pageTitles: Array<{ href: string; label: string }> = [
   { href: "/instellingen", label: "Instellingen" },
   { href: "/instellingen/weergave", label: "Weergave" },
   { href: "/instellingen/feedback", label: "Feedback" },
+  { href: "/instellingen/medewerkers", label: "Teamleden" },
+  { href: "/instellingen/drempels", label: "Drempels" },
+  { href: "/instellingen/bedrijfsgegevens", label: "Bedrijfsgegevens" },
 ];
 
 const overviewPaths = new Set([
@@ -131,4 +134,24 @@ export function parentNavPath(pathname: string): string {
   segments.pop();
   const parent = `/${segments.join("/")}`;
   return parent || "/overzicht";
+}
+
+export function breadcrumbAncestor(
+  pathname: string,
+): { href: string; label: string } | null {
+  if (isOverviewNavPath(pathname)) return null;
+
+  const segments = pathname.split("/").filter(Boolean);
+  while (segments.length > 0) {
+    segments.pop();
+    const href = segments.length === 0 ? "/overzicht" : `/${segments.join("/")}`;
+    if (
+      isOverviewNavPath(href) ||
+      pageTitles.some((item) => item.href === href)
+    ) {
+      return { href, label: navTitleForPath(href) };
+    }
+  }
+
+  return null;
 }

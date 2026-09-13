@@ -12,6 +12,7 @@ import {
   normalizeCompanyId,
 } from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
+import type { ContactOwnerFacets } from "@/lib/contacts-query";
 import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
 
 export type ContactSelectOption = {
@@ -52,18 +53,19 @@ export async function listContacts() {
 export type ContactListFilters = {
   query?: string;
   companyId?: string;
+  eigenaar?: string;
   page?: number;
   pageSize?: number;
 };
 
-export async function listContactRows(filters: ContactListFilters = {}) {
-  const prisma = getPrismaClient();
-  const { page, pageSize, skip, take } = paginateArgs(
-    filters.page,
-    filters.pageSize,
-  );
-  const query = effectiveSearchQuery(filters.query);
+const NO_MATCH_ID = "__no_match__";
+
+export function buildContactListWhere(
+  filters: ContactListFilters,
+  currentUserId?: string,
+): Prisma.ContactWhereInput {
   const and: Prisma.ContactWhereInput[] = [];
+  const query = effectiveSearchQuery(filters.query);
   if (query) {
     and.push({
       OR: [
@@ -76,20 +78,87 @@ export async function listContactRows(filters: ContactListFilters = {}) {
   if (filters.companyId) {
     and.push({ companyId: filters.companyId });
   }
-  const where = and.length ? { AND: and } : {};
+
+  const eigenaar = filters.eigenaar?.trim() || "alle";
+  if (eigenaar === "aan-mij") {
+    and.push({ ownerUserId: currentUserId ?? NO_MATCH_ID });
+  } else if (eigenaar === "niet-toegewezen") {
+    and.push({ ownerUserId: null });
+  } else if (eigenaar !== "alle") {
+    and.push({ ownerUserId: eigenaar });
+  }
+
+  return and.length ? { AND: and } : {};
+}
+
+export async function listContactRows(
+  filters: ContactListFilters = {},
+  currentUserId?: string,
+) {
+  const prisma = getPrismaClient();
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+  const where = buildContactListWhere(filters, currentUserId);
 
   const [total, items] = await Promise.all([
     prisma.contact.count({ where }),
     prisma.contact.findMany({
       where,
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-      include: { company: { select: { id: true, slug: true, name: true } } },
+      select: {
+        id: true,
+        slug: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        ownerUserId: true,
+        company: { select: { id: true, slug: true, name: true } },
+      },
       skip,
       take,
     }),
   ]);
 
   return { items, total, page, pageSize };
+}
+
+export async function getContactOwnerFacets(
+  filters: ContactListFilters = {},
+  currentUserId?: string,
+): Promise<ContactOwnerFacets> {
+  const prisma = getPrismaClient();
+  const ownerWhere = buildContactListWhere(
+    { ...filters, eigenaar: "alle" },
+    currentUserId,
+  );
+  const ownerGroups = await prisma.contact.groupBy({
+    by: ["ownerUserId"],
+    where: ownerWhere,
+    _count: { _all: true },
+  });
+
+  const ownerTotal = ownerGroups.reduce(
+    (sum, group) => sum + group._count._all,
+    0,
+  );
+  const unassignedOwner =
+    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
+
+  return {
+    ownerTotal,
+    unassignedOwner,
+    assignedToMe: currentUserId
+      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
+          ?._count._all ?? 0)
+      : 0,
+    byOwner: ownerGroups.flatMap((group) =>
+      group.ownerUserId
+        ? [{ userId: group.ownerUserId, count: group._count._all }]
+        : [],
+    ),
+  };
 }
 
 export const getContact = cache(
@@ -145,6 +214,7 @@ async function clearOtherPrimaries(companyId: string, exceptId?: string) {
 export async function createContact(
   companyId: string | null | undefined,
   input: ContactInput,
+  ownerUserId?: string,
 ) {
   const nextCompanyId = normalizeCompanyId(companyId);
   if (nextCompanyId) {
@@ -166,8 +236,31 @@ export async function createContact(
       id: createId(),
       slug,
       companyId: nextCompanyId,
+      ownerUserId: ownerUserId ?? null,
       ...toContactData(input, nextCompanyId),
     },
+  });
+}
+
+export async function setContactOwner(id: string, ownerUserId: string | null) {
+  const contact = await getContact(id);
+  const nextOwnerId = ownerUserId?.trim() || null;
+  if (contact.ownerUserId === nextOwnerId) return contact;
+
+  const prisma = getPrismaClient();
+  if (nextOwnerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: nextOwnerId },
+      select: { id: true, banned: true },
+    });
+    if (!user || user.banned === true) {
+      throw new AppError("Teamlid niet gevonden.", "NOT_FOUND", 404);
+    }
+  }
+
+  return prisma.contact.update({
+    where: { id: contact.id },
+    data: { ownerUserId: nextOwnerId },
   });
 }
 

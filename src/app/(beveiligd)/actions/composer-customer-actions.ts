@@ -64,7 +64,11 @@ export async function createComposerCustomerAction(
     let contact: ComposerCreatedContact | null = null;
     let contactSlug: string | null = null;
     if (contactInput) {
-      const saved = await createContact(company.id, contactInput);
+      const saved = await createContact(
+        company.id,
+        contactInput,
+        session.user.id,
+      );
       contactSlug = saved.slug;
       contact = {
         id: saved.id,

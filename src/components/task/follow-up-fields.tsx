@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select";
-import { DEFAULT_FOLLOW_UP_TITLE, taskKindLabels } from "@/lib/task-validation";
-
-const followUpKindItems = [
-  { value: "FOLLOW_UP", label: taskKindLabels.FOLLOW_UP },
-];
+import {
+  DEFAULT_FOLLOW_UP_TITLE,
+  defaultTitleForTaskKind,
+  isDefaultTaskTitle,
+  isTaskKind,
+  taskKindItems,
+  type TaskKind,
+} from "@/lib/task-validation";
 
 export function FollowUpFields({
   dateOnly,
@@ -23,12 +27,22 @@ export function FollowUpFields({
   onDateOnlyChange: (value: boolean) => void;
   idPrefix?: string;
   dateRequired?: boolean;
-  initialKind?: string;
+  initialKind?: TaskKind;
   initialTitle?: string;
   initialDate?: string;
   initialTime?: string;
 }) {
   const fieldId = (name: string) => `${idPrefix}${name}`;
+  const [kind, setKind] = useState<TaskKind>(initialKind);
+  const [title, setTitle] = useState(initialTitle);
+
+  function handleKindChange(next: string) {
+    if (!isTaskKind(next)) return;
+    setKind(next);
+    setTitle((current) =>
+      isDefaultTaskTitle(current) ? defaultTitleForTaskKind(next) : current,
+    );
+  }
 
   return (
     <>
@@ -36,15 +50,17 @@ export function FollowUpFields({
         <FormField id={fieldId("followUpKind")} label="Type">
           <SelectMenu
             name="followUpKind"
-            defaultValue={initialKind}
-            items={followUpKindItems}
+            value={kind}
+            onValueChange={handleKindChange}
+            items={taskKindItems}
             searchPlaceholder="Zoek een type…"
           />
         </FormField>
         <FormField id={fieldId("followUpTitle")} label="Titel">
           <Input
             name="followUpTitle"
-            defaultValue={initialTitle}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
           />
         </FormField>
       </div>

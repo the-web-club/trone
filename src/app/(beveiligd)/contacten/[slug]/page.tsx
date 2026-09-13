@@ -9,6 +9,7 @@ import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
+import { listDealTeamMembers } from "@/lib/deal-service";
 import { contactPath } from "@/lib/paths";
 import { isAppError } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
@@ -33,13 +34,14 @@ export default async function ContactDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [session, contact, companies] = await Promise.all([
+  const [session, contact, companies, members] = await Promise.all([
     requireSession(),
     getContact(slug).catch((error) => {
       if (isAppError(error) && error.status === 404) notFound();
       throw error;
     }),
     listCompaniesForSelect(),
+    listDealTeamMembers(),
   ]);
   if (slug !== contact.slug) redirect(contactPath(contact));
   const companyId = getContactCompanyId(contact);
@@ -57,8 +59,10 @@ export default async function ContactDetailPage({
         phone: contact.phone,
         notes: contact.notes,
         isPrimary: contact.isPrimary,
+        ownerUserId: contact.ownerUserId,
         company: contact.company,
       }}
+      members={members}
       isAdmin={isAdminSession(session)}
       leads={
         <ContactLeadsTable

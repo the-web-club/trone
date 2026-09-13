@@ -8,14 +8,61 @@ import {
 } from "@/lib/date-input";
 import { AppError } from "@/lib/errors";
 
-export const taskKinds = ["FOLLOW_UP"] as const;
+export const taskKinds = [
+  "FOLLOW_UP",
+  "CALL",
+  "EMAIL",
+  "MEETING",
+  "DEMO",
+  "QUOTE",
+  "VISIT",
+  "OTHER",
+] as const;
 export type TaskKind = (typeof taskKinds)[number];
 
 export const DEFAULT_FOLLOW_UP_TITLE = "Prospect opvolgen";
 
 export const taskKindLabels: Record<TaskKind, string> = {
   FOLLOW_UP: "Opvolging",
+  CALL: "Bellen",
+  EMAIL: "E-mail",
+  MEETING: "Afspraak",
+  DEMO: "Demo",
+  QUOTE: "Offerte",
+  VISIT: "Bezoek",
+  OTHER: "Overig",
 };
+
+export const taskKindDefaultTitles: Record<TaskKind, string> = {
+  FOLLOW_UP: DEFAULT_FOLLOW_UP_TITLE,
+  CALL: "Bellen",
+  EMAIL: "E-mail sturen",
+  MEETING: "Afspraak",
+  DEMO: "Demo",
+  QUOTE: "Offerte opvolgen",
+  VISIT: "Bezoek",
+  OTHER: "Taak",
+};
+
+export const taskKindItems = taskKinds.map((value) => ({
+  value,
+  label: taskKindLabels[value],
+}));
+
+export function isTaskKind(value: string): value is TaskKind {
+  return (taskKinds as readonly string[]).includes(value);
+}
+
+export function defaultTitleForTaskKind(kind: TaskKind): string {
+  return taskKindDefaultTitles[kind];
+}
+
+export function isDefaultTaskTitle(title: string): boolean {
+  const normalized = title.trim();
+  return (Object.values(taskKindDefaultTitles) as string[]).includes(
+    normalized,
+  );
+}
 
 export const taskStatuses = ["OPEN", "DONE", "CANCELLED"] as const;
 export type TaskStatusValue = (typeof taskStatuses)[number];
@@ -87,10 +134,11 @@ export function buildFollowUpInput(input: {
   dateOnly?: boolean;
   required?: boolean;
 }): FollowUpInput | undefined {
+  const kind = input.kind ?? "FOLLOW_UP";
   const title = input.title?.trim();
   const date = input.date?.trim() || undefined;
   if (!date) {
-    if (input.required || (title && title !== DEFAULT_FOLLOW_UP_TITLE)) {
+    if (input.required || (title && !isDefaultTaskTitle(title))) {
       throw new AppError("Vul een datum in voor de vervolgactie.", "VALIDATION");
     }
     return undefined;
@@ -98,8 +146,8 @@ export function buildFollowUpInput(input: {
 
   const dueDateOnly = Boolean(input.dateOnly);
   return {
-    kind: input.kind ?? "FOLLOW_UP",
-    title: title || DEFAULT_FOLLOW_UP_TITLE,
+    kind,
+    title: title || defaultTitleForTaskKind(kind),
     dueAt: parseDueAt(date, input.time, dueDateOnly),
     dueDateOnly,
   };

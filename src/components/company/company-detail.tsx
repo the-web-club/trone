@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   deleteCompanyAction,
   patchCompanyAction,
+  setCompanyOwnerAction,
 } from "@/app/(beveiligd)/actions/company-actions";
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
@@ -24,7 +25,10 @@ import {
   DetailPanel,
   DetailSection,
 } from "@/components/detail/detail-layout";
-import { InlineSelectField } from "@/components/detail/inline-select-field";
+import {
+  INLINE_SELECT_EMPTY,
+  InlineSelectField,
+} from "@/components/detail/inline-select-field";
 import { InlineTextField } from "@/components/detail/inline-text-field";
 import { ContactLink } from "@/components/entity-links";
 import { VatTreatmentNotice } from "@/components/vat/vat-treatment-notice";
@@ -33,6 +37,7 @@ import {
   COMPANY_VAT_RATE_OPTIONS,
   type CompanyPatch,
 } from "@/lib/company-validation";
+import type { DealTeamMember } from "@/lib/deal-service";
 import { companyPath } from "@/lib/paths";
 import { resolveVatTreatment, viesStatusFromCache } from "@/lib/vat";
 import type { SelectOption } from "@/components/ui/select";
@@ -55,6 +60,7 @@ export type CompanyDetailRecord = {
   viesValidatedAt: string | null;
   viesCheckedName: string | null;
   notes: string | null;
+  ownerUserId: string | null;
 };
 
 export type CompanyDetailContact = {
@@ -71,12 +77,14 @@ export type CompanyDetailContact = {
 export function CompanyDetail({
   company,
   contacts,
+  members,
   leads,
   activity,
   isAdmin = false,
 }: {
   company: CompanyDetailRecord;
   contacts: CompanyDetailContact[];
+  members: DealTeamMember[];
   leads: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
@@ -99,6 +107,7 @@ export function CompanyDetail({
     <DetailPage>
       <DetailHeader
         back={<DetailBackLink href="/bedrijven">Bedrijven</DetailBackLink>}
+        chromeTitle={company.name}
         title={
           <InlineTextField
             label="Naam"
@@ -138,7 +147,11 @@ export function CompanyDetail({
       <DetailColumns
         left={
           <>
-            <CompanyDetailFields company={company} save={save} />
+            <CompanyDetailFields
+              company={company}
+              members={members}
+              save={save}
+            />
             <CompanyContacts companyId={company.id} contacts={contacts} />
             {leads}
           </>
@@ -151,9 +164,11 @@ export function CompanyDetail({
 
 function CompanyDetailFields({
   company,
+  members,
   save,
 }: {
   company: CompanyDetailRecord;
+  members: DealTeamMember[];
   save: (patch: CompanyPatch) => Promise<string | null>;
 }) {
   const router = useRouter();
@@ -186,6 +201,27 @@ function CompanyDetailFields({
       .map((rate) => ({ value: String(rate), label: `${rate}%` }));
   }, [company.vatRate]);
 
+  const ownerItems = useMemo<SelectOption[]>(() => {
+    const items: SelectOption[] = [
+      { value: INLINE_SELECT_EMPTY, label: "Niet toegewezen" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ];
+    if (
+      company.ownerUserId &&
+      !items.some((item) => item.value === company.ownerUserId)
+    ) {
+      items.splice(1, 0, {
+        value: company.ownerUserId,
+        label: company.ownerUserId,
+      });
+    }
+    return items;
+  }, [company.ownerUserId, members]);
+
   const vies = viesStatusFromCache({
     country,
     vatNumber,
@@ -198,6 +234,22 @@ function CompanyDetailFields({
     <>
       <DetailSection title="Contact">
         <DetailFieldGrid>
+          <InlineSelectField
+            label="Eigenaar"
+            value={company.ownerUserId ?? ""}
+            items={ownerItems}
+            layout="row"
+            searchPlaceholder="Zoek een eigenaar…"
+            onSave={async (next) => {
+              const result = await setCompanyOwnerAction(
+                company.id,
+                next || null,
+              );
+              if (result.error) return result.error;
+              router.refresh();
+              return null;
+            }}
+          />
           <InlineTextField
             label="E-mail"
             value={company.email ?? ""}

@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { pressableLinkMotion } from "@/components/motion/styles";
+import { ChromeTitle } from "@/components/shell/chrome-title";
 import { cn } from "@/lib/cn";
 
 export type PageHeaderProps = {
@@ -25,6 +26,7 @@ export function PageHeader({
 
   return (
     <header className={cn("page-header", className)}>
+      <ChromeTitle title={title} />
       {nav ? <div className="page-header-nav-wrap">{nav}</div> : null}
       <div className="page-header-main">
         <div className="page-header-copy">

@@ -77,6 +77,7 @@ export default async function OfferteBewerkenPage({
             {versionLabel}
           </DetailBackLink>
         }
+        chromeTitle={`${versionLabel} bewerken`}
         title={
           <h1 className="page-header-title">{versionLabel} bewerken</h1>
         }

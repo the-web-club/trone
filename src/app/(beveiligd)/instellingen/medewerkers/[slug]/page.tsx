@@ -238,6 +238,7 @@ export default async function MedewerkerDetailPage({
             Teamleden
           </DetailBackLink>
         }
+        chromeTitle={user.name}
         title={
           <div className="flex min-w-0 items-start gap-3">
             <StaffAvatarEditor

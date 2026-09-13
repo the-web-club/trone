@@ -5,12 +5,14 @@ import { CreateContactListDialog } from "@/components/contact/create-contact-lis
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
+import { requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
-import { listContactRows } from "@/lib/contact-service";
+import { getContactOwnerFacets, listContactRows } from "@/lib/contact-service";
 import {
   buildContactsHref,
   parseContactsSearchParams,
 } from "@/lib/contacts-query";
+import { listDealTeamMembers } from "@/lib/deal-service";
 import { listSummary } from "@/lib/list-copy";
 
 export const metadata: Metadata = { title: "Contacten" };
@@ -20,22 +22,46 @@ export default async function ContactenPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const session = await requireSession();
   const parsed = parseContactsSearchParams(await searchParams);
-  const hasFilters = Boolean(parsed.zoeken || parsed.bedrijf);
+  const currentUserId = session.user.id;
+  const listFilters = {
+    query: parsed.zoeken || undefined,
+    companyId: parsed.bedrijf || undefined,
+    eigenaar: parsed.eigenaar,
+    page: parsed.pagina,
+  };
+  const hasFilters = Boolean(
+    parsed.zoeken || parsed.bedrijf || parsed.eigenaar !== "alle",
+  );
 
-  const [result, companies] = await Promise.all([
-    listContactRows({
-      query: parsed.zoeken || undefined,
-      companyId: parsed.bedrijf || undefined,
-      page: parsed.pagina,
-    }),
+  const [result, companies, members, facets] = await Promise.all([
+    listContactRows(listFilters, currentUserId),
     listCompaniesForSelect(),
+    listDealTeamMembers(),
+    getContactOwnerFacets(listFilters, currentUserId),
   ]);
 
+  const ownerNames = new Map(
+    members.map((member) => [member.id, member.name || member.email]),
+  );
+  const ownerImages = new Map(
+    members.map((member) => [member.id, member.image]),
+  );
+
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
-  const emptyMessage = hasFilters
-    ? "Geen contacten gevonden voor deze filters."
-    : "Nog geen contacten. Voeg het eerste contact toe.";
+  let emptyMessage = "Nog geen contacten. Voeg het eerste contact toe.";
+  if (result.total === 0 && hasFilters) {
+    if (
+      parsed.eigenaar === "aan-mij" &&
+      !parsed.zoeken &&
+      !parsed.bedrijf
+    ) {
+      emptyMessage = "Geen contacten aan jou toegewezen.";
+    } else {
+      emptyMessage = "Geen contacten gevonden voor deze filters.";
+    }
+  }
 
   return (
     <ListBrowser>
@@ -55,10 +81,18 @@ export default async function ContactenPage({
           />
         }
       />
-      <ContactsFilters values={parsed} companies={companies} />
+      <ContactsFilters
+        values={parsed}
+        companies={companies}
+        members={members}
+        facets={facets}
+      />
       <ListBody>
         <ContactsList
           items={result.items}
+          members={members}
+          ownerNames={ownerNames}
+          ownerImages={ownerImages}
           emptyMessage={emptyMessage}
           emptyAction={
             !hasFilters ? (

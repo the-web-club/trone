@@ -30,6 +30,23 @@ describe("buildFollowUpInput", () => {
     ).toThrow(AppError);
   });
 
+  it("laat een standaardtitel van een ander type ook weg zonder datum", () => {
+    expect(buildFollowUpInput({ kind: "CALL", title: "Bellen" })).toBeUndefined();
+  });
+
+  it("gebruikt de standaardtitel van het gekozen type", () => {
+    expect(
+      buildFollowUpInput({
+        kind: "QUOTE",
+        date: "2026-09-13",
+        time: "09:00",
+      }),
+    ).toMatchObject({
+      kind: "QUOTE",
+      title: "Offerte opvolgen",
+    });
+  });
+
   it("eist altijd een datum als required is", () => {
     expect(() => buildFollowUpInput({ required: true })).toThrow(AppError);
   });
@@ -66,6 +83,23 @@ describe("parseCreateFollowUpForm", () => {
     expect(parsed.dueDateOnly).toBe(true);
     expect(parsed.title).toBe("Prospect opvolgen");
     expect(parsed.dueAt.toISOString()).toBe("2026-09-12T22:00:00.000Z");
+  });
+
+  it("accepteert een ander taaktype", () => {
+    const parsed = parseCreateFollowUpForm(
+      form({
+        dealId: "deal-1",
+        followUpKind: "CALL",
+        followUpTitle: "Bellen",
+        followUpDate: "2026-09-13",
+        followUpTime: "09:00",
+      }),
+    );
+    expect(parsed).toMatchObject({
+      kind: "CALL",
+      title: "Bellen",
+      dealId: "deal-1",
+    });
   });
 
   it("eist een datum", () => {

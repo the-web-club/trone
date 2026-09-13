@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   appMainNav,
   bottomNavIcon,
+  breadcrumbAncestor,
   companiesNavGroup,
   isCompaniesGroupActive,
   isNavItemActive,
@@ -45,10 +46,14 @@ describe("navTitleForPath", () => {
   it("keeps settings modules titled after they leave the main nav", () => {
     expect(navTitleForPath("/kansen")).toBe("Kansen");
     expect(navTitleForPath("/producten")).toBe("Producten");
-    expect(navTitleForPath("/instellingen/drempels")).toBe("Instellingen");
+    expect(navTitleForPath("/instellingen/drempels")).toBe("Drempels");
     expect(navTitleForPath("/instellingen/weergave")).toBe("Weergave");
     expect(navTitleForPath("/instellingen/feedback")).toBe("Feedback");
     expect(navTitleForPath("/instellingen/feedback/demo")).toBe("Feedback");
+    expect(navTitleForPath("/instellingen/medewerkers")).toBe("Teamleden");
+    expect(navTitleForPath("/instellingen/bedrijfsgegevens")).toBe(
+      "Bedrijfsgegevens",
+    );
   });
 });
 
@@ -64,6 +69,37 @@ describe("isOverviewNavPath", () => {
     expect(isOverviewNavPath("/bedrijven/nieuw")).toBe(false);
     expect(isOverviewNavPath("/instellingen/medewerkers")).toBe(false);
     expect(isOverviewNavPath("/instellingen/feedback")).toBe(false);
+  });
+});
+
+describe("breadcrumbAncestor", () => {
+  it("omits breadcrumbs on overview hubs", () => {
+    expect(breadcrumbAncestor("/overzicht")).toBeNull();
+    expect(breadcrumbAncestor("/leads")).toBeNull();
+    expect(breadcrumbAncestor("/instellingen")).toBeNull();
+  });
+
+  it("uses the nearest titled ancestor for nested routes", () => {
+    expect(breadcrumbAncestor("/leads/demo")).toEqual({
+      href: "/leads",
+      label: "Leads",
+    });
+    expect(breadcrumbAncestor("/offertes/Q-1/bewerken")).toEqual({
+      href: "/offertes",
+      label: "Offertes",
+    });
+    expect(breadcrumbAncestor("/instellingen/weergave")).toEqual({
+      href: "/instellingen",
+      label: "Instellingen",
+    });
+    expect(breadcrumbAncestor("/instellingen/feedback/demo")).toEqual({
+      href: "/instellingen/feedback",
+      label: "Feedback",
+    });
+    expect(breadcrumbAncestor("/instellingen/medewerkers/jan")).toEqual({
+      href: "/instellingen/medewerkers",
+      label: "Teamleden",
+    });
   });
 });
 

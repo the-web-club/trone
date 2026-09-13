@@ -32,6 +32,14 @@
   --surface-emphasized: var(--gray-100);
   --surface-sunk: var(--gray-100);
   --input-bg: var(--gray-0);
+  --inline-field-bg: var(--gray-0);
+  --inline-field-hover-bg: var(--gray-0);
+  --inline-field-border: var(--gray-200);
+  --inline-field-hover-border: var(--gray-300);
+  --inline-field-open-border: var(--gray-300);
+  --inline-field-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+  --inline-field-hover-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  --inline-field-duration: 140ms;
   --hover: var(--gray-100);
   --hover-subtle: var(--gray-50);
   --selected: var(--gray-100);
@@ -117,8 +125,13 @@
   --leading-tight: 1.25;
   --leading-normal: 1.5;
 
-  --sidebar-w: 200px;
-  --topbar-h: 52px;
+  --chrome: var(--surface);
+  --sidebar-w: 240px;
+  --topbar-h: 64px;
+  --logo-h: 34px;
+  --nav-row-h: 36px;
+  --nav-icon-size: 18px;
+  --page-pad-x: 0.875rem;
   --bottom-nav-h: 0px;
   --content-max: 1200px;
   --content-wide: 1440px;
@@ -171,6 +184,13 @@
   --surface-emphasized: var(--brand-surface-emphasized);
   --surface-sunk: #2a2a30;
   --input-bg: #2a2a30;
+  --inline-field-bg: var(--brand-surface-raised);
+  --inline-field-hover-bg: color-mix(in srgb, white 5%, var(--brand-surface-raised));
+  --inline-field-border: color-mix(in srgb, white 12%, var(--brand-surface-raised));
+  --inline-field-hover-border: color-mix(in srgb, white 18%, var(--brand-surface-raised));
+  --inline-field-open-border: var(--brand-surface-emphasized);
+  --inline-field-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --inline-field-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
   --hover: color-mix(in srgb, white 6%, var(--surface));
   --hover-subtle: color-mix(in srgb, white 3.5%, var(--surface));
   --selected: color-mix(in srgb, white 8%, var(--surface));

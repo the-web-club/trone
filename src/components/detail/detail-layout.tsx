@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { pressableLinkMotion } from "@/components/motion/styles";
+import { ChromeTitle } from "@/components/shell/chrome-title";
 import { cn } from "@/lib/cn";
 
 /** Compact page wrapper for entity detail views. */
@@ -48,6 +49,7 @@ export function DetailBackLink({
 export function DetailHeader({
   back,
   title,
+  chromeTitle,
   status,
   meta,
   actions,
@@ -55,6 +57,7 @@ export function DetailHeader({
 }: {
   back?: ReactNode;
   title: ReactNode;
+  chromeTitle?: string;
   status?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
@@ -62,6 +65,7 @@ export function DetailHeader({
 }) {
   return (
     <header className={cn("detail-header min-w-0", className)}>
+      {chromeTitle ? <ChromeTitle title={chromeTitle} /> : null}
       {back ? (
         <div className="mb-0.5 hidden desktop-nav:block">{back}</div>
       ) : null}
@@ -220,15 +224,13 @@ export function DetailValueField({
   return (
     <div
       className={cn(
-        "inline-field flex min-w-0 flex-col gap-0.5",
+        "inline-field flex min-w-0 flex-col gap-1",
         span === "full" && "col-span-2",
         className,
       )}
     >
-      <span className="text-label font-medium text-fg-muted">{label}</span>
-      <div className="min-h-8 px-1 py-1 text-sm break-words text-fg">
-        {children}
-      </div>
+      <span className="inline-field-label">{label}</span>
+      <div className="inline-field-value">{children}</div>
     </div>
   );
 }
