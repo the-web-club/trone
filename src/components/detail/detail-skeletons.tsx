@@ -193,7 +193,7 @@ export function LeadDetailSkeleton() {
         left={
           <>
             <LeadFieldsSkeleton />
-            <DetailSection title="Leadkwalificatie">
+            <DetailSection title="Leadkwalificatie" collapsible>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden>
                 {Array.from({ length: 5 }, (_, index) => (
                   <div key={index} className="inline-field">

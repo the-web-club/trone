@@ -72,6 +72,7 @@ export function LeadQualification({
     <DetailSection
       title="Leadkwalificatie"
       action={<LeadScoreView result={result} showInfo />}
+      collapsible
     >
       <div className="grid min-w-0 grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
         {LEAD_SCORE_QUESTIONS.map((question) => {
