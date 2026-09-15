@@ -8,11 +8,14 @@ import { TaskStatusButton } from "@/components/task/task-status-button";
 import { Badge } from "@/components/ui/badge";
 import {
   ListCard,
+  ListCardContext,
+  ListCardControl,
+  ListCardDate,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
+  ListCardFooter,
+  ListCardSignals,
   ListCardTitle,
+  listCardHitAreaClassName,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
 import {
@@ -194,67 +197,66 @@ export function TasksListView({
       </ListCardEmpty>
     ) : (
       rows.map((task) => (
-        <ListCard
-          key={task.id}
-          onClick={
-            canWrite
-              ? (event) => {
-                  if (shouldIgnoreRowClick(event.target)) return;
-                  openTask(task.edit);
-                }
-              : undefined
-          }
-        >
-          <ListCardHeader>
-            {canWrite ? (
-              <ListCardTitle
-                className={task.status === "DONE" ? "text-fg-muted" : undefined}
-              >
-                <button
-                  type="button"
-                  className="text-left hover:underline"
-                  onClick={() => openTask(task.edit)}
-                >
-                  {task.title}
-                </button>
-              </ListCardTitle>
-            ) : (
-              <ListCardTitle
-                className={task.status === "DONE" ? "text-fg-muted" : undefined}
+        <ListCard key={task.id} interactive={canWrite}>
+          {canWrite ? (
+            <ListCardTitle
+              className={task.status === "DONE" ? "text-fg-muted" : undefined}
+            >
+              <button
+                type="button"
+                className={cn("text-left", listCardHitAreaClassName)}
+                onClick={() => openTask(task.edit)}
               >
                 {task.title}
-              </ListCardTitle>
-            )}
-            <Badge tone={taskStatusTones[task.status]}>
+              </button>
+            </ListCardTitle>
+          ) : (
+            <ListCardTitle
+              className={task.status === "DONE" ? "text-fg-muted" : undefined}
+            >
+              {task.title}
+            </ListCardTitle>
+          )}
+          {(task.deal || task.contact || task.company) ? (
+            <ListCardContext>
+              <TaskLinks task={task} />
+            </ListCardContext>
+          ) : null}
+          <ListCardSignals>
+            <span className="text-sm text-fg-muted">
+              {taskKindLabels[task.kind]}
+            </span>
+            <Badge
+              tone={taskStatusTones[task.status]}
+              className="h-auto min-h-5 max-w-full whitespace-normal"
+            >
               {taskStatusLabels[task.status]}
             </Badge>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Type">{taskKindLabels[task.kind]}</ListCardRow>
-            <ListCardRow label="Koppeling">
-              <TaskLinks task={task} />
-            </ListCardRow>
-            <ListCardRow label="Toegewezen">
+          </ListCardSignals>
+          <ListCardFooter>
+            <ListCardControl className="min-w-0 flex-1">
               <UserName
                 name={task.assignee.name}
                 image={task.assignee.image}
                 slug={task.assignee.slug}
               />
-            </ListCardRow>
-            <ListCardRow label="Datum">
-              <span className={cn(task.overdue && "font-medium text-danger")}>
-                {task.dueLabel}
-                {task.overdue ? " · te laat" : null}
-              </span>
-            </ListCardRow>
-          </ListCardRows>
-          <div className="mt-2">
-            <TaskStatusButton
-              taskId={task.id}
-              status={task.status}
-              canWrite={canWrite}
-            />
-          </div>
+            </ListCardControl>
+            <ListCardDate
+              className={cn(task.overdue && "font-medium text-danger")}
+            >
+              {task.dueLabel}
+              {task.overdue ? " · te laat" : null}
+            </ListCardDate>
+          </ListCardFooter>
+          {canWrite && task.status !== "CANCELLED" ? (
+            <ListCardControl>
+              <TaskStatusButton
+                taskId={task.id}
+                status={task.status}
+                canWrite={canWrite}
+              />
+            </ListCardControl>
+          ) : null}
         </ListCard>
       ))
     );
@@ -279,8 +281,10 @@ export function TasksListView({
 
 function TaskLinks({
   task,
+  empty = "—",
 }: {
   task: Pick<TaskListRow, "deal" | "contact" | "company">;
+  empty?: React.ReactNode;
 }) {
   const parts = [
     task.deal ? <DealLink key="deal" deal={task.deal} /> : null,
@@ -288,7 +292,7 @@ function TaskLinks({
     task.company ? <CompanyLink key="company" company={task.company} /> : null,
   ].filter(Boolean);
 
-  if (parts.length === 0) return <>—</>;
+  if (parts.length === 0) return <>{empty}</>;
 
-  return <span className="flex flex-col gap-0.5">{parts}</span>;
+  return <span className="relative z-10 flex flex-col gap-0.5">{parts}</span>;
 }

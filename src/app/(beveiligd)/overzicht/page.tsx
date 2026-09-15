@@ -32,9 +32,9 @@ export default async function OverzichtPage() {
           listSummary(counts.orders, "order", "orders"),
         ]}
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Panel key={stat.label}>
+          <Panel key={stat.label} padded={false} className="p-3 sm:p-4">
             <p className="text-label font-medium text-fg-muted">{stat.label}</p>
             <p className="mt-1 text-2xl font-medium tracking-tight text-fg tabular-nums">
               <Link href={stat.href} className="hover:underline">
@@ -47,9 +47,9 @@ export default async function OverzichtPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-md font-medium text-fg">Open leads per fase</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
           {counts.openDealsByStage.map((stage) => (
-            <Panel key={stage.id}>
+            <Panel key={stage.id} padded={false} className="p-3 sm:p-4">
               <p className="text-label font-medium text-fg-muted">{stage.name}</p>
               <p className="mt-1 text-xl font-medium tracking-tight text-fg">
                 {stage.count}

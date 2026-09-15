@@ -81,30 +81,31 @@ function DealCard({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "cursor-grab touch-none p-2.5",
+        "cursor-grab touch-none px-3 py-2.5",
         controlMotion,
         isDragging && "opacity-60 shadow-[var(--shadow-pop)]",
       )}
       {...listeners}
       {...attributes}
     >
-      <div className="flex items-start gap-1">
+      <div className="flex min-w-0 items-start gap-1">
         <Link
           href={dealPath(deal)}
-          className="min-w-0 flex-1 text-sm font-medium text-fg hover:underline"
+          className="min-w-0 flex-1 text-md font-medium break-words text-fg hover:underline"
           onClick={(event) => event.stopPropagation()}
         >
           {deal.title}
         </Link>
         {deal.isHot ? <DealHotIcon className="mt-0.5" /> : null}
       </div>
-      <p
-        className="mt-0.5 truncate text-xs text-fg-muted"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <CompanyLink company={deal.company} fallback="Geen bedrijf" />
-      </p>
-      {value ? <p className="mt-1 text-xs text-fg">{value}</p> : null}
+      {deal.company ? (
+        <p
+          className="mt-0.5 min-w-0 text-sm break-words text-fg-muted"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <CompanyLink company={deal.company} />
+        </p>
+      ) : null}
       <div
         className="mt-1.5 min-w-0"
         onClick={(event) => event.stopPropagation()}
@@ -112,21 +113,31 @@ function DealCard({
       >
         <LeadScoreView result={leadScoreFromDeal(deal)} compact />
       </div>
-      {deal.quoteStatus ? (
-        <div className="mt-1.5">
-          <Badge tone={quoteStatusTones[deal.quoteStatus]}>
-            {quoteStatusLabels[deal.quoteStatus]}
-          </Badge>
+      {value || deal.quoteStatus ? (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {value ? (
+            <p className="text-sm tabular-nums text-fg">{value}</p>
+          ) : null}
+          {deal.quoteStatus ? (
+            <Badge
+              tone={quoteStatusTones[deal.quoteStatus]}
+              className="h-auto min-h-5 max-w-full whitespace-normal"
+            >
+              {quoteStatusLabels[deal.quoteStatus]}
+            </Badge>
+          ) : null}
         </div>
       ) : null}
       {deal.ownerName ? (
-        <div className="mt-2 flex items-center gap-1.5">
+        <div className="mt-2 flex min-w-0 items-center gap-1.5">
           <UserAvatar
             name={deal.ownerName}
             image={deal.ownerImage}
             size="xs"
           />
-          <span className="truncate text-xs text-fg-muted">{deal.ownerName}</span>
+          <span className="min-w-0 truncate text-sm text-fg-muted">
+            {deal.ownerName}
+          </span>
         </div>
       ) : null}
       <div

@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import {
   ListCard,
   ListCardActions,
+  ListCardContext,
+  ListCardControl,
   ListCardEmpty,
   ListCardHeader,
-  ListCardRow,
-  ListCardRows,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { UserName } from "@/components/user/user-name";
+import { staffPath } from "@/lib/paths";
 import {
   userRoleLabels,
   userRoles,
@@ -240,35 +241,37 @@ function StaffMemberCard({
   const { error, status, roleField, manageActions } = useStaffMemberActions(user);
 
   return (
-    <ListCard>
+    <ListCard interactive>
       <ListCardHeader>
         <div className="min-w-0">
-          <ListCardTitle>
-            <UserName
-              name={user.name}
-              image={user.image}
-              slug={user.slug}
-              size="sm"
-              className="font-medium"
-            />
-            {isSelf ? (
-              <span className="ml-2 text-xs font-normal text-fg-muted">
-                Jij
-              </span>
-            ) : null}
+          <ListCardTitle href={staffPath(user)}>
+            <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+              <UserName
+                name={user.name}
+                image={user.image}
+                size="sm"
+                className="font-medium"
+              />
+              {isSelf ? (
+                <span className="text-xs font-normal text-fg-muted">Jij</span>
+              ) : null}
+            </span>
           </ListCardTitle>
           {error ? (
-            <p className="mt-1 text-xs text-danger" role="alert">
+            <p className="relative z-10 mt-1 text-xs text-danger" role="alert">
               {error}
             </p>
           ) : null}
         </div>
-        <Badge tone={status.tone}>{status.label}</Badge>
+        <Badge
+          tone={status.tone}
+          className="relative z-10 h-auto min-h-5 max-w-[min(100%,8rem)] whitespace-normal"
+        >
+          {status.label}
+        </Badge>
       </ListCardHeader>
-      <ListCardRows>
-        <ListCardRow label="E-mail">{user.email}</ListCardRow>
-        <ListCardRow label="Rol">{roleField(canManage)}</ListCardRow>
-      </ListCardRows>
+      <ListCardContext>{user.email}</ListCardContext>
+      <ListCardControl>{roleField(canManage)}</ListCardControl>
       {canManage ? (
         <ListCardActions>{manageActions(canManage, isSelf)}</ListCardActions>
       ) : null}

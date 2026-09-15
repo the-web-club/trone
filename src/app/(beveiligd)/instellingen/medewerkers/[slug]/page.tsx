@@ -31,6 +31,8 @@ import {
 import { isAdminSession, requireSession } from "@/lib/auth-session";
 import { isAppError } from "@/lib/errors";
 import { companyPath, dealPath, staffPath } from "@/lib/paths";
+import { formatPersonName } from "@/lib/format";
+import { joinMeta } from "@/lib/list-copy";
 import { getStaffDetail, staffStatus } from "@/lib/user-service";
 import { userRoleLabels, type UserRole } from "@/lib/user-validation";
 
@@ -153,16 +155,12 @@ export default async function MedewerkerDetailPage({
                 isLost={deal.stage.isLost}
               />
             }
-            meta={[
+            meta={joinMeta([
               deal.company?.name,
               deal.contact
-                ? [deal.contact.firstName, deal.contact.lastName]
-                    .filter(Boolean)
-                    .join(" ")
+                ? formatPersonName(deal.contact.firstName, deal.contact.lastName)
                 : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            ])}
           />
         ))}
       </CompactRecordList>

@@ -10,11 +10,13 @@ import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
   ListCard,
+  ListCardContext,
+  ListCardControl,
+  ListCardDate,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardMeta,
-  ListCardRow,
-  ListCardRows,
+  ListCardFacts,
+  ListCardFooter,
+  ListCardSignals,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -28,7 +30,8 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEuro } from "@/lib/format";
+import { formatDate, formatEuro, formatPersonName } from "@/lib/format";
+import { joinMeta } from "@/lib/list-copy";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { dealPath } from "@/lib/paths";
 import {
@@ -87,74 +90,71 @@ function LeadsListCards({
 
   return (
     <>
-      {rows.map((row) => (
-        <ListCard key={row.id}>
-          <ListCardHeader>
-            <div className="min-w-0">
-              <ListCardTitle>
-                <Link
-                  href={dealPath(row)}
-                  className="inline-flex min-w-0 items-center gap-1 hover:underline"
-                >
-                  {row.title}
-                  {row.isHot ? <DealHotIcon /> : null}
-                </Link>
-              </ListCardTitle>
-              {row.contact ? (
-                <ListCardMeta>
-                  <ContactLink contact={row.contact} />
-                  {" · "}
-                  {formatDate(new Date(row.createdAt))}
-                </ListCardMeta>
-              ) : (
-                <ListCardMeta>{formatDate(new Date(row.createdAt))}</ListCardMeta>
-              )}
-            </div>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Bedrijf">
-              <CompanyLink company={row.company} />
-            </ListCardRow>
-            <ListCardRow label="Fase">
-              <LeadStageSelect
-                dealId={row.id}
-                stageId={row.stageId}
-                stageName={row.stageName}
-                stages={stages}
-              />
-            </ListCardRow>
-            <ListCardRow label="Leadscore">
-              <LeadScoreView result={leadScoreFromDeal(row)} compact />
-            </ListCardRow>
-            <ListCardRow label="Offerte">
-              {row.quoteStatus ? (
-                <Badge tone={quoteStatusTones[row.quoteStatus]}>
-                  {quoteStatusLabels[row.quoteStatus]}
-                </Badge>
-              ) : (
-                <span className="text-fg-muted">—</span>
-              )}
-            </ListCardRow>
-            <ListCardRow label="Waarde">
-              <span className="tabular-nums">
-                {formatEuro(row.valueEstimate) ?? "—"}
+      {rows.map((row) => {
+        const context = joinMeta([
+          row.company?.name,
+          row.contact
+            ? formatPersonName(row.contact.firstName, row.contact.lastName)
+            : null,
+        ]);
+        const valueLabel = formatEuro(row.valueEstimate);
+        const hasFacts = Boolean(valueLabel || row.quoteStatus || row.sourceName);
+
+        return (
+          <ListCard key={row.id} interactive>
+            <ListCardTitle href={dealPath(row)}>
+              <span className="inline-flex min-w-0 items-start gap-1">
+                <span className="min-w-0 break-words">{row.title}</span>
+                {row.isHot ? <DealHotIcon className="mt-0.5" /> : null}
               </span>
-            </ListCardRow>
-            <ListCardRow label="Bron">
-              {row.sourceName ?? "—"}
-            </ListCardRow>
-            <ListCardRow label="Eigenaar">
-              <LeadOwnerSelect
-                dealId={row.id}
-                ownerUserId={row.ownerUserId}
-                ownerName={row.ownerName}
-                ownerImage={row.ownerImage}
-                members={members}
-              />
-            </ListCardRow>
-          </ListCardRows>
-        </ListCard>
-      ))}
+            </ListCardTitle>
+            {context ? <ListCardContext>{context}</ListCardContext> : null}
+            <ListCardSignals>
+              <ListCardControl>
+                <LeadStageSelect
+                  dealId={row.id}
+                  stageId={row.stageId}
+                  stageName={row.stageName}
+                  stages={stages}
+                />
+              </ListCardControl>
+              <ListCardControl>
+                <LeadScoreView result={leadScoreFromDeal(row)} compact />
+              </ListCardControl>
+            </ListCardSignals>
+            {hasFacts ? (
+              <ListCardFacts>
+                {valueLabel ? (
+                  <span className="tabular-nums text-fg">{valueLabel}</span>
+                ) : null}
+                {row.quoteStatus ? (
+                  <Badge
+                    tone={quoteStatusTones[row.quoteStatus]}
+                    className="h-auto min-h-5 max-w-full whitespace-normal"
+                  >
+                    {quoteStatusLabels[row.quoteStatus]}
+                  </Badge>
+                ) : null}
+                {row.sourceName ? <span>{row.sourceName}</span> : null}
+              </ListCardFacts>
+            ) : null}
+            <ListCardFooter>
+              <ListCardControl className="min-w-0 flex-1">
+                <LeadOwnerSelect
+                  dealId={row.id}
+                  ownerUserId={row.ownerUserId}
+                  ownerName={row.ownerName}
+                  ownerImage={row.ownerImage}
+                  members={members}
+                />
+              </ListCardControl>
+              <ListCardDate>
+                {formatDate(new Date(row.createdAt))}
+              </ListCardDate>
+            </ListCardFooter>
+          </ListCard>
+        );
+      })}
     </>
   );
 }

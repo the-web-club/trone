@@ -3,11 +3,12 @@ import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
   ListCard,
+  ListCardContext,
+  ListCardDate,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardMeta,
-  ListCardRow,
-  ListCardRows,
+  ListCardFacts,
+  ListCardFooter,
+  ListCardSignals,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -21,7 +22,8 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatEuroExact } from "@/lib/format";
+import { formatDate, formatEuroExact, formatPersonName } from "@/lib/format";
+import { joinMeta } from "@/lib/list-copy";
 import { quotePath } from "@/lib/paths";
 import { quoteStatusLabels, quoteStatusTones } from "@/lib/quote-validation";
 import { formatQuoteVersionNumber } from "@/lib/quote-version";
@@ -41,6 +43,23 @@ export type QuoteListRow = {
   total: { toString(): string } | number | string;
   createdAt: Date;
 };
+
+function quoteVersionLabel(quote: QuoteListRow) {
+  if (quote.currentVersionNumber > 0) {
+    return formatQuoteVersionNumber(
+      quote.quoteNumber,
+      quote.currentVersionNumber,
+    );
+  }
+  return "Concept";
+}
+
+function quoteVersionMeta(quote: QuoteListRow) {
+  if (quote.currentVersionNumber > 0) {
+    return `v${quote.currentVersionNumber}`;
+  }
+  return "Concept";
+}
 
 export function QuotesList({
   items,
@@ -82,12 +101,7 @@ export function QuotesList({
                   </Link>
                 </TableCell>
                 <TableCell className="text-fg-muted">
-                  {quote.currentVersionNumber > 0
-                    ? formatQuoteVersionNumber(
-                        quote.quoteNumber,
-                        quote.currentVersionNumber,
-                      )
-                    : "Concept"}
+                  {quoteVersionLabel(quote)}
                 </TableCell>
                 <TableCell className="text-fg-muted">
                   <CompanyLink company={quote.company} />
@@ -124,50 +138,40 @@ export function QuotesList({
         {emptyAction}
       </ListCardEmpty>
     ) : (
-      items.map((quote) => (
-        <ListCard key={quote.id}>
-          <ListCardHeader>
-            <div className="min-w-0">
-              <ListCardTitle>
-                <Link
-                  href={quotePath(quote)}
-                  className="hover:underline"
-                >
-                  {quote.quoteNumber}
-                </Link>
-              </ListCardTitle>
-              <ListCardMeta>
-                {quote.currentVersionNumber > 0
-                  ? formatQuoteVersionNumber(
-                      quote.quoteNumber,
-                      quote.currentVersionNumber,
-                    )
-                  : "Concept"}
-              </ListCardMeta>
-            </div>
-            <Badge tone={quoteStatusTones[quote.status]}>
-              {quoteStatusLabels[quote.status]}
-            </Badge>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Klant" span="full">
-              <CompanyLink company={quote.company} />
-              {quote.contact ? (
-                <>
-                  {" · "}
-                  <ContactLink contact={quote.contact} />
-                </>
-              ) : null}
-            </ListCardRow>
-            <ListCardRow label="Totaal">
-              {formatEuroExact(Number(quote.total))}
-            </ListCardRow>
-            <ListCardRow label="Datum">
-              {formatDate(quote.createdAt)}
-            </ListCardRow>
-          </ListCardRows>
-        </ListCard>
-      ))
+      items.map((quote) => {
+        const context = joinMeta([
+          quote.company?.name,
+          quote.contact
+            ? formatPersonName(quote.contact.firstName, quote.contact.lastName)
+            : null,
+        ]);
+
+        return (
+          <ListCard key={quote.id} interactive>
+            <ListCardTitle href={quotePath(quote)}>
+              {quote.quoteNumber}
+            </ListCardTitle>
+            {context ? <ListCardContext>{context}</ListCardContext> : null}
+            <ListCardSignals>
+              <Badge
+                tone={quoteStatusTones[quote.status]}
+                className="h-auto min-h-5 max-w-full whitespace-normal"
+              >
+                {quoteStatusLabels[quote.status]}
+              </Badge>
+            </ListCardSignals>
+            <ListCardFacts>
+              <span className="tabular-nums text-fg">
+                {formatEuroExact(Number(quote.total))}
+              </span>
+              <span>{quoteVersionMeta(quote)}</span>
+            </ListCardFacts>
+            <ListCardFooter className="justify-end">
+              <ListCardDate>{formatDate(quote.createdAt)}</ListCardDate>
+            </ListCardFooter>
+          </ListCard>
+        );
+      })
     );
 
   return <ResponsiveListView desktop={desktop} mobile={mobile} />;

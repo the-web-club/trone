@@ -2,6 +2,11 @@ import Link from "next/link";
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
+/** Stretched hit area for the primary record action, without wrapping controls. */
+export const listCardHitAreaClassName =
+  "after:absolute after:inset-0 after:z-0 after:rounded-md " +
+  "focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-fg";
+
 /** Shows `desktop` from md breakpoint up; `mobile` below md. */
 export function ResponsiveListView({
   desktop,
@@ -13,7 +18,7 @@ export function ResponsiveListView({
   return (
     <>
       <div className="hidden md:block">{desktop}</div>
-      <div className="flex flex-col gap-1.5 md:hidden">{mobile}</div>
+      <div className="flex flex-col gap-2.5 md:hidden">{mobile}</div>
     </>
   );
 }
@@ -21,38 +26,27 @@ export function ResponsiveListView({
 export function ListCard({
   children,
   className,
-  href,
+  interactive = false,
   onClick,
 }: {
   children: React.ReactNode;
   className?: string;
-  href?: string;
+  interactive?: boolean;
   onClick?: React.MouseEventHandler<HTMLElement>;
 }) {
-  const classes = cn(
-    "rounded-md border border-border bg-surface px-3 py-2",
-    (href || onClick) && "relative transition-colors hover:bg-hover-subtle",
-    onClick && "cursor-pointer",
-    className,
+  return (
+    <article
+      className={cn(
+        "relative flex flex-col gap-1.5 rounded-md border border-border bg-surface px-3 py-3",
+        (interactive || onClick) && "transition-colors hover:bg-hover-subtle",
+        onClick && "cursor-pointer",
+        className,
+      )}
+      onClick={onClick}
+    >
+      {children}
+    </article>
   );
-
-  if (href) {
-    return (
-      <Link href={href} className={classes}>
-        {children}
-      </Link>
-    );
-  }
-
-  if (onClick) {
-    return (
-      <article className={classes} onClick={onClick}>
-        {children}
-      </article>
-    );
-  }
-
-  return <article className={classes}>{children}</article>;
 }
 
 export function ListCardHeader({
@@ -77,13 +71,26 @@ export function ListCardHeader({
 export function ListCardTitle({
   children,
   className,
+  href,
 }: {
   children: React.ReactNode;
   className?: string;
+  href?: string;
 }) {
+  const titleClass = cn(
+    "min-w-0 text-md font-medium break-words text-fg",
+    className,
+  );
+
+  if (!href) {
+    return <div className={titleClass}>{children}</div>;
+  }
+
   return (
-    <div className={cn("min-w-0 text-sm font-medium text-fg", className)}>
-      {children}
+    <div className={titleClass}>
+      <Link href={href} className={listCardHitAreaClassName}>
+        {children}
+      </Link>
     </div>
   );
 }
@@ -95,8 +102,115 @@ export function ListCardMeta({
   children: React.ReactNode;
   className?: string;
 }) {
+  if (children == null || children === false || children === "") return null;
   return (
-    <p className={cn("mt-0.5 text-xs text-fg-muted", className)}>{children}</p>
+    <p className={cn("min-w-0 text-sm break-words text-fg-muted", className)}>
+      {children}
+    </p>
+  );
+}
+
+export function ListCardContext({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (children == null || children === false || children === "") return null;
+  return (
+    <p className={cn("min-w-0 text-sm break-words text-fg-muted", className)}>
+      {children}
+    </p>
+  );
+}
+
+export function ListCardSignals({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function ListCardFacts({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (children == null || children === false) return null;
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function ListCardFooter({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative z-10 mt-0.5 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function ListCardControl({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative z-10 min-w-0", className)}>{children}</div>
+  );
+}
+
+export function ListCardDate({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 text-sm whitespace-nowrap text-fg-muted",
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -110,7 +224,7 @@ export function ListCardRows({
   return (
     <dl
       className={cn(
-        "mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-sm",
+        "grid grid-cols-2 gap-x-3 gap-y-1 text-sm",
         className,
       )}
     >
@@ -167,7 +281,7 @@ export function ListCardActions({
   return (
     <div
       className={cn(
-        "mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2",
+        "relative z-10 mt-0.5 flex flex-wrap items-center gap-2 border-t border-border pt-2",
         className,
       )}
     >
@@ -211,28 +325,31 @@ export function CompactRecordRow({
 }) {
   return (
     <li className="relative hover:bg-hover-subtle">
-      <div className="min-h-11 px-3 py-2">
+      <div className="min-h-11 px-3 py-2.5">
         <div className="flex min-w-0 items-start justify-between gap-2">
-          <div className="min-w-0 text-sm font-medium break-words text-fg">
+          <div className="min-w-0 text-md font-medium break-words text-fg">
             {href ? (
-              <Link
-                href={href}
-                className="after:absolute after:inset-0 hover:underline"
-              >
+              <Link href={href} className={listCardHitAreaClassName}>
                 {title}
               </Link>
             ) : (
               title
             )}
           </div>
-          {status ? <div className="relative z-10 shrink-0">{status}</div> : null}
+          {status ? (
+            <div className="relative z-10 max-w-[min(100%,11rem)] shrink-0">
+              {status}
+            </div>
+          ) : null}
         </div>
         {meta ? (
-          <p className="relative z-10 mt-0.5 text-xs break-words text-fg-muted">
+          <p className="relative z-10 mt-0.5 text-sm break-words text-fg-muted">
             {meta}
           </p>
         ) : null}
-        {children ? <div className="relative z-10 mt-0.5">{children}</div> : null}
+        {children ? (
+          <div className="relative z-10 mt-1">{children}</div>
+        ) : null}
       </div>
     </li>
   );

@@ -2,10 +2,11 @@ import { CompanyOwnerSelect } from "@/components/company/company-owner-select";
 import { CompanyLink } from "@/components/entity-links";
 import {
   ListCard,
+  ListCardContext,
+  ListCardControl,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
+  ListCardFooter,
+  ListCardSignals,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -20,7 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DealTeamMember } from "@/lib/deal-service";
-import { countryLabel } from "@/lib/list-copy";
+import { countryLabel, joinMeta, listSummary } from "@/lib/list-copy";
+import { companyPath } from "@/lib/paths";
 
 export type CompanyListRow = {
   id: string;
@@ -116,40 +118,48 @@ export function CompaniesList({
         {emptyAction}
       </ListCardEmpty>
     ) : (
-      items.map((company) => (
-        <ListCard key={company.id}>
-          <ListCardHeader>
-            <ListCardTitle>
-              <CompanyLink company={company} primary />
+      items.map((company) => {
+        const context = joinMeta([
+          company.city,
+          company.country ? countryLabel(company.country) : null,
+        ]);
+
+        return (
+          <ListCard key={company.id} interactive>
+            <ListCardTitle href={companyPath(company)}>
+              {company.name}
             </ListCardTitle>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Plaats">{company.city || "—"}</ListCardRow>
-            <ListCardRow label="Land">
-              {company.country ? countryLabel(company.country) : "—"}
-            </ListCardRow>
-            <ListCardRow label="Eigenaar">
-              <CompanyOwnerSelect
-                companyId={company.id}
-                ownerUserId={company.ownerUserId}
-                ownerName={
-                  company.ownerUserId
-                    ? (ownerNames.get(company.ownerUserId) ?? null)
-                    : null
-                }
-                ownerImage={
-                  company.ownerUserId
-                    ? (ownerImages.get(company.ownerUserId) ?? null)
-                    : null
-                }
-                members={members}
-              />
-            </ListCardRow>
-            <ListCardRow label="Leads">{company._count.deals}</ListCardRow>
-            <ListCardRow label="Contacten">{company._count.contacts}</ListCardRow>
-          </ListCardRows>
-        </ListCard>
-      ))
+            {context ? <ListCardContext>{context}</ListCardContext> : null}
+            <ListCardSignals>
+              <span className="text-sm text-fg-muted">
+                {listSummary(company._count.deals, "lead", "leads")}
+              </span>
+              <span className="text-sm text-fg-muted">
+                {listSummary(company._count.contacts, "contact", "contacten")}
+              </span>
+            </ListCardSignals>
+            <ListCardFooter>
+              <ListCardControl className="min-w-0 flex-1">
+                <CompanyOwnerSelect
+                  companyId={company.id}
+                  ownerUserId={company.ownerUserId}
+                  ownerName={
+                    company.ownerUserId
+                      ? (ownerNames.get(company.ownerUserId) ?? null)
+                      : null
+                  }
+                  ownerImage={
+                    company.ownerUserId
+                      ? (ownerImages.get(company.ownerUserId) ?? null)
+                      : null
+                  }
+                  members={members}
+                />
+              </ListCardControl>
+            </ListCardFooter>
+          </ListCard>
+        );
+      })
     );
 
   return <ResponsiveListView desktop={desktop} mobile={mobile} />;

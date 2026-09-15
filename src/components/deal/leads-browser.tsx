@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { CreateLeadListDialog } from "@/components/deal/create-lead-list-dialog";
 import type { DealFormContact, DealFormOption } from "@/components/deal/deal-form";
 import { LeadsFilters } from "@/components/deal/leads-filters";
@@ -11,7 +13,11 @@ import {
 } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
-import type { DealsFilterValues, DealsView } from "@/lib/deals-query";
+import {
+  buildDealsHref,
+  type DealsFilterValues,
+  type DealsView,
+} from "@/lib/deals-query";
 
 export function LeadsBrowser({
   values,
@@ -52,7 +58,11 @@ export function LeadsBrowser({
         exportHref={exportHref}
         summary={summary}
       />
-      <ListBody>{children}</ListBody>
+      <ListBody>
+        <div className={view === "kanban" ? "hidden md:contents" : undefined}>
+          {children}
+        </div>
+      </ListBody>
     </ListBrowser>
   );
 }
@@ -80,7 +90,30 @@ function LeadsBrowserChrome({
   exportHref: string;
   summary: string;
 }) {
+  const router = useRouter();
   const { isPending, startTransition } = useListNavigation();
+  const listHref = buildDealsHref({
+    ...values,
+    view: "lijst",
+    pagina: 1,
+  });
+
+  useEffect(() => {
+    if (view !== "kanban") return;
+
+    const desktop = window.matchMedia("(min-width: 768px)");
+
+    function leaveKanbanOnMobile() {
+      if (desktop.matches) return;
+      startTransition(() => {
+        router.replace(listHref, { scroll: false });
+      });
+    }
+
+    leaveKanbanOnMobile();
+    desktop.addEventListener("change", leaveKanbanOnMobile);
+    return () => desktop.removeEventListener("change", leaveKanbanOnMobile);
+  }, [view, listHref, router, startTransition]);
 
   return (
     <>
@@ -122,14 +155,6 @@ function LeadsBrowserChrome({
         facets={facets}
         isPending={isPending}
         startTransition={startTransition}
-        toolbarStart={
-          <LeadsViewSwitcher
-            view={view}
-            values={values}
-            startTransition={startTransition}
-            disabled={isPending}
-          />
-        }
       />
     </>
   );

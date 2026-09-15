@@ -2,10 +2,10 @@ import { ContactOwnerSelect } from "@/components/contact/contact-owner-select";
 import { CompanyLink, ContactLink } from "@/components/entity-links";
 import {
   ListCard,
+  ListCardContext,
+  ListCardControl,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
+  ListCardFooter,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DealTeamMember } from "@/lib/deal-service";
+import { formatPersonName } from "@/lib/format";
+import { contactPath } from "@/lib/paths";
 
 export type ContactListRow = {
   id: string;
@@ -108,18 +110,25 @@ export function ContactsList({
       </ListCardEmpty>
     ) : (
       items.map((contact) => (
-        <ListCard key={contact.id}>
-          <ListCardHeader>
-            <ListCardTitle>
-              <ContactLink contact={contact} primary />
-            </ListCardTitle>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="E-mail">{contact.email || "—"}</ListCardRow>
-            <ListCardRow label="Bedrijf">
-              <CompanyLink company={contact.company} />
-            </ListCardRow>
-            <ListCardRow label="Eigenaar">
+        <ListCard key={contact.id} interactive>
+          <ListCardTitle href={contactPath(contact)}>
+            {formatPersonName(contact.firstName, contact.lastName)}
+          </ListCardTitle>
+          {contact.company ? (
+            <ListCardContext>{contact.company.name}</ListCardContext>
+          ) : null}
+          {contact.email ? (
+            <ListCardControl>
+              <a
+                href={`mailto:${contact.email}`}
+                className="text-sm break-all text-fg-muted hover:underline"
+              >
+                {contact.email}
+              </a>
+            </ListCardControl>
+          ) : null}
+          <ListCardFooter>
+            <ListCardControl className="min-w-0 flex-1">
               <ContactOwnerSelect
                 contactId={contact.id}
                 ownerUserId={contact.ownerUserId}
@@ -135,8 +144,8 @@ export function ContactsList({
                 }
                 members={members}
               />
-            </ListCardRow>
-          </ListCardRows>
+            </ListCardControl>
+          </ListCardFooter>
         </ListCard>
       ))
     );

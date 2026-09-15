@@ -83,10 +83,9 @@ export function CompanyOwnerSelect({
         size="sm"
         disabled={pending}
         className={cn(
-          "w-auto max-w-[12rem] cursor-pointer border-transparent bg-transparent px-1.5 text-fg-muted",
+          "w-auto max-w-[min(100%,16rem)] cursor-pointer border-transparent bg-transparent px-1.5 text-fg-muted",
           "hover:border-border hover:bg-surface hover:text-fg",
           "data-[popup-open]:border-border-strong data-[popup-open]:bg-surface data-[popup-open]:text-fg",
-          "[&_svg]:opacity-50 group-hover/row:[&_svg]:opacity-100 data-[popup-open]:[&_svg]:opacity-100 focus-visible:[&_svg]:opacity-100",
         )}
       />
       {error ? (

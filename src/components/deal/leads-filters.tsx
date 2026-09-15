@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode, type TransitionStartFunction } from "react";
+import { useEffect, useRef, useState, type TransitionStartFunction } from "react";
 import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,6 @@ export function LeadsFilters({
   facets,
   isPending,
   startTransition,
-  toolbarStart,
 }: {
   values: DealsFilterValues;
   view: DealsView;
@@ -53,7 +52,6 @@ export function LeadsFilters({
   facets: DealFilterFacets;
   isPending: boolean;
   startTransition: TransitionStartFunction;
-  toolbarStart?: ReactNode;
 }) {
   const router = useRouter();
   const [zoeken, setZoeken] = useState(values.zoeken);
@@ -390,7 +388,6 @@ export function LeadsFilters({
       hasActiveFilters={hasActiveFilters}
       onReset={resetAll}
       isPending={isPending}
-      toolbarStart={toolbarStart}
     >
       {hideStageFilter ? null : (
         <SelectMenu

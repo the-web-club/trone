@@ -3,10 +3,11 @@ import { CompanyLink } from "@/components/entity-links";
 import { Badge } from "@/components/ui/badge";
 import {
   ListCard,
+  ListCardContext,
+  ListCardDate,
   ListCardEmpty,
-  ListCardHeader,
-  ListCardRow,
-  ListCardRows,
+  ListCardFooter,
+  ListCardSignals,
   ListCardTitle,
   ResponsiveListView,
 } from "@/components/ui/responsive-list";
@@ -92,25 +93,24 @@ export function OrdersList({
       <ListCardEmpty>{emptyMessage}</ListCardEmpty>
     ) : (
       items.map((order) => (
-        <ListCard key={order.id}>
-          <ListCardHeader>
-            <ListCardTitle>
-              <Link href={orderPath(order)} className="hover:underline">
-                {order.orderNumber}
-              </Link>
-            </ListCardTitle>
-            <Badge tone={orderStatusTones[order.status]}>
+        <ListCard key={order.id} interactive>
+          <ListCardTitle href={orderPath(order)}>
+            {order.orderNumber}
+          </ListCardTitle>
+          {order.company ? (
+            <ListCardContext>{order.company.name}</ListCardContext>
+          ) : null}
+          <ListCardSignals>
+            <Badge
+              tone={orderStatusTones[order.status]}
+              className="h-auto min-h-5 max-w-full whitespace-normal"
+            >
               {orderStatusLabels[order.status]}
             </Badge>
-          </ListCardHeader>
-          <ListCardRows>
-            <ListCardRow label="Klant">
-              <CompanyLink company={order.company} />
-            </ListCardRow>
-            <ListCardRow label="Datum">
-              {formatDate(order.createdAt)}
-            </ListCardRow>
-          </ListCardRows>
+          </ListCardSignals>
+          <ListCardFooter className="justify-end">
+            <ListCardDate>{formatDate(order.createdAt)}</ListCardDate>
+          </ListCardFooter>
         </ListCard>
       ))
     );

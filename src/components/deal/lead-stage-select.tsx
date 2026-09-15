@@ -90,10 +90,9 @@ export function LeadStageSelect({
         disabled={pending}
         searchPlaceholder="Zoek een fase…"
         className={cn(
-          "h-5 w-auto max-w-[12rem] cursor-pointer border-transparent px-1.5 text-xs font-medium",
+          "h-5 w-auto max-w-[min(100%,16rem)] cursor-pointer border-transparent px-1.5 text-xs font-medium",
           stageToneClass(selected),
           "data-[popup-open]:border-border-strong data-[popup-open]:bg-surface data-[popup-open]:text-fg",
-          "[&_svg]:opacity-50 group-hover/row:[&_svg]:opacity-100 data-[popup-open]:[&_svg]:opacity-100 focus-visible:[&_svg]:opacity-100",
         )}
       />
       {error ? (
