@@ -28,6 +28,7 @@ import {
   type DealPatch,
 } from "@/lib/deal-validation";
 import { toActionError } from "@/lib/errors";
+import { parseDealSubmissionId } from "@/lib/lead-submission";
 import { dealPath } from "@/lib/paths";
 import type { LeadScoreAnswers, LeadScoreResult } from "@/lib/lead-score";
 
@@ -49,13 +50,22 @@ function revalidateDealPaths(deal?: { slug: string }) {
 }
 
 export async function createDealAction(
-  _prev: { error?: string; deal?: { id: string; slug: string } } | null,
+  _prev: {
+    error?: string;
+    fieldErrors?: Record<string, string>;
+    deal?: { id: string; slug: string };
+  } | null,
   formData: FormData,
-): Promise<{ error?: string; deal?: { id: string; slug: string } }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  deal?: { id: string; slug: string };
+}> {
   try {
     const session = await requireSession();
+    const submissionId = parseDealSubmissionId(formData.get("submissionId"));
     const input = parseDealForm(formData);
-    const deal = await createDeal(input, session.user.id);
+    const deal = await createDeal(input, session.user.id, { submissionId });
     revalidateDealPaths(deal);
     return { deal: { id: deal.id, slug: deal.slug } };
   } catch (error) {
@@ -208,14 +218,22 @@ export type CreatedDealOption = {
 /** Compact aanmaken zonder redirect, voor de lead-select op de offerte. */
 export async function createDealInlineAction(
   formData: FormData,
-): Promise<{ error?: string; deal?: CreatedDealOption }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  deal?: CreatedDealOption;
+}> {
   try {
     const session = await requireSession();
+    const submissionId = parseDealSubmissionId(formData.get("submissionId"));
     const title = String(formData.get("title") ?? "").trim();
     const companyId = String(formData.get("companyId") ?? "").trim() || undefined;
     const contactId = String(formData.get("contactId") ?? "").trim() || undefined;
     if (!title) {
-      return { error: "Titel is verplicht" };
+      return {
+        error: "Titel is verplicht",
+        fieldErrors: { title: "Titel is verplicht" },
+      };
     }
     const stages = await listDealStages();
     const stage =
@@ -231,6 +249,7 @@ export async function createDealInlineAction(
         stageId: stage.id,
       },
       session.user.id,
+      { submissionId },
     );
     revalidatePath("/leads");
     revalidatePath("/overzicht");

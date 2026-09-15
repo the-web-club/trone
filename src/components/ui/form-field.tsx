@@ -42,6 +42,7 @@ export function FormField({
             {
               id,
               "aria-invalid": error ? true : undefined,
+              "aria-describedby": error ? `${id}-error` : undefined,
             },
           )
         : children}

@@ -13,6 +13,7 @@ import { getContactCompanyId } from "@/lib/contact-company";
 import { getPrismaClient } from "@/lib/db";
 import {
   assertDealContactCompany,
+  dealCreationMatches,
   type DealActivityInput,
   type DealInput,
 } from "@/lib/deal-validation";
@@ -651,25 +652,80 @@ async function assertDealRelations(input: DealInput) {
   return { stage, companyId };
 }
 
-export async function createDeal(input: DealInput, ownerUserId?: string) {
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === "P2002"
+  );
+}
+
+function settleExistingDeal<T extends {
+  title: string;
+  companyId: string | null;
+  contactId: string | null;
+  stageId: string;
+  sourceId: string | null;
+  valueEstimate: { toString(): string } | number | string | null;
+}>(existing: T, input: DealInput): T {
+  if (!dealCreationMatches(existing, input)) {
+    throw new AppError(
+      "Deze indiening hoort bij een andere lead. Ververs de pagina en probeer opnieuw.",
+      "CONFLICT",
+      409,
+    );
+  }
+  return existing;
+}
+
+export async function createDeal(
+  input: DealInput,
+  ownerUserId?: string,
+  options?: { submissionId?: string },
+) {
   const prisma = getPrismaClient();
+  const submissionId = options?.submissionId?.trim() || undefined;
+
+  if (submissionId) {
+    const existing = await prisma.deal.findUnique({
+      where: { submissionId },
+    });
+    if (existing) {
+      return settleExistingDeal(existing, input);
+    }
+  }
+
   const { stage, companyId } = await assertDealRelations(input);
 
   const slug = await nextDealSlug(prisma, input.title);
-  return prisma.deal.create({
-    data: {
-      id: createId(),
-      slug,
-      title: input.title,
-      companyId,
-      contactId: input.contactId ?? null,
-      stageId: input.stageId,
-      sourceId: input.sourceId ?? null,
-      valueEstimate: input.valueEstimate ?? null,
-      status: statusForStage(stage),
-      ownerUserId: ownerUserId ?? null,
-    },
-  });
+  try {
+    return await prisma.deal.create({
+      data: {
+        id: createId(),
+        slug,
+        submissionId: submissionId ?? null,
+        title: input.title,
+        companyId,
+        contactId: input.contactId ?? null,
+        stageId: input.stageId,
+        sourceId: input.sourceId ?? null,
+        valueEstimate: input.valueEstimate ?? null,
+        status: statusForStage(stage),
+        ownerUserId: ownerUserId ?? null,
+      },
+    });
+  } catch (error) {
+    if (submissionId && isUniqueConstraintError(error)) {
+      const existing = await prisma.deal.findUnique({
+        where: { submissionId },
+      });
+      if (existing) {
+        return settleExistingDeal(existing, input);
+      }
+    }
+    throw error;
+  }
 }
 
 export async function updateDeal(id: string, input: DealInput, userId?: string) {

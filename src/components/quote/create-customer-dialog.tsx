@@ -1,13 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { createComposerCustomerAction } from "@/app/(beveiligd)/actions/composer-customer-actions";
 import type {
   ComposerCreatedCompany,
   ComposerCreatedContact,
   ComposerCreatedDeal,
 } from "@/app/(beveiligd)/actions/composer-customer-actions";
-import { Button } from "@/components/ui/button";
+import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
 import {
   DialogBody,
   DialogContent,
@@ -20,6 +20,12 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { CountrySelect } from "@/components/company/country-select";
+import { Button } from "@/components/ui/button";
+import {
+  createSubmissionGuard,
+  createSubmissionId,
+  submitLeadCreation,
+} from "@/lib/lead-submission";
 
 export function CreateCustomerDialog({
   onCreated,
@@ -41,28 +47,74 @@ export function CreateCustomerDialog({
   const id = useId();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">(
+    "idle",
+  );
+  const guardRef = useRef(createSubmissionGuard());
+  const [submissionId, setSubmissionId] = useState(createSubmissionId);
   const open = openProp ?? uncontrolledOpen;
 
+  function beginNewSubmission() {
+    guardRef.current = createSubmissionGuard();
+    setSubmissionId(createSubmissionId());
+    setStatus("idle");
+    setError(null);
+  }
+
   function setOpen(next: boolean) {
+    if (next && (status === "success" || (status === "idle" && !error))) {
+      beginNewSubmission();
+    }
     if (openProp === undefined) setUncontrolledOpen(next);
     onOpenChange?.(next);
-    if (!next) setError(null);
+    if (!next && status === "success") beginNewSubmission();
   }
 
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
-    const result = await createComposerCustomerAction(formData);
-    setPending(false);
-    if ("error" in result && result.error) {
+    const result = await submitLeadCreation({
+      guard: guardRef.current,
+      formData,
+      validate: (data) => {
+        const name = String(data.get("companyName") ?? "").trim();
+        if (!name) {
+          return {
+            success: false,
+            fieldErrors: {},
+            formError: "Naam is verplicht",
+          };
+        }
+        return { success: true };
+      },
+      save: async (data) => {
+        const saved = await createComposerCustomerAction(data);
+        if ("error" in saved && saved.error) {
+          return { error: saved.error };
+        }
+        if ("company" in saved) {
+          return { deal: saved };
+        }
+        return { error: "Er ging iets mis. Probeer het opnieuw." };
+      },
+      onStart: () => {
+        setStatus("submitting");
+        setError(null);
+      },
+    });
+
+    if (result.status === "ignored") return;
+    if (result.status === "invalid" || result.status === "failed") {
+      setStatus("idle");
+      setError(result.status === "invalid" ? result.formError : result.error);
+      return;
+    }
+    if (result.status === "uncertain") {
+      setStatus("idle");
       setError(result.error);
       return;
     }
-    if ("company" in result) {
-      onCreated(result);
-      setOpen(false);
-    }
+    setStatus("success");
+    onCreated(result.deal);
+    setOpen(false);
   }
 
   return (
@@ -83,7 +135,8 @@ export function CreateCustomerDialog({
             Voor een telefonische intake. Contact en lead zijn optioneel.
           </p>
         </DialogHeader>
-        <form action={onSubmit} key={open ? `${id}-open` : `${id}-closed`}>
+        <form action={onSubmit} noValidate>
+          <input type="hidden" name="submissionId" value={submissionId} />
           <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
               <p className="text-label font-medium tracking-wide text-fg-muted uppercase">
@@ -155,11 +208,16 @@ export function CreateCustomerDialog({
                 {error}
               </p>
             ) : null}
+            <p className="sr-only" aria-live="polite">
+              {status === "submitting"
+                ? "Bezig met opslaan…"
+                : status === "success"
+                  ? "Lead toegevoegd"
+                  : error}
+            </p>
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending}>
-              Toevoegen
-            </Button>
+            <LeadSubmitButton readyLabel="Toevoegen" status={status} />
           </DialogFooter>
         </form>
       </DialogContent>

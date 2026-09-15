@@ -3,6 +3,7 @@
 import { type ReactElement, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDealAction } from "@/app/(beveiligd)/actions/deal-actions";
+import { refreshAfterSuccess } from "@/lib/lead-submission";
 import {
   DealForm,
   type DealFormContact,
@@ -33,6 +34,7 @@ export function CreateLeadListDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [nestedOpen, setNestedOpen] = useState(false);
+  const [formEpoch, setFormEpoch] = useState(0);
 
   function onOpenChange(next: boolean) {
     if (!next && nestedOpen) return;
@@ -59,7 +61,7 @@ export function CreateLeadListDialog({
           </p>
         </DialogHeader>
         <DealForm
-          key={open ? "open" : "closed"}
+          key={formEpoch}
           action={createDealAction}
           submitLabel="Lead opslaan"
           stages={stages}
@@ -68,8 +70,9 @@ export function CreateLeadListDialog({
           contacts={contacts}
           onNestedOpenChange={setNestedOpen}
           onCreated={() => {
+            setFormEpoch((value) => value + 1);
             onOpenChange(false);
-            router.refresh();
+            refreshAfterSuccess(() => router.refresh());
           }}
         />
       </DialogContent>

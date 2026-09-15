@@ -1,16 +1,28 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
+import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
 import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
-import { Button } from "@/components/ui/button";
 import { ComboboxMenu } from "@/components/ui/combobox";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { FormField, FormFieldGrid } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select";
+import {
+  firstInvalidDealField,
+  safeParseDealForm,
+  type DealFieldErrors,
+  type DealFieldName,
+} from "@/lib/deal-validation";
 import { formatPersonName } from "@/lib/format";
+import {
+  createSubmissionGuard,
+  createSubmissionId,
+  submitLeadCreation,
+  visibleDealFieldErrors,
+} from "@/lib/lead-submission";
 
 export type DealFormOption = { id: string; name: string };
 
@@ -48,16 +60,34 @@ export function DealForm({
   companies: DealFormOption[];
   contacts: DealFormContact[];
   action: (
-    prev: { error?: string; deal?: { id: string; slug: string } } | null,
+    prev: {
+      error?: string;
+      fieldErrors?: Record<string, string>;
+      deal?: { id: string; slug: string };
+    } | null,
     formData: FormData,
-  ) => Promise<{ error?: string; deal?: { id: string; slug: string } }>;
+  ) => Promise<{
+    error?: string;
+    fieldErrors?: Record<string, string>;
+    deal?: { id: string; slug: string };
+  }>;
   submitLabel: string;
   onCreated?: (deal: { id: string; slug: string }) => void;
   onNestedOpenChange?: (open: boolean) => void;
 }) {
   const id = useId();
+  const formRef = useRef<HTMLFormElement>(null);
+  const guard = useRef(createSubmissionGuard()).current;
+  const [submissionId] = useState(createSubmissionId);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<DealFieldErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<DealFieldName, boolean>>>(
+    {},
+  );
+  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">(
+    "idle",
+  );
   const {
     companyId,
     contactId,
@@ -106,39 +136,129 @@ export function DealForm({
     [visibleContacts],
   );
 
+  const shownErrors = visibleDealFieldErrors(fieldErrors, touched, submitted);
+
+  function markTouched(name: DealFieldName) {
+    setTouched((current) => ({ ...current, [name]: true }));
+  }
+
+  function syncFieldErrors(form: HTMLFormElement) {
+    const parsed = safeParseDealForm(new FormData(form));
+    setFieldErrors(parsed.success ? {} : parsed.fieldErrors);
+    if (parsed.success) setError(null);
+  }
+
+  function focusField(name: DealFieldName) {
+    document.getElementById(`${id}-${name}`)?.focus();
+  }
+
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
-    const result = await action(null, formData);
-    setPending(false);
-    if (result.error) {
+    const result = await submitLeadCreation({
+      guard,
+      formData,
+      validate: (data) => {
+        const parsed = safeParseDealForm(data);
+        return parsed.success
+          ? { success: true }
+          : {
+              success: false,
+              fieldErrors: parsed.fieldErrors,
+              formError: parsed.formError,
+            };
+      },
+      save: (data) => action(null, data),
+      onStart: () => {
+        setStatus("submitting");
+        setError(null);
+      },
+    });
+
+    if (result.status === "ignored") return;
+
+    if (result.status === "invalid") {
+      setSubmitted(true);
+      setStatus("idle");
+      setFieldErrors(result.fieldErrors);
+      setError(result.formError);
+      const first = firstInvalidDealField(result.fieldErrors);
+      if (first) focusField(first);
+      return;
+    }
+
+    if (result.status === "failed") {
+      setSubmitted(true);
+      setStatus("idle");
+      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
+      setError(result.error);
+      const first = firstInvalidDealField(result.fieldErrors ?? {});
+      if (first) focusField(first);
+      return;
+    }
+
+    if (result.status === "uncertain") {
+      setStatus("idle");
       setError(result.error);
       return;
     }
-    if (result.deal) onCreated?.(result.deal);
+
+    setError(null);
+    setFieldErrors({});
+    setStatus("success");
+    onCreated?.(result.deal);
   }
 
+  const statusMessage =
+    status === "submitting"
+      ? "Bezig met opslaan…"
+      : status === "success"
+        ? "Lead toegevoegd"
+        : error;
+
   return (
-    <form action={onSubmit} className="flex min-h-0 flex-1 flex-col">
+    <form
+      ref={formRef}
+      action={onSubmit}
+      noValidate
+      className="flex min-h-0 flex-1 flex-col"
+    >
       {deal?.id ? <input type="hidden" name="id" value={deal.id} /> : null}
+      <input type="hidden" name="submissionId" value={submissionId} />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="contactId" value={contactId} />
 
       <DialogBody className="flex flex-col gap-3">
         <FormFieldGrid>
-          <FormField id={`${id}-title`} label="Titel" className="col-span-2">
+          <FormField
+            id={`${id}-title`}
+            label="Titel"
+            className="col-span-2"
+            error={shownErrors.title}
+          >
             <Input
               name="title"
-              required
               autoFocus
               defaultValue={deal?.title ?? ""}
+              onBlur={(event) => {
+                markTouched("title");
+                const form = event.currentTarget.form ?? formRef.current;
+                if (form) syncFieldErrors(form);
+              }}
+              onChange={(event) => {
+                if (submitted || touched.title) {
+                  const form = event.currentTarget.form ?? formRef.current;
+                  if (form) syncFieldErrors(form);
+                }
+              }}
             />
           </FormField>
 
-          <FormField id={`${id}-companyId`} label="Bedrijf">
+          <FormField id={`${id}-companyId`} label="Bedrijf" error={shownErrors.companyId}>
             <ComboboxMenu
               value={companyId}
-              onValueChange={(next) => onCompanyChange(next)}
+              onValueChange={(next) => {
+                onCompanyChange(next);
+                markTouched("companyId");
+              }}
               items={companyItems}
               placeholder="Geen bedrijf gekoppeld"
               searchPlaceholder="Zoek een bedrijf…"
@@ -150,11 +270,14 @@ export function DealForm({
               }}
             />
           </FormField>
-          <FormField id={`${id}-contactId`} label="Contact">
+          <FormField id={`${id}-contactId`} label="Contact" error={shownErrors.contactId}>
             <ComboboxMenu
               value={contactId}
               disabled={contactsLoading}
-              onValueChange={(next) => onContactChange(next)}
+              onValueChange={(next) => {
+                onContactChange(next);
+                markTouched("contactId");
+              }}
               items={contactItems}
               placeholder="Geen contactpersoon"
               searchPlaceholder="Zoek een contact…"
@@ -166,19 +289,19 @@ export function DealForm({
               }}
             />
           </FormField>
-          <FormField id={`${id}-stageId`} label="Fase">
+          <FormField id={`${id}-stageId`} label="Fase" error={shownErrors.stageId}>
             <SelectMenu
               name="stageId"
-              required
               defaultValue={deal?.stageId ?? stages[0]?.id}
               items={stages.map((stage) => ({
                 value: stage.id,
                 label: stage.name,
               }))}
               searchPlaceholder="Zoek een fase…"
+              onValueChange={() => markTouched("stageId")}
             />
           </FormField>
-          <FormField id={`${id}-sourceId`} label="Bron">
+          <FormField id={`${id}-sourceId`} label="Bron" error={shownErrors.sourceId}>
             <SelectMenu
               name="sourceId"
               defaultValue={deal?.sourceId ?? ""}
@@ -190,15 +313,32 @@ export function DealForm({
                 })),
               ]}
               searchPlaceholder="Zoek een bron…"
+              onValueChange={() => markTouched("sourceId")}
             />
           </FormField>
-          <FormField id={`${id}-valueEstimate`} label="Waarde (€)" className="col-span-2">
+          <FormField
+            id={`${id}-valueEstimate`}
+            label="Waarde (€)"
+            className="col-span-2"
+            error={shownErrors.valueEstimate}
+          >
             <Input
               name="valueEstimate"
               type="number"
               min="0"
               step="1"
               defaultValue={deal?.valueEstimate ?? ""}
+              onBlur={(event) => {
+                markTouched("valueEstimate");
+                const form = event.currentTarget.form ?? formRef.current;
+                if (form) syncFieldErrors(form);
+              }}
+              onChange={(event) => {
+                if (submitted || touched.valueEstimate) {
+                  const form = event.currentTarget.form ?? formRef.current;
+                  if (form) syncFieldErrors(form);
+                }
+              }}
             />
           </FormField>
         </FormFieldGrid>
@@ -208,11 +348,12 @@ export function DealForm({
             {error}
           </p>
         ) : null}
+        <p className="sr-only" aria-live="polite">
+          {statusMessage}
+        </p>
       </DialogBody>
       <DialogFooter>
-        <Button type="submit" loading={pending}>
-          {submitLabel}
-        </Button>
+        <LeadSubmitButton readyLabel={submitLabel} status={status} />
       </DialogFooter>
 
       <CreateCompanyDialog

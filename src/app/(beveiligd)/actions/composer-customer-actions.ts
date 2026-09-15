@@ -12,6 +12,7 @@ import {
   listLeadSources,
 } from "@/lib/deal-service";
 import { toActionError } from "@/lib/errors";
+import { parseDealSubmissionId } from "@/lib/lead-submission";
 import { companyPath, contactPath, dealPath } from "@/lib/paths";
 
 export type ComposerCreatedCompany = {
@@ -82,6 +83,7 @@ export async function createComposerCustomerAction(
     let deal: ComposerCreatedDeal | null = null;
     let dealSlug: string | null = null;
     if (wantsLead(formData)) {
+      const submissionId = parseDealSubmissionId(formData.get("submissionId"));
       const [stages, sources] = await Promise.all([
         listDealStages(),
         listLeadSources(),
@@ -99,6 +101,7 @@ export async function createComposerCustomerAction(
             sourceId: source?.id,
           },
           session.user.id,
+          { submissionId },
         );
         dealSlug = saved.slug;
         deal = {

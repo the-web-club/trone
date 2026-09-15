@@ -34,6 +34,8 @@ export type ComboboxMenuProps<Value extends string = string> = {
   className?: string;
   contentClassName?: string;
   "aria-label"?: string;
+  "aria-invalid"?: boolean | "true" | "false" | "grammar" | "spelling";
+  "aria-describedby"?: string;
   prefix?: string;
   onCreate?: (query: string) => void;
   createLabel?: string;
@@ -114,6 +116,8 @@ export function ComboboxMenu<Value extends string = string>({
       <ComboboxPrimitive.Trigger
         data-field-control=""
         aria-label={aria["aria-label"]}
+        aria-invalid={aria["aria-invalid"]}
+        aria-describedby={aria["aria-describedby"]}
         className={cn(
           "inline-flex cursor-default items-center justify-between gap-1.5 select-none",
           fieldBase,
