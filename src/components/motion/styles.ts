@@ -18,6 +18,12 @@ export const dialogBackdropMotion =
 export const dialogPopupMotion =
   "origin-[var(--transform-origin,center_top)] transition-[opacity,transform] duration-[var(--motion-base)] ease-[var(--ease-out-expo)] data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[ending-style]:duration-[var(--motion-fast)] data-[ending-style]:ease-[var(--ease-in-quart)]";
 
+export const drawerBackdropMotion =
+  "transition-opacity duration-[var(--motion-medium)] ease-[var(--ease-out-expo)] opacity-[calc(1-var(--drawer-swipe-progress,0))] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-[calc(var(--drawer-swipe-strength,1)*var(--motion-medium))] data-[ending-style]:ease-[var(--ease-in-quart)] data-[swiping]:duration-[0ms]";
+
+export const drawerPopupMotion =
+  "origin-bottom will-change-transform transition-[transform] duration-[var(--motion-medium)] ease-[var(--ease-out-expo)] transform-[translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-[starting-style]:transform-[translateY(100%)] data-[ending-style]:transform-[translateY(100%)] data-[ending-style]:duration-[calc(var(--drawer-swipe-strength,1)*var(--motion-medium))] data-[ending-style]:ease-[var(--ease-in-quart)] data-[swiping]:duration-[0ms]";
+
 export const iconMotion =
   "transition-transform duration-[var(--motion-fast)] ease-[var(--ease-in-out)]";
 

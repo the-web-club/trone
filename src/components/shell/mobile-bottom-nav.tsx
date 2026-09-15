@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Check } from "lucide-react";
 import { controlMotion, pressableLinkMotion } from "@/components/motion/styles";
 import {
   appMainNav,
@@ -14,10 +14,16 @@ import {
   type AppNavLink,
 } from "@/components/shell/nav-config";
 import {
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DrawerBody,
+  DrawerClose,
+  DrawerDescription,
+  DrawerHandle,
+  DrawerHeader,
+  DrawerRoot,
+  DrawerSheet,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { cn } from "@/lib/cn";
 
 const itemClassName =
@@ -79,16 +85,14 @@ function BottomNavLink({
 }
 
 function CompaniesNavItem({ pathname }: { pathname: string }) {
-  const [open, setOpen] = useState(false);
   const group = companiesNavGroup;
   const active = isCompaniesGroupActive(pathname);
   const Icon = bottomNavIcon(group as AppNavEntry);
 
   return (
-    <PopoverRoot open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <DrawerRoot>
+      <DrawerTrigger
         aria-current={active ? "page" : undefined}
-        aria-haspopup="menu"
         className={cn(
           itemClassName,
           controlMotion,
@@ -98,35 +102,63 @@ function CompaniesNavItem({ pathname }: { pathname: string }) {
       >
         <Icon className="size-5" strokeWidth={1.75} aria-hidden />
         <span>{group.label}</span>
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        align="center"
-        sideOffset={8}
-        className="w-56 p-1 shadow-none"
-      >
-        {group.children.map((item) => {
-          const childActive = isNavItemActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch
-              aria-current={childActive ? "page" : undefined}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex min-h-11 items-center rounded-sm px-3 text-sm",
-                controlMotion,
-                childActive
-                  ? "font-medium text-fg"
-                  : "text-fg-muted hover:bg-hover hover:text-fg",
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </PopoverContent>
-    </PopoverRoot>
+      </DrawerTrigger>
+      <DrawerSheet>
+        <DrawerHandle />
+        <DrawerHeader>
+          <DrawerTitle>{group.label}</DrawerTitle>
+          <DrawerDescription>
+            Kies een bestemming in {group.label}.
+          </DrawerDescription>
+        </DrawerHeader>
+        <DrawerBody>
+          <ul className="list-none px-2 pb-2">
+            {group.children.map((item, index) => {
+              const childActive = isNavItemActive(pathname, item.href);
+              const ItemIcon = item.icon;
+              return (
+                <li key={item.href}>
+                  <DrawerClose
+                    nativeButton={false}
+                    render={
+                      <Link
+                        href={item.href}
+                        prefetch
+                        aria-current={childActive ? "page" : undefined}
+                      />
+                    }
+                    className={cn(
+                      "flex min-h-12 w-full items-center gap-3 px-3 text-sm",
+                      index > 0 && "border-t border-border",
+                      controlMotion,
+                      childActive
+                        ? "bg-selected-bg font-medium text-[var(--brand-accent)] active:bg-hover"
+                        : "text-fg hover:bg-hover hover:text-fg active:bg-hover [&_svg]:text-fg-subtle",
+                      "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg",
+                    )}
+                  >
+                    <ItemIcon
+                      className="size-5 shrink-0"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 text-left leading-snug">
+                      {item.label}
+                    </span>
+                    {childActive ? (
+                      <Check
+                        className="size-4 shrink-0 text-[var(--brand-accent)]"
+                        strokeWidth={2.4}
+                        aria-hidden
+                      />
+                    ) : null}
+                  </DrawerClose>
+                </li>
+              );
+            })}
+          </ul>
+        </DrawerBody>
+      </DrawerSheet>
+    </DrawerRoot>
   );
 }
