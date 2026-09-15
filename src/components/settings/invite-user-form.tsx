@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { inviteUserAction } from "@/app/(beveiligd)/actions/user-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -15,27 +17,39 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select";
-import { userRoleLabels, userRoles } from "@/lib/user-validation";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
+import { safeParseInviteUserForm, userRoleLabels, userRoles } from "@/lib/user-validation";
 
 export function InviteUserForm() {
+  const id = useId();
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const form = useFormSubmission({
+    pendingLabel: "Uitnodigen…",
+    successLabel: "Uitgenodigd",
+  });
 
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
-    const result = await inviteUserAction(null, formData);
-    setPending(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    setOpen(false);
+    await form.submit({
+      formData,
+      fieldOrder: ["name", "email", "role"],
+      fieldElementId: (name) => `${id}-${name}`,
+      validate: safeParseInviteUserForm,
+      save: async (data) => {
+        const saved = await inviteUserAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        return { result: true };
+      },
+      onSuccess: () => form.handleOpenChange(false, setOpen),
+    });
   }
 
   return (
-    <DialogRoot open={open} onOpenChange={setOpen}>
+    <DialogRoot
+      open={open}
+      onOpenChange={(next) => form.handleOpenChange(next, setOpen)}
+    >
       <DialogTrigger
         render={
           <Button variant="primary" aria-label="Teamlid toevoegen">
@@ -44,19 +58,33 @@ export function InviteUserForm() {
         }
       />
       <DialogContent size="md">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Teamlid uitnodigen</DialogTitle>
         </DialogHeader>
-        <form action={onSubmit}>
+        <form action={onSubmit} noValidate key={form.submissionId}>
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <DialogBody>
             <div className="flex flex-col gap-3">
-              <FormField id="name" label="Naam">
-                <Input name="name" required autoComplete="name" />
+              <FormField id={`${id}-name`} label="Naam" error={form.shownErrors.name}>
+                <Input
+                  name="name"
+                  autoComplete="name"
+                  onBlur={() => form.markTouched("name")}
+                />
               </FormField>
-              <FormField id="email" label="E-mailadres">
-                <Input name="email" type="email" required autoComplete="email" />
+              <FormField
+                id={`${id}-email`}
+                label="E-mailadres"
+                error={form.shownErrors.email}
+              >
+                <Input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  onBlur={() => form.markTouched("email")}
+                />
               </FormField>
-              <FormField id="role" label="Rol">
+              <FormField id={`${id}-role`} label="Rol" error={form.shownErrors.role}>
                 <SelectMenu
                   name="role"
                   defaultValue="user"
@@ -67,17 +95,16 @@ export function InviteUserForm() {
                   }))}
                 />
               </FormField>
-              {error ? (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              ) : null}
+              <FormStatus error={form.error} statusMessage={form.statusMessage} />
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending}>
-              Uitnodigen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Uitnodigen"
+              pendingLabel="Uitnodigen…"
+              successLabel="Uitgenodigd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

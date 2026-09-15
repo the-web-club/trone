@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
+import {
+  SubmitStatusButton,
+  type SubmitStatus,
+} from "@/components/ui/submit-status-button";
 
-export type LeadSubmitStatus = "idle" | "submitting" | "success";
+export type LeadSubmitStatus = SubmitStatus;
 
 export function LeadSubmitButton({
   readyLabel,
@@ -17,39 +18,12 @@ export function LeadSubmitButton({
   successLabel?: string;
   status: LeadSubmitStatus;
 }) {
-  const busy = status === "submitting" || status === "success";
-  const label =
-    status === "submitting"
-      ? pendingLabel
-      : status === "success"
-        ? successLabel
-        : readyLabel;
-
   return (
-    <Button
-      type="submit"
-      disabled={busy}
-      aria-busy={status === "submitting" || undefined}
-      className={cn(busy && "disabled:opacity-100")}
-    >
-      <span className="grid justify-items-center">
-        <span className="invisible col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5">
-          <Loader2 className="size-3.5" aria-hidden />
-          {pendingLabel}
-        </span>
-        <span className="invisible col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5">
-          {successLabel}
-        </span>
-        <span className="invisible col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5">
-          {readyLabel}
-        </span>
-        <span className="col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5">
-          {status === "submitting" ? (
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-          ) : null}
-          {label}
-        </span>
-      </span>
-    </Button>
+    <SubmitStatusButton
+      readyLabel={readyLabel}
+      pendingLabel={pendingLabel}
+      successLabel={successLabel}
+      status={status}
+    />
   );
 }

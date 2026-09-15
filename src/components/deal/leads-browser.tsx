@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CreateLeadListDialog } from "@/components/deal/create-lead-list-dialog";
 import type { DealFormContact, DealFormOption } from "@/components/deal/deal-form";
 import { LeadsFilters } from "@/components/deal/leads-filters";
@@ -92,11 +92,8 @@ function LeadsBrowserChrome({
 }) {
   const router = useRouter();
   const { isPending, startTransition } = useListNavigation();
-  const listHref = buildDealsHref({
-    ...values,
-    view: "lijst",
-    pagina: 1,
-  });
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
 
   useEffect(() => {
     if (view !== "kanban") return;
@@ -105,15 +102,20 @@ function LeadsBrowserChrome({
 
     function leaveKanbanOnMobile() {
       if (desktop.matches) return;
+      const href = buildDealsHref({
+        ...valuesRef.current,
+        view: "lijst",
+        pagina: 1,
+      });
       startTransition(() => {
-        router.replace(listHref, { scroll: false });
+        router.replace(href, { scroll: false });
       });
     }
 
     leaveKanbanOnMobile();
     desktop.addEventListener("change", leaveKanbanOnMobile);
     return () => desktop.removeEventListener("change", leaveKanbanOnMobile);
-  }, [view, listHref, router, startTransition]);
+  }, [view, router, startTransition]);
 
   return (
     <>

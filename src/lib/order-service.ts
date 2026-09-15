@@ -167,7 +167,29 @@ function totalsFromFrozenLines(
 export async function createOrderFromQuote(
   input: CreateOrderFromQuoteInput,
   userId?: string,
+  options?: { submissionId?: string },
 ) {
+  const prisma = getPrismaClient();
+  if (options?.submissionId) {
+    const existingBySubmission = await prisma.order.findUnique({
+      where: { submissionId: options.submissionId },
+      include: { items: { select: { id: true } } },
+    });
+    if (existingBySubmission) {
+      if (
+        existingBySubmission.quoteId !== input.quoteId ||
+        existingBySubmission.items.length !== input.itemIds.length
+      ) {
+        throw new AppError(
+          "Deze indiening hoort bij andere gegevens. Ververs de pagina en probeer opnieuw.",
+          "CONFLICT",
+          409,
+        );
+      }
+      return getOrder(existingBySubmission.id);
+    }
+  }
+
   const quote = await getQuote(input.quoteId);
   if (quote.status !== "ACCEPTED") {
     throw new AppError(
@@ -209,42 +231,59 @@ export async function createOrderFromQuote(
         viesValidatedAt: quote.company.viesValidatedAt,
       })
     ).frozen;
-  const prisma = getPrismaClient();
   const orderNumber = await nextNumber(prisma, SEQ_ORDER_2026);
   const orderId = createId();
 
-  await prisma.$transaction(async (tx) => {
-    await tx.order.create({
-      data: {
-        id: orderId,
-        orderNumber,
-        quoteId: quote.id,
-        dealId: quote.dealId,
-        companyId: quote.companyId,
-        contactId: quote.contactId,
-        status: "NEW",
-        subtotal: totals.subtotal,
-        discountTotal: totals.discountTotal,
-        total: totals.total,
-        ...vatWriteData(frozen),
-        createdBy: userId ?? null,
-        items: {
-          create: selected.map((item, index) => ({
-            id: createId(),
-            productId: item.productId,
-            configurationId: item.configurationId,
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            lineDiscountPct: item.lineDiscountPct,
-            lineTotal: item.lineTotal,
-            configSnapshot: item.configSnapshot as Prisma.InputJsonValue,
-            sortOrder: item.sortOrder || index + 1,
-          })),
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.order.create({
+        data: {
+          id: orderId,
+          orderNumber,
+          submissionId: options?.submissionId ?? null,
+          quoteId: quote.id,
+          dealId: quote.dealId,
+          companyId: quote.companyId,
+          contactId: quote.contactId,
+          status: "NEW",
+          subtotal: totals.subtotal,
+          discountTotal: totals.discountTotal,
+          total: totals.total,
+          ...vatWriteData(frozen),
+          createdBy: userId ?? null,
+          items: {
+            create: selected.map((item, index) => ({
+              id: createId(),
+              productId: item.productId,
+              configurationId: item.configurationId,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              lineDiscountPct: item.lineDiscountPct,
+              lineTotal: item.lineTotal,
+              configSnapshot: item.configSnapshot as Prisma.InputJsonValue,
+              sortOrder: item.sortOrder || index + 1,
+            })),
+          },
         },
-      },
+      });
     });
-  });
+  } catch (error) {
+    if (
+      options?.submissionId &&
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: unknown }).code === "P2002"
+    ) {
+      const replayed = await prisma.order.findUnique({
+        where: { submissionId: options.submissionId },
+        select: { id: true },
+      });
+      if (replayed) return getOrder(replayed.id);
+    }
+    throw error;
+  }
 
   await logEvent({
     type: "ORDER_CREATED",

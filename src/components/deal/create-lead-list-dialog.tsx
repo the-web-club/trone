@@ -34,10 +34,11 @@ export function CreateLeadListDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [nestedOpen, setNestedOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [formEpoch, setFormEpoch] = useState(0);
 
   function onOpenChange(next: boolean) {
-    if (!next && nestedOpen) return;
+    if (!next && (nestedOpen || busy)) return;
     setOpen(next);
     if (!next) setNestedOpen(false);
   }
@@ -54,7 +55,7 @@ export function CreateLeadListDialog({
         }
       />
       <DialogContent size="lg">
-        <DialogHeader>
+        <DialogHeader dismissible={!busy}>
           <DialogTitle>Nieuwe lead</DialogTitle>
           <p className="text-sm text-fg-muted">
             Voeg een lead toe aan de pijplijn.
@@ -69,6 +70,7 @@ export function CreateLeadListDialog({
           companies={companies}
           contacts={contacts}
           onNestedOpenChange={setNestedOpen}
+          onBusyChange={setBusy}
           onCreated={() => {
             setFormEpoch((value) => value + 1);
             onOpenChange(false);

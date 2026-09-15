@@ -116,3 +116,14 @@ describe("mergeContactPatch", () => {
     ).toThrow(AppError);
   });
 });
+
+describe("safeParseContactForm", () => {
+  it("geeft een veldfout voor een ontbrekende voornaam", async () => {
+    const { safeParseContactForm } = await import("@/lib/contact-validation");
+    const parsed = safeParseContactForm(form({}));
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.fieldErrors.firstName).toMatch(/Voornaam is verplicht/);
+    }
+  });
+});

@@ -7,6 +7,7 @@ import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
+import { createWithSubmissionId } from "@/lib/idempotent-create";
 import {
   parseCompanyLeadsFilter,
   type CompanyLeadFacets,
@@ -374,15 +375,29 @@ export async function validateCompanyVat(
 export async function createCompany(
   input: CompanyInput,
   ownerUserId?: string,
+  options?: { submissionId?: string },
 ) {
   const prisma = getPrismaClient();
-  const slug = await nextCompanySlug(prisma, input.name);
-  return prisma.company.create({
-    data: {
-      id: createId(),
-      slug,
-      ...toCompanyData(input),
-      ownerUserId: ownerUserId ?? null,
+  return createWithSubmissionId({
+    submissionId: options?.submissionId,
+    findExisting: (submissionId) =>
+      prisma.company.findUnique({ where: { submissionId } }),
+    matches: (existing) =>
+      existing.name === input.name &&
+      (existing.email ?? null) === (input.email ?? null) &&
+      (existing.phone ?? null) === (input.phone ?? null) &&
+      existing.country === input.country,
+    create: async () => {
+      const slug = await nextCompanySlug(prisma, input.name);
+      return prisma.company.create({
+        data: {
+          id: createId(),
+          slug,
+          submissionId: options?.submissionId ?? null,
+          ...toCompanyData(input),
+          ownerUserId: ownerUserId ?? null,
+        },
+      });
     },
   });
 }

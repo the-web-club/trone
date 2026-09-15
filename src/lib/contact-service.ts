@@ -12,6 +12,7 @@ import {
   normalizeCompanyId,
 } from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
+import { createWithSubmissionId } from "@/lib/idempotent-create";
 import type { ContactOwnerFacets } from "@/lib/contacts-query";
 import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
 
@@ -215,6 +216,7 @@ export async function createContact(
   companyId: string | null | undefined,
   input: ContactInput,
   ownerUserId?: string,
+  options?: { submissionId?: string },
 ) {
   const nextCompanyId = normalizeCompanyId(companyId);
   if (nextCompanyId) {
@@ -222,22 +224,33 @@ export async function createContact(
   }
   const prisma = getPrismaClient();
 
-  if (input.isPrimary && nextCompanyId) {
-    await clearOtherPrimaries(nextCompanyId);
-  }
-
-  const slug = await nextContactSlug(
-    prisma,
-    input.firstName,
-    input.lastName,
-  );
-  return prisma.contact.create({
-    data: {
-      id: createId(),
-      slug,
-      companyId: nextCompanyId,
-      ownerUserId: ownerUserId ?? null,
-      ...toContactData(input, nextCompanyId),
+  return createWithSubmissionId({
+    submissionId: options?.submissionId,
+    findExisting: (submissionId) =>
+      prisma.contact.findUnique({ where: { submissionId } }),
+    matches: (existing) =>
+      existing.firstName === input.firstName &&
+      (existing.lastName ?? null) === (input.lastName ?? null) &&
+      (existing.companyId ?? null) === nextCompanyId,
+    create: async () => {
+      if (input.isPrimary && nextCompanyId) {
+        await clearOtherPrimaries(nextCompanyId);
+      }
+      const slug = await nextContactSlug(
+        prisma,
+        input.firstName,
+        input.lastName,
+      );
+      return prisma.contact.create({
+        data: {
+          id: createId(),
+          slug,
+          submissionId: options?.submissionId ?? null,
+          companyId: nextCompanyId,
+          ownerUserId: ownerUserId ?? null,
+          ...toContactData(input, nextCompanyId),
+        },
+      });
     },
   });
 }

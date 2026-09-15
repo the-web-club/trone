@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { isAdminSession, requireAdmin, requireSession } from "@/lib/auth-session";
 import { isImageFile } from "@/lib/blob";
 import { AppError, toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import {
   getStaffBySlug,
   inviteUser,
@@ -31,11 +32,12 @@ function revalidateStaffPaths(slug?: string | null) {
 export async function inviteUserAction(
   _prev: { error?: string } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; fieldErrors?: Record<string, string> }> {
   try {
     await requireAdmin();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseInviteUserForm(formData);
-    await inviteUser(input);
+    await inviteUser(input, { submissionId });
     revalidateStaffPaths();
     return {};
   } catch (error) {

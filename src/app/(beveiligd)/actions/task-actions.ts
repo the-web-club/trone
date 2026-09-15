@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireWritableSession } from "@/lib/auth-session";
 import { toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import {
   completeTask,
   createFollowUpTask,
@@ -25,15 +26,19 @@ function revalidateTaskPaths() {
 export async function createFollowUpTaskAction(
   _prev: { error?: string; createdAt?: number } | null,
   formData: FormData,
-): Promise<{ error?: string; createdAt?: number }> {
+): Promise<{ error?: string; fieldErrors?: Record<string, string>; createdAt?: number }> {
   try {
     const session = await requireWritableSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseCreateFollowUpForm(formData);
-    await createFollowUpTask({
-      ...input,
-      assigneeUserId: session.user.id,
-      createdByUserId: session.user.id,
-    });
+    await createFollowUpTask(
+      {
+        ...input,
+        assigneeUserId: session.user.id,
+        createdByUserId: session.user.id,
+      },
+      { submissionId },
+    );
     revalidateTaskPaths();
     return { createdAt: Date.now() };
   } catch (error) {
@@ -44,7 +49,7 @@ export async function createFollowUpTaskAction(
 export async function updateFollowUpTaskAction(
   _prev: { error?: string; savedAt?: number } | null,
   formData: FormData,
-): Promise<{ error?: string; savedAt?: number }> {
+): Promise<{ error?: string; fieldErrors?: Record<string, string>; savedAt?: number }> {
   try {
     await requireWritableSession();
     const input = parseUpdateFollowUpForm(formData);

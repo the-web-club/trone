@@ -1,15 +1,10 @@
 "use client";
 
-import {
-  type ReactElement,
-  useActionState,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { type ReactElement, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createFeatureRequestAction } from "@/app/(beveiligd)/actions/feature-request-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -23,6 +18,7 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   FEATURE_REQUEST_DESCRIPTION_HELP,
@@ -30,8 +26,9 @@ import {
   FEATURE_REQUEST_TITLE_MAX,
   featureRequestTypeLabels,
   featureRequestTypes,
-  validateCreateFeatureRequestFields,
+  safeParseCreateFeatureRequestForm,
 } from "@/lib/feature-request-validation";
+import { refreshAfterSuccess } from "@/lib/form-submission";
 
 export function CreateFeatureRequestDialog({
   trigger,
@@ -40,45 +37,51 @@ export function CreateFeatureRequestDialog({
 }) {
   const router = useRouter();
   const fieldId = useId();
+  const form = useFormSubmission({
+    pendingLabel: "Plaatsen…",
+    successLabel: "Geplaatst",
+  });
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<"type" | "title" | "description", string>>
-  >({});
-  const [state, formAction, pending] = useActionState(
-    createFeatureRequestAction,
-    null,
-  );
-  const notifiedAt = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!state?.createdAt || notifiedAt.current === state.createdAt) return;
-    notifiedAt.current = state.createdAt;
-    setOpen(false);
-    setType("");
-    setTitle("");
-    setDescription("");
-    setFieldErrors({});
-    router.refresh();
-  }, [state?.createdAt, router]);
 
   function resetFields() {
     setType("");
     setTitle("");
     setDescription("");
-    setFieldErrors({});
+  }
+
+  function onOpenChange(next: boolean) {
+    form.handleOpenChange(next, (value) => {
+      setOpen(value);
+      if (!value && form.status === "success") resetFields();
+    });
+  }
+
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      fieldOrder: ["type", "title", "description"],
+      fieldElementId: (name) => `${fieldId}-${name}`,
+      validate: safeParseCreateFeatureRequestForm,
+      save: async (data) => {
+        const saved = await createFeatureRequestAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        return { result: { slug: saved.slug, createdAt: saved.createdAt } };
+      },
+      onSuccess: () => {
+        resetFields();
+        onOpenChange(false);
+        refreshAfterSuccess(() => router.refresh());
+      },
+    });
   }
 
   return (
-    <DialogRoot
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) resetFields();
-      }}
-    >
+    <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogTrigger
         render={
           trigger ?? (
@@ -89,34 +92,28 @@ export function CreateFeatureRequestDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuw verzoek</DialogTitle>
           <p className="text-sm text-fg-muted">
             Beschrijf de verbetering. Andere teamleden kunnen meestemmen.
           </p>
         </DialogHeader>
-        <form
-          action={formAction}
-          className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(event) => {
-            const errors = validateCreateFeatureRequestFields({
-              type,
-              title,
-              description,
-            });
-            if (Object.keys(errors).length > 0) {
-              event.preventDefault();
-              setFieldErrors(errors);
-            }
-          }}
-        >
+        <form action={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${fieldId}-type`} label="Type" error={fieldErrors.type}>
+            <FormField
+              id={`${fieldId}-type`}
+              label="Type"
+              error={form.shownErrors.type}
+            >
               <Select
                 name="type"
-                required
                 value={type}
-                onChange={(event) => setType(event.target.value)}
+                onChange={(event) => {
+                  setType(event.target.value);
+                  form.markTouched("type");
+                }}
+                onBlur={() => form.markTouched("type")}
               >
                 <option value="">Kies een type…</option>
                 {featureRequestTypes.map((value) => (
@@ -129,7 +126,7 @@ export function CreateFeatureRequestDialog({
             <FormField
               id={`${fieldId}-title`}
               label="Titel"
-              error={fieldErrors.title}
+              error={form.shownErrors.title}
               aside={
                 <span className="text-xs text-fg-subtle tabular-nums">
                   {title.trim().length}/{FEATURE_REQUEST_TITLE_MAX}
@@ -138,17 +135,17 @@ export function CreateFeatureRequestDialog({
             >
               <Input
                 name="title"
-                required
                 maxLength={FEATURE_REQUEST_TITLE_MAX}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                onBlur={() => form.markTouched("title")}
                 placeholder="Korte samenvatting"
               />
             </FormField>
             <FormField
               id={`${fieldId}-description`}
               label="Omschrijving"
-              error={fieldErrors.description}
+              error={form.shownErrors.description}
               aside={
                 <span className="text-xs text-fg-subtle tabular-nums">
                   {description.length}/{FEATURE_REQUEST_DESCRIPTION_MAX}
@@ -170,16 +167,15 @@ export function CreateFeatureRequestDialog({
             >
               {FEATURE_REQUEST_DESCRIPTION_HELP}
             </p>
-            {state?.error ? (
-              <p className="text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending} disabled={pending}>
-              Verzoek plaatsen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Verzoek plaatsen"
+              pendingLabel="Plaatsen…"
+              successLabel="Geplaatst"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
@@ -53,6 +53,7 @@ export function DealForm({
   submitLabel,
   onCreated,
   onNestedOpenChange,
+  onBusyChange,
 }: {
   deal?: DealFormValues;
   stages: DealFormOption[];
@@ -74,6 +75,7 @@ export function DealForm({
   submitLabel: string;
   onCreated?: (deal: { id: string; slug: string }) => void;
   onNestedOpenChange?: (open: boolean) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const id = useId();
   const formRef = useRef<HTMLFormElement>(null);
@@ -106,6 +108,10 @@ export function DealForm({
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [companyQuery, setCompanyQuery] = useState("");
   const [contactQuery, setContactQuery] = useState("");
+
+  useEffect(() => {
+    onBusyChange?.(status === "submitting");
+  }, [status, onBusyChange]);
 
   function setNestedDialog(which: "company" | "contact", next: boolean) {
     if (which === "company") setCompanyDialogOpen(next);

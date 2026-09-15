@@ -7,6 +7,7 @@ import { uploadImage } from "@/lib/blob";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
+import { isSubmissionId } from "@/lib/form-submission";
 import { createId } from "@/lib/id";
 import { invitationMail, passwordResetMail, sendMail } from "@/lib/mail";
 import {
@@ -222,16 +223,50 @@ async function countActiveAdmins(exceptUserId?: string) {
   });
 }
 
-export async function inviteUser(input: InviteUserInput) {
+export async function inviteUser(
+  input: InviteUserInput,
+  options?: { submissionId?: string },
+) {
   const prisma = getPrismaClient();
+  const submissionId = options?.submissionId?.trim() || undefined;
+  if (submissionId && !isSubmissionId(submissionId)) {
+    throw new AppError(
+      "Ongeldige indiening. Ververs de pagina en probeer opnieuw.",
+      "VALIDATION",
+    );
+  }
+  const email = input.email.toLowerCase();
+
+  if (submissionId) {
+    const existingBySubmission = await prisma.user.findUnique({
+      where: { submissionId },
+    });
+    if (existingBySubmission) {
+      if (
+        existingBySubmission.email !== email ||
+        existingBySubmission.name !== input.name
+      ) {
+        throw new AppError(
+          "Deze indiening hoort bij andere gegevens. Ververs de pagina en probeer opnieuw.",
+          "CONFLICT",
+          409,
+        );
+      }
+      return existingBySubmission;
+    }
+  }
+
   const existing = await prisma.user.findUnique({
-    where: { email: input.email.toLowerCase() },
+    where: { email },
     include: {
       accounts: { select: { providerId: true, password: true } },
     },
   });
   if (existing) {
     if (staffStatus(existing) === "invited") {
+      if (submissionId && existing.submissionId === submissionId) {
+        return existing;
+      }
       await sendInvitation(existing.id);
       return existing;
     }
@@ -247,6 +282,37 @@ export async function inviteUser(input: InviteUserInput) {
     },
     headers: await headers(),
   });
+
+  if (submissionId) {
+    try {
+      await prisma.user.update({
+        where: { id: created.user.id },
+        data: { submissionId },
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code: unknown }).code === "P2002"
+      ) {
+        const replayed = await prisma.user.findUnique({
+          where: { submissionId },
+        });
+        if (replayed) {
+          if (replayed.email !== email || replayed.name !== input.name) {
+            throw new AppError(
+              "Deze indiening hoort bij andere gegevens. Ververs de pagina en probeer opnieuw.",
+              "CONFLICT",
+              409,
+            );
+          }
+          return replayed;
+        }
+      }
+      throw error;
+    }
+  }
 
   await sendInvitation(created.user.id);
   return created.user;

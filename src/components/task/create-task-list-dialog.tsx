@@ -1,8 +1,10 @@
 "use client";
 
-import { type ReactElement, useActionState, useEffect, useId, useRef, useState } from "react";
+import { type ReactElement, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createFollowUpTaskAction } from "@/app/(beveiligd)/actions/task-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { FollowUpFields } from "@/components/task/follow-up-fields";
 import { Button } from "@/components/ui/button";
 import { ComboboxMenu } from "@/components/ui/combobox";
@@ -16,6 +18,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
+import { refreshAfterSuccess } from "@/lib/form-submission";
+import { safeParseCreateFollowUpForm } from "@/lib/task-validation";
 
 export type CreateTaskDealOption = {
   id: string;
@@ -32,23 +37,44 @@ export function CreateTaskListDialog({
 }) {
   const router = useRouter();
   const fieldId = useId();
+  const form = useFormSubmission({
+    pendingLabel: "Toevoegen…",
+    successLabel: "Toegevoegd",
+  });
   const [open, setOpen] = useState(false);
   const [dateOnly, setDateOnly] = useState(false);
   const [dealId, setDealId] = useState("");
-  const [state, formAction, pending] = useActionState(
-    createFollowUpTaskAction,
-    null,
-  );
-  const notifiedAt = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!state?.createdAt || notifiedAt.current === state.createdAt) return;
-    notifiedAt.current = state.createdAt;
-    setOpen(false);
-    setDateOnly(false);
-    setDealId("");
-    router.refresh();
-  }, [state?.createdAt, router]);
+  function onOpenChange(next: boolean) {
+    form.handleOpenChange(next, (value) => {
+      setOpen(value);
+      if (!value) {
+        setDateOnly(false);
+        setDealId("");
+      }
+    });
+  }
+
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      fieldOrder: ["dealId", "followUpTitle", "followUpDate", "followUpTime"],
+      fieldElementId: (name) =>
+        name === "dealId" ? `${fieldId}-dealId` : `${fieldId}-${name}`,
+      validate: safeParseCreateFollowUpForm,
+      save: async (data) => {
+        const saved = await createFollowUpTaskAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        return { result: { createdAt: saved.createdAt } };
+      },
+      onSuccess: () => {
+        onOpenChange(false);
+        refreshAfterSuccess(() => router.refresh());
+      },
+    });
+  }
 
   const dealItems = [
     { value: "", label: "Kies een lead…" },
@@ -60,16 +86,7 @@ export function CreateTaskListDialog({
   ];
 
   return (
-    <DialogRoot
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          setDateOnly(false);
-          setDealId("");
-        }
-      }}
-    >
+    <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogTrigger
         render={
           trigger ?? (
@@ -80,23 +97,32 @@ export function CreateTaskListDialog({
         }
       />
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuwe taak</DialogTitle>
           <p className="text-sm text-fg-muted">
             Voeg een vervolgactie toe en koppel die aan een lead.
           </p>
         </DialogHeader>
         <form
-          key={open ? "open" : "closed"}
-          action={formAction}
+          key={form.submissionId}
+          action={onSubmit}
+          noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <input type="hidden" name="dealId" value={dealId} />
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${fieldId}-dealId`} label="Lead">
+            <FormField
+              id={`${fieldId}-dealId`}
+              label="Lead"
+              error={form.shownErrors.dealId}
+            >
               <ComboboxMenu
                 value={dealId}
-                onValueChange={setDealId}
+                onValueChange={(next) => {
+                  setDealId(next);
+                  form.markTouched("dealId");
+                }}
                 items={dealItems}
                 placeholder="Kies een lead…"
                 searchPlaceholder="Zoek een lead…"
@@ -109,16 +135,15 @@ export function CreateTaskListDialog({
               dateOnly={dateOnly}
               onDateOnlyChange={setDateOnly}
             />
-            {state?.error ? (
-              <p className="text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending} disabled={!dealId}>
-              Taak toevoegen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Taak toevoegen"
+              pendingLabel="Toevoegen…"
+              successLabel="Toegevoegd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

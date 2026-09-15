@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
+import { formInvalidFromZod, throwValidationFromZod } from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 import { orderStatuses, type OrderStatusFilter } from "@/lib/orders-query";
 
 export const orderStatusSchema = z.enum(orderStatuses);
@@ -24,14 +26,21 @@ export function parseCreateOrderFromQuoteForm(
     quoteId: formData.get("quoteId"),
     itemIds: formData.getAll("itemId").map(String),
   });
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(
-      first?.message ?? "Controleer de geselecteerde regels.",
-      "VALIDATION",
-    );
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
   return parsed.data;
+}
+
+export function safeParseCreateOrderFromQuoteForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = createOrderFromQuoteSchema.safeParse({
+    quoteId: formData.get("quoteId"),
+    itemIds: formData.getAll("itemId").map(String),
+  });
+  if (!parsed.success) return formInvalidFromZod(parsed.error);
+  return { success: true };
 }
 
 export function parseOrderId(formData: FormData): string {

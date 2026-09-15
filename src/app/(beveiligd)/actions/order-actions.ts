@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-session";
 import { toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import {
   createOrderFromQuote,
   updateOrderStatus,
@@ -14,16 +14,6 @@ import {
   parseOrderStatusForm,
 } from "@/lib/order-validation";
 import { orderPath } from "@/lib/paths";
-
-function isNextRedirect(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "digest" in error &&
-    typeof (error as { digest?: unknown }).digest === "string" &&
-    String((error as { digest: string }).digest).startsWith("NEXT_REDIRECT")
-  );
-}
 
 function revalidateOrderPaths(order?: { orderNumber: string }) {
   revalidatePath("/orders", "layout");
@@ -36,17 +26,23 @@ function revalidateOrderPaths(order?: { orderNumber: string }) {
 }
 
 export async function createOrderFromQuoteAction(
-  _prev: { error?: string } | null,
+  _prev: { error?: string; order?: { orderNumber: string } } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  order?: { orderNumber: string };
+}> {
   try {
     const session = await requireSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseCreateOrderFromQuoteForm(formData);
-    const order = await createOrderFromQuote(input, session.user.id);
+    const order = await createOrderFromQuote(input, session.user.id, {
+      submissionId,
+    });
     revalidateOrderPaths(order);
-    redirect(orderPath(order));
+    return { order: { orderNumber: order.orderNumber } };
   } catch (error) {
-    if (isNextRedirect(error)) throw error;
     return toActionError(error);
   }
 }

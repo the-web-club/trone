@@ -8,6 +8,7 @@ import {
   type AppSession,
 } from "@/lib/auth-session";
 import { toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import type { FeatureRequestActor } from "@/lib/feature-request-access";
 import {
   addFeatureRequestComment,
@@ -39,11 +40,21 @@ function revalidateFeatureRequestPaths(request?: { slug: string }) {
 export async function createFeatureRequestAction(
   _prev: { error?: string; createdAt?: number; slug?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; createdAt?: number; slug?: string }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  createdAt?: number;
+  slug?: string;
+}> {
   try {
     const session = await requireWritableSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseCreateFeatureRequestForm(formData);
-    const created = await createFeatureRequest(input, actorFromSession(session));
+    const created = await createFeatureRequest(
+      input,
+      actorFromSession(session),
+      { submissionId },
+    );
     revalidateFeatureRequestPaths(created);
     return { createdAt: Date.now(), slug: created.slug };
   } catch (error) {

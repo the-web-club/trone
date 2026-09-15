@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { refreshAfterSuccess } from "@/lib/form-submission";
 
 export function CreateCompanyListDialog({
   trigger,
@@ -20,9 +21,16 @@ export function CreateCompanyListDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   return (
-    <DialogRoot open={open} onOpenChange={setOpen}>
+    <DialogRoot
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && busy) return;
+        setOpen(next);
+      }}
+    >
       <DialogTrigger
         render={
           trigger ?? (
@@ -33,19 +41,19 @@ export function CreateCompanyListDialog({
         }
       />
       <DialogContent size="lg">
-        <DialogHeader>
+        <DialogHeader dismissible={!busy}>
           <DialogTitle>Nieuw bedrijf</DialogTitle>
           <p className="text-sm text-fg-muted">
             Voeg een klant of prospect toe.
           </p>
         </DialogHeader>
         <CompanyForm
-          key={open ? "open" : "closed"}
           action={createCompanyAction}
           submitLabel="Bedrijf opslaan"
+          onBusyChange={setBusy}
           onCreated={() => {
             setOpen(false);
-            router.refresh();
+            refreshAfterSuccess(() => router.refresh());
           }}
         />
       </DialogContent>

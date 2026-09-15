@@ -58,9 +58,12 @@ export async function createComposerCustomerAction(
 ): Promise<CreateComposerCustomerResult> {
   try {
     const session = await requireSession();
+    const submissionId = parseDealSubmissionId(formData.get("submissionId"));
     const companyInput = parseComposerCompanyForm(formData);
     const contactInput = parseOptionalComposerContactForm(formData);
-    const company = await createCompany(companyInput, session.user.id);
+    const company = await createCompany(companyInput, session.user.id, {
+      submissionId,
+    });
 
     let contact: ComposerCreatedContact | null = null;
     let contactSlug: string | null = null;
@@ -69,6 +72,7 @@ export async function createComposerCustomerAction(
         company.id,
         contactInput,
         session.user.id,
+        { submissionId },
       );
       contactSlug = saved.slug;
       contact = {
@@ -83,7 +87,6 @@ export async function createComposerCustomerAction(
     let deal: ComposerCreatedDeal | null = null;
     let dealSlug: string | null = null;
     if (wantsLead(formData)) {
-      const submissionId = parseDealSubmissionId(formData.get("submissionId"));
       const [stages, sources] = await Promise.all([
         listDealStages(),
         listLeadSources(),

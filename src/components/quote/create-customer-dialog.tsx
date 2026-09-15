@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { createComposerCustomerAction } from "@/app/(beveiligd)/actions/composer-customer-actions";
 import type {
   ComposerCreatedCompany,
@@ -8,6 +8,8 @@ import type {
   ComposerCreatedDeal,
 } from "@/app/(beveiligd)/actions/composer-customer-actions";
 import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import {
   DialogBody,
   DialogContent,
@@ -21,11 +23,8 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { CountrySelect } from "@/components/company/country-select";
 import { Button } from "@/components/ui/button";
-import {
-  createSubmissionGuard,
-  createSubmissionId,
-  submitLeadCreation,
-} from "@/lib/lead-submission";
+import { safeParseComposerCompanyForm } from "@/lib/company-validation";
+import { LEAD_SAVE_UNCERTAIN_MESSAGE } from "@/lib/lead-submission";
 
 export function CreateCustomerDialog({
   onCreated,
@@ -46,75 +45,39 @@ export function CreateCustomerDialog({
 }) {
   const id = useId();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "submitting" | "success">(
-    "idle",
-  );
-  const guardRef = useRef(createSubmissionGuard());
-  const [submissionId, setSubmissionId] = useState(createSubmissionId);
+  const form = useFormSubmission({
+    pendingLabel: "Bezig met opslaan…",
+    successLabel: "Toegevoegd",
+  });
   const open = openProp ?? uncontrolledOpen;
 
-  function beginNewSubmission() {
-    guardRef.current = createSubmissionGuard();
-    setSubmissionId(createSubmissionId());
-    setStatus("idle");
-    setError(null);
-  }
-
   function setOpen(next: boolean) {
-    if (next && (status === "success" || (status === "idle" && !error))) {
-      beginNewSubmission();
-    }
-    if (openProp === undefined) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-    if (!next && status === "success") beginNewSubmission();
+    form.handleOpenChange(next, (value) => {
+      if (openProp === undefined) setUncontrolledOpen(value);
+      onOpenChange?.(value);
+    });
   }
 
   async function onSubmit(formData: FormData) {
-    const result = await submitLeadCreation({
-      guard: guardRef.current,
+    await form.submit({
       formData,
-      validate: (data) => {
-        const name = String(data.get("companyName") ?? "").trim();
-        if (!name) {
-          return {
-            success: false,
-            fieldErrors: {},
-            formError: "Naam is verplicht",
-          };
-        }
-        return { success: true };
-      },
+      fieldOrder: ["companyName", "companyEmail", "firstName", "contactEmail"],
+      fieldElementId: (name) => `${id}-${name}`,
+      uncertainMessage: LEAD_SAVE_UNCERTAIN_MESSAGE,
+      validate: safeParseComposerCompanyForm,
       save: async (data) => {
         const saved = await createComposerCustomerAction(data);
         if ("error" in saved && saved.error) {
           return { error: saved.error };
         }
-        if ("company" in saved) {
-          return { deal: saved };
-        }
+        if ("company" in saved) return { result: saved };
         return { error: "Er ging iets mis. Probeer het opnieuw." };
       },
-      onStart: () => {
-        setStatus("submitting");
-        setError(null);
+      onSuccess: (created) => {
+        onCreated(created);
+        setOpen(false);
       },
     });
-
-    if (result.status === "ignored") return;
-    if (result.status === "invalid" || result.status === "failed") {
-      setStatus("idle");
-      setError(result.status === "invalid" ? result.formError : result.error);
-      return;
-    }
-    if (result.status === "uncertain") {
-      setStatus("idle");
-      setError(result.error);
-      return;
-    }
-    setStatus("success");
-    onCreated(result.deal);
-    setOpen(false);
   }
 
   return (
@@ -129,36 +92,45 @@ export function CreateCustomerDialog({
         />
       ) : null}
       <DialogContent size="md">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuwe klant</DialogTitle>
           <p className="text-sm text-fg-muted">
             Voor een telefonische intake. Contact en lead zijn optioneel.
           </p>
         </DialogHeader>
         <form action={onSubmit} noValidate>
-          <input type="hidden" name="submissionId" value={submissionId} />
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
               <p className="text-label font-medium tracking-wide text-fg-muted uppercase">
                 Bedrijf
               </p>
-              <FormField id={`${id}-companyName`} label="Naam">
+              <FormField
+                id={`${id}-companyName`}
+                label="Naam"
+                error={form.shownErrors.companyName}
+              >
                 <Input
                   name="companyName"
-                  required
                   autoComplete="organization"
                   defaultValue={defaultName ?? ""}
+                  onBlur={() => form.markTouched("companyName")}
                 />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
                 <FormField id={`${id}-companyPhone`} label="Telefoon">
                   <Input name="companyPhone" type="tel" autoComplete="tel" />
                 </FormField>
-                <FormField id={`${id}-companyEmail`} label="E-mailadres">
+                <FormField
+                  id={`${id}-companyEmail`}
+                  label="E-mailadres"
+                  error={form.shownErrors.companyEmail}
+                >
                   <Input
                     name="companyEmail"
                     type="email"
                     autoComplete="email"
+                    onBlur={() => form.markTouched("companyEmail")}
                   />
                 </FormField>
               </div>
@@ -203,21 +175,10 @@ export function CreateCustomerDialog({
               Ook een lead in de pijplijn zetten
             </label>
 
-            {error ? (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <p className="sr-only" aria-live="polite">
-              {status === "submitting"
-                ? "Bezig met opslaan…"
-                : status === "success"
-                  ? "Lead toegevoegd"
-                  : error}
-            </p>
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <LeadSubmitButton readyLabel="Toevoegen" status={status} />
+            <LeadSubmitButton readyLabel="Toevoegen" status={form.status} />
           </DialogFooter>
         </form>
       </DialogContent>

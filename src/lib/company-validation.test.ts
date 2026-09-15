@@ -104,3 +104,16 @@ describe("parseComposerCompanyForm", () => {
     expect(input.country).toBe("FI");
   });
 });
+
+describe("safeParseComposerCompanyForm", () => {
+  it("toont een veldfout zonder te gooien", async () => {
+    const { safeParseComposerCompanyForm } = await import(
+      "@/lib/company-validation"
+    );
+    const parsed = safeParseComposerCompanyForm(form({ companyName: "  " }));
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.fieldErrors.companyName).toMatch(/verplicht/i);
+    }
+  });
+});

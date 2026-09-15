@@ -56,21 +56,29 @@ export function DialogContent({
 export function DialogHeader({
   className,
   children,
+  dismissible = true,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { dismissible?: boolean }) {
   return (
     <div className={cn("flex items-start gap-3 px-4 pt-3.5 pb-2.5", className)} {...props}>
       <div className="min-w-0 flex-1 space-y-0.5">{children}</div>
-      <Dialog.Close
-        aria-label="Sluiten"
-        className={cn(
-          "-mt-0.5 -mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-fg-subtle hover:bg-hover hover:text-fg sm:size-8",
-          controlMotion,
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
-        )}
-      >
-        <X className="size-3.5" aria-hidden />
-      </Dialog.Close>
+      {dismissible ? (
+        <Dialog.Close
+          aria-label="Sluiten"
+          className={cn(
+            "-mt-0.5 -mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-fg-subtle hover:bg-hover hover:text-fg sm:size-8",
+            controlMotion,
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg",
+          )}
+        >
+          <X className="size-3.5" aria-hidden />
+        </Dialog.Close>
+      ) : (
+        <span
+          className="-mt-0.5 -mr-1 inline-flex size-11 shrink-0 sm:size-8"
+          aria-hidden
+        />
+      )}
     </div>
   );
 }

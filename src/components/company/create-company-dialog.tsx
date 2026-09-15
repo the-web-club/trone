@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 import { createCompanyInlineAction } from "@/app/(beveiligd)/actions/company-actions";
 import type { CreatedCompanyOption } from "@/app/(beveiligd)/actions/company-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -15,7 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
 import { CountrySelect } from "@/components/company/country-select";
+import { safeParseComposerCompanyForm } from "@/lib/company-validation";
 
 export function CreateCompanyDialog({
   onCreated,
@@ -32,29 +36,38 @@ export function CreateCompanyDialog({
 }) {
   const id = useId();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const form = useFormSubmission({
+    pendingLabel: "Toevoegen…",
+    successLabel: "Toegevoegd",
+  });
   const open = openProp ?? uncontrolledOpen;
 
   function setOpen(next: boolean) {
-    if (openProp === undefined) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-    if (!next) setError(null);
+    form.handleOpenChange(next, (value) => {
+      if (openProp === undefined) setUncontrolledOpen(value);
+      onOpenChange?.(value);
+    });
   }
 
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
-    const result = await createCompanyInlineAction(formData);
-    setPending(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (result.company) {
-      onCreated(result.company);
-      setOpen(false);
-    }
+    await form.submit({
+      formData,
+      fieldOrder: ["companyName", "companyEmail", "companyPhone", "companyCountry"],
+      fieldElementId: (name) => `${id}-${name}`,
+      validate: safeParseComposerCompanyForm,
+      save: async (data) => {
+        const saved = await createCompanyInlineAction(data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        if (saved.company) return { result: saved.company };
+        return { error: "Er ging iets mis. Probeer het opnieuw." };
+      },
+      onSuccess: (company) => {
+        onCreated(company);
+        setOpen(false);
+      },
+    });
   }
 
   return (
@@ -69,44 +82,57 @@ export function CreateCompanyDialog({
         />
       ) : null}
       <DialogContent size="md">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuw bedrijf</DialogTitle>
         </DialogHeader>
-        <form action={onSubmit} key={open ? `${id}-open` : `${id}-closed`}>
+        <form
+          action={onSubmit}
+          noValidate
+          key={form.submissionId}
+        >
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${id}-name`} label="Naam">
+            <FormField
+              id={`${id}-companyName`}
+              label="Naam"
+              error={form.shownErrors.companyName}
+            >
               <Input
                 name="companyName"
-                required
                 autoComplete="organization"
                 defaultValue={defaultName ?? ""}
+                onBlur={() => form.markTouched("companyName")}
               />
             </FormField>
             <div className="grid gap-3 sm:grid-cols-2">
-              <FormField id={`${id}-phone`} label="Telefoon">
+              <FormField id={`${id}-companyPhone`} label="Telefoon">
                 <Input name="companyPhone" type="tel" autoComplete="tel" />
               </FormField>
-              <FormField id={`${id}-email`} label="E-mailadres">
+              <FormField
+                id={`${id}-companyEmail`}
+                label="E-mailadres"
+                error={form.shownErrors.companyEmail}
+              >
                 <Input
                   name="companyEmail"
                   type="email"
                   autoComplete="email"
+                  onBlur={() => form.markTouched("companyEmail")}
                 />
               </FormField>
             </div>
-            <FormField id={`${id}-country`} label="Land">
+            <FormField id={`${id}-companyCountry`} label="Land">
               <CountrySelect name="companyCountry" defaultValue="NL" />
             </FormField>
-            {error ? (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending}>
-              Toevoegen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Toevoegen"
+              pendingLabel="Toevoegen…"
+              successLabel="Toegevoegd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

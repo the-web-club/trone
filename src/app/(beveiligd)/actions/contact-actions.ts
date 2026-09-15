@@ -23,6 +23,7 @@ import {
   normalizeCompanyId,
 } from "@/lib/contact-company";
 import { toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import { companyPath, contactPath } from "@/lib/paths";
 
 export async function createContactAction(
@@ -30,6 +31,7 @@ export async function createContactAction(
   formData: FormData,
 ): Promise<{
   error?: string;
+  fieldErrors?: Record<string, string>;
   contact?: {
     id: string;
     slug: string;
@@ -40,11 +42,14 @@ export async function createContactAction(
 }> {
   try {
     const session = await requireSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const companyId = normalizeCompanyId(
       String(formData.get("companyId") ?? ""),
     );
     const input = parseContactForm(formData);
-    const contact = await createContact(companyId, input, session.user.id);
+    const contact = await createContact(companyId, input, session.user.id, {
+      submissionId,
+    });
     revalidatePath("/bedrijven");
     revalidatePath("/bedrijven/[slug]", "page");
     revalidatePath("/contacten");
@@ -74,7 +79,7 @@ function revalidateContactPaths(contact: { slug: string }) {
 export async function updateContactAction(
   _prev: { error?: string } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; fieldErrors?: Record<string, string> }> {
   try {
     await requireSession();
     const id = String(formData.get("id") ?? "");

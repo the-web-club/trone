@@ -15,6 +15,7 @@ import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { createId } from "@/lib/id";
+import { createWithSubmissionId } from "@/lib/idempotent-create";
 import { effectiveSearchQuery, paginateArgs, type PagedList } from "@/lib/list-query";
 import {
   type TaskAssigneeFilter,
@@ -262,7 +263,10 @@ async function resolveFollowUpLinks(
   return { dealId, contactId, companyId };
 }
 
-export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
+export async function createFollowUpTask(
+  input: CreateFollowUpTaskInput,
+  options?: { submissionId?: string },
+) {
   const { dealId, contactId, companyId } = await resolveFollowUpLinks({
     dealId: input.dealId,
     contactId: input.contactId,
@@ -273,38 +277,51 @@ export async function createFollowUpTask(input: CreateFollowUpTaskInput) {
   const dueLabel = followUpDueLabel(input);
   const prisma = getPrismaClient();
 
-  return prisma.$transaction(async (tx) => {
-    const task = await tx.task.create({
-      data: {
-        id: createId(),
-        title,
-        kind: input.kind,
-        dueAt: input.dueAt,
-        dueDateOnly: input.dueDateOnly,
-        status: "OPEN",
-        assigneeUserId: input.assigneeUserId,
-        createdByUserId: input.createdByUserId,
-        dealId,
-        contactId,
-        companyId,
-        sourceEventId: input.sourceEventId ?? null,
-        description: input.description ?? null,
-      },
-      include: taskInclude,
-    });
-    await tx.timelineEvent.create({
-      data: {
-        id: createId(),
-        type: "TASK_DUE",
-        body: `${title} — ${dueLabel}`,
-        occurredAt: new Date(),
-        userId: input.createdByUserId,
-        dealId,
-        contactId,
-        companyId,
-      },
-    });
-    return task;
+  return createWithSubmissionId({
+    submissionId: options?.submissionId,
+    findExisting: (submissionId) =>
+      prisma.task.findUnique({
+        where: { submissionId },
+        include: taskInclude,
+      }),
+    matches: (existing) =>
+      existing.title === title &&
+      (existing.dealId ?? null) === (dealId ?? null),
+    create: () =>
+      prisma.$transaction(async (tx) => {
+        const task = await tx.task.create({
+          data: {
+            id: createId(),
+            submissionId: options?.submissionId ?? null,
+            title,
+            kind: input.kind,
+            dueAt: input.dueAt,
+            dueDateOnly: input.dueDateOnly,
+            status: "OPEN",
+            assigneeUserId: input.assigneeUserId,
+            createdByUserId: input.createdByUserId,
+            dealId,
+            contactId,
+            companyId,
+            sourceEventId: input.sourceEventId ?? null,
+            description: input.description ?? null,
+          },
+          include: taskInclude,
+        });
+        await tx.timelineEvent.create({
+          data: {
+            id: createId(),
+            type: "TASK_DUE",
+            body: `${title} — ${dueLabel}`,
+            occurredAt: new Date(),
+            userId: input.createdByUserId,
+            dealId,
+            contactId,
+            companyId,
+          },
+        });
+        return task;
+      }),
   });
 }
 

@@ -25,6 +25,7 @@ import type {
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
+import { createWithSubmissionId } from "@/lib/idempotent-create";
 import { effectiveSearchQuery, paginateArgs, type PagedList } from "@/lib/list-query";
 import { allocateUniqueSlug } from "@/lib/slug";
 
@@ -239,35 +240,48 @@ export async function listFeatureRequestMergeTargets(
 export async function createFeatureRequest(
   input: CreateFeatureRequestInput,
   actor: FeatureRequestActor,
+  options?: { submissionId?: string },
 ) {
   assertCanWriteFeatureRequests(actor);
   const prisma = getPrismaClient();
-  const slug = await allocateUniqueSlug(
-    async (candidate) =>
-      Boolean(
-        await prisma.featureRequest.findUnique({
-          where: { slug: candidate },
-          select: { id: true },
-        }),
-      ),
-    input.title,
-    "verzoek",
-  );
 
-  const created = await prisma.featureRequest.create({
-    data: {
-      id: createId(),
-      slug,
-      type: input.type,
-      status: "OPEN",
-      title: input.title,
-      description: input.description,
-      authorUserId: actor.id,
+  return createWithSubmissionId({
+    submissionId: options?.submissionId,
+    findExisting: (submissionId) =>
+      prisma.featureRequest.findUnique({
+        where: { submissionId },
+        select: { id: true, slug: true, title: true, type: true },
+      }),
+    matches: (existing) =>
+      existing.title === input.title && existing.type === input.type,
+    create: async () => {
+      const slug = await allocateUniqueSlug(
+        async (candidate) =>
+          Boolean(
+            await prisma.featureRequest.findUnique({
+              where: { slug: candidate },
+              select: { id: true },
+            }),
+          ),
+        input.title,
+        "verzoek",
+      );
+
+      return prisma.featureRequest.create({
+        data: {
+          id: createId(),
+          slug,
+          submissionId: options?.submissionId ?? null,
+          type: input.type,
+          status: "OPEN",
+          title: input.title,
+          description: input.description,
+          authorUserId: actor.id,
+        },
+        select: { id: true, slug: true, title: true, type: true },
+      });
     },
-    select: { id: true, slug: true },
   });
-
-  return created;
 }
 
 export async function updateFeatureRequest(

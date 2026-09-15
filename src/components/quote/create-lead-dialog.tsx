@@ -1,9 +1,11 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import { createDealInlineAction } from "@/app/(beveiligd)/actions/deal-actions";
 import type { CreatedDealOption } from "@/app/(beveiligd)/actions/deal-actions";
 import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import {
   DialogBody,
   DialogContent,
@@ -15,16 +17,9 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import {
-  firstInvalidDealField,
   safeParseDealTitleForm,
-  type DealFieldErrors,
 } from "@/lib/deal-validation";
-import {
-  createSubmissionGuard,
-  createSubmissionId,
-  submitLeadCreation,
-  visibleDealFieldErrors,
-} from "@/lib/lead-submission";
+import { LEAD_SAVE_UNCERTAIN_MESSAGE } from "@/lib/lead-submission";
 
 export function CreateLeadDialog({
   companyId,
@@ -43,142 +38,88 @@ export function CreateLeadDialog({
 }) {
   const id = useId();
   const formRef = useRef<HTMLFormElement>(null);
-  const guardRef = useRef(createSubmissionGuard());
-  const [submissionId, setSubmissionId] = useState(createSubmissionId);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<DealFieldErrors>({});
-  const [touched, setTouched] = useState({ title: false });
-  const [submitted, setSubmitted] = useState(false);
-  const [status, setStatus] = useState<"idle" | "submitting" | "success">(
-    "idle",
-  );
+  const form = useFormSubmission({
+    pendingLabel: "Bezig met toevoegen…",
+    successLabel: "Lead toegevoegd",
+  });
   const disabled = !companyId;
-  const shownErrors = visibleDealFieldErrors(fieldErrors, touched, submitted);
 
-  function beginNewSubmission() {
-    guardRef.current = createSubmissionGuard();
-    setSubmissionId(createSubmissionId());
-    setStatus("idle");
-    setError(null);
-    setFieldErrors({});
-    setTouched({ title: false });
-    setSubmitted(false);
-  }
-
-  function syncTitleErrors(form: HTMLFormElement) {
-    const parsed = safeParseDealTitleForm(new FormData(form));
-    setFieldErrors(parsed.success ? {} : parsed.fieldErrors);
-    if (parsed.success) setError(null);
+  function syncTitleErrors(htmlForm: HTMLFormElement) {
+    const parsed = safeParseDealTitleForm(new FormData(htmlForm));
+    form.setFieldErrors(parsed.success ? {} : parsed.fieldErrors);
+    if (parsed.success) form.setError(null);
   }
 
   async function onSubmit(formData: FormData) {
     if (disabled) return;
-
-    const result = await submitLeadCreation({
-      guard: guardRef.current,
+    await form.submit({
       formData,
+      fieldOrder: ["title"],
+      fieldElementId: (name) => `${id}-${name}`,
+      uncertainMessage: LEAD_SAVE_UNCERTAIN_MESSAGE,
       validate: safeParseDealTitleForm,
-      save: (data) => createDealInlineAction(data),
-      onStart: () => {
-        setStatus("submitting");
-        setError(null);
+      save: async (data) => {
+        const saved = await createDealInlineAction(data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        if (saved.deal) return { result: saved.deal };
+        return { error: "Er ging iets mis. Probeer het opnieuw." };
+      },
+      onSuccess: (deal) => {
+        onCreated(deal);
+        form.handleOpenChange(false, onOpenChange);
       },
     });
-
-    if (result.status === "ignored") return;
-
-    if (result.status === "invalid") {
-      setSubmitted(true);
-      setStatus("idle");
-      setFieldErrors(result.fieldErrors);
-      setError(result.formError);
-      const first = firstInvalidDealField(result.fieldErrors);
-      if (first) document.getElementById(`${id}-${first}`)?.focus();
-      return;
-    }
-
-    if (result.status === "failed") {
-      setSubmitted(true);
-      setStatus("idle");
-      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
-      setError(result.error);
-      return;
-    }
-
-    if (result.status === "uncertain") {
-      setStatus("idle");
-      setError(result.error);
-      return;
-    }
-
-    setError(null);
-    setFieldErrors({});
-    setStatus("success");
-    onCreated(result.deal);
-    onOpenChange(false);
   }
-
-  const statusMessage =
-    status === "submitting"
-      ? "Bezig met toevoegen…"
-      : status === "success"
-        ? "Lead toegevoegd"
-        : error;
 
   return (
     <DialogRoot
       open={open}
       onOpenChange={(next) => {
         if (disabled && next) return;
-        if (next && (status === "success" || (status === "idle" && !error))) {
-          beginNewSubmission();
-        }
-        onOpenChange(next);
-        if (!next && status === "success") beginNewSubmission();
+        form.handleOpenChange(next, onOpenChange);
       }}
     >
       <DialogContent size="md">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuwe lead</DialogTitle>
         </DialogHeader>
         <form ref={formRef} action={onSubmit} noValidate>
-          <input type="hidden" name="submissionId" value={submissionId} />
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <input type="hidden" name="companyId" value={companyId} />
           {contactId ? (
             <input type="hidden" name="contactId" value={contactId} />
           ) : null}
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${id}-title`} label="Titel" error={shownErrors.title}>
+            <FormField
+              id={`${id}-title`}
+              label="Titel"
+              error={form.shownErrors.title}
+            >
               <Input
                 name="title"
                 defaultValue={defaultTitle ?? ""}
                 onBlur={(event) => {
-                  setTouched({ title: true });
-                  const form = event.currentTarget.form ?? formRef.current;
-                  if (form) syncTitleErrors(form);
+                  form.markTouched("title");
+                  const htmlForm = event.currentTarget.form ?? formRef.current;
+                  if (htmlForm) syncTitleErrors(htmlForm);
                 }}
                 onChange={(event) => {
-                  if (submitted || touched.title) {
-                    const form = event.currentTarget.form ?? formRef.current;
-                    if (form) syncTitleErrors(form);
+                  if (form.submitted || form.shownErrors.title) {
+                    const htmlForm = event.currentTarget.form ?? formRef.current;
+                    if (htmlForm) syncTitleErrors(htmlForm);
                   }
                 }}
               />
             </FormField>
-            {error ? (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <p className="sr-only" aria-live="polite">
-              {statusMessage}
-            </p>
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
             <LeadSubmitButton
               readyLabel="Toevoegen"
               pendingLabel="Bezig met toevoegen…"
-              status={status}
+              status={form.status}
             />
           </DialogFooter>
         </form>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
+import { formInvalidFromZod, throwValidationFromZod } from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 
 export const userRoles = ["admin", "user", "viewer"] as const;
 export type UserRole = (typeof userRoles)[number];
@@ -34,12 +36,23 @@ export function parseInviteUserForm(formData: FormData): InviteUserInput {
     role: formData.get("role"),
   });
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
 
   return parsed.data;
+}
+
+export function safeParseInviteUserForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = inviteUserSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    role: formData.get("role"),
+  });
+  if (!parsed.success) return formInvalidFromZod(parsed.error);
+  return { success: true };
 }
 
 export function parsePasswordResetEmail(formData: FormData): string {

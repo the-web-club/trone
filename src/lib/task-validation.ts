@@ -6,7 +6,12 @@ import {
   normalizeTimeInput,
   zonedLocalToUtc,
 } from "@/lib/date-input";
-import { AppError } from "@/lib/errors";
+import { AppError, isAppError } from "@/lib/errors";
+import {
+  formInvalidFromZod,
+  throwValidationFromZod,
+} from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 
 export const taskKinds = [
   "FOLLOW_UP",
@@ -278,13 +283,7 @@ export function parseCreateFollowUpForm(
     companyId: formData.get("companyId"),
   });
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(
-      first?.message ?? "Controleer het formulier.",
-      "VALIDATION",
-    );
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
 
   const followUp = buildFollowUpInput({
     kind: parsed.data.kind,
@@ -295,7 +294,9 @@ export function parseCreateFollowUpForm(
     required: true,
   });
   if (!followUp) {
-    throw new AppError("Vul een datum in voor de vervolgactie.", "VALIDATION");
+    throw new AppError("Vul een datum in voor de vervolgactie.", "VALIDATION", 400, {
+      followUpDate: "Vul een datum in voor de vervolgactie.",
+    });
   }
 
   return {
@@ -327,4 +328,73 @@ export function parseUpdateFollowUpForm(
     id: parseTaskId(formData),
     ...parseCreateFollowUpForm(formData),
   };
+}
+
+const FOLLOW_UP_FIELD_MAP: Record<string, string> = {
+  kind: "followUpKind",
+  title: "followUpTitle",
+  date: "followUpDate",
+  time: "followUpTime",
+};
+
+export function safeParseCreateFollowUpForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = createFollowUpSchema.safeParse({
+    kind: formData.get("followUpKind"),
+    title: formData.get("followUpTitle"),
+    date: formData.get("followUpDate"),
+    time: formData.get("followUpTime"),
+    dateOnly: isChecked(formData.get("followUpDateOnly")),
+    dealId: formData.get("dealId"),
+    contactId: formData.get("contactId"),
+    companyId: formData.get("companyId"),
+  });
+  if (!parsed.success) {
+    const invalid = formInvalidFromZod(parsed.error);
+    const fieldErrors: FieldErrors = {};
+    for (const [key, message] of Object.entries(invalid.fieldErrors)) {
+      fieldErrors[FOLLOW_UP_FIELD_MAP[key] ?? key] = message;
+    }
+    if (!Object.keys(fieldErrors).length) {
+      fieldErrors.dealId = invalid.formError;
+    }
+    return { success: false, fieldErrors, formError: invalid.formError };
+  }
+
+  try {
+    const followUp = buildFollowUpInput({
+      kind: parsed.data.kind,
+      title: parsed.data.title,
+      date: parsed.data.date,
+      time: parsed.data.time,
+      dateOnly: parsed.data.dateOnly,
+      required: true,
+    });
+    if (!followUp) {
+      return {
+        success: false,
+        fieldErrors: {
+          followUpDate: "Vul een datum in voor de vervolgactie.",
+        },
+        formError: "Vul een datum in voor de vervolgactie.",
+      };
+    }
+    return { success: true };
+  } catch (error) {
+    if (isAppError(error)) {
+      const field =
+        error.message.includes("tijd") || error.message.includes("Tijd")
+          ? "followUpTime"
+          : "followUpDate";
+      return {
+        success: false,
+        fieldErrors: { [field]: error.message },
+        formError: error.message,
+      };
+    }
+    throw error;
+  }
 }

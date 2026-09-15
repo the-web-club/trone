@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateFollowUpTaskAction } from "@/app/(beveiligd)/actions/task-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { type CreateTaskDealOption } from "@/components/task/create-task-list-dialog";
 import { FollowUpFields } from "@/components/task/follow-up-fields";
-import { Button } from "@/components/ui/button";
 import { ComboboxMenu } from "@/components/ui/combobox";
 import {
   DialogBody,
@@ -16,9 +17,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
+import { refreshAfterSuccess } from "@/lib/form-submission";
 import {
   dealsIncludingCurrent,
   followUpDefaultsFromTask,
+  safeParseCreateFollowUpForm,
   type TaskEditFormValues,
 } from "@/lib/task-validation";
 
@@ -35,27 +39,44 @@ export function EditTaskListDialog({
 }) {
   const router = useRouter();
   const fieldId = useId();
+  const form = useFormSubmission({
+    pendingLabel: "Opslaan…",
+    successLabel: "Opgeslagen",
+  });
   const defaults = followUpDefaultsFromTask(task);
   const [dateOnly, setDateOnly] = useState(defaults.dateOnly);
   const [dealId, setDealId] = useState(task.dealId ?? "");
-  const [state, formAction, pending] = useActionState(
-    updateFollowUpTaskAction,
-    null,
-  );
-  const notifiedAt = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setDateOnly(defaults.dateOnly);
-    setDealId(task.dealId ?? "");
-  }, [open, defaults.dateOnly, task.dealId]);
+  function setOpen(next: boolean) {
+    form.handleOpenChange(next, (value) => {
+      onOpenChange(value);
+      if (value) {
+        setDateOnly(defaults.dateOnly);
+        setDealId(task.dealId ?? "");
+      }
+    });
+  }
 
-  useEffect(() => {
-    if (!state?.savedAt || notifiedAt.current === state.savedAt) return;
-    notifiedAt.current = state.savedAt;
-    onOpenChange(false);
-    router.refresh();
-  }, [state?.savedAt, onOpenChange, router]);
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      fieldOrder: ["dealId", "followUpTitle", "followUpDate", "followUpTime"],
+      fieldElementId: (name) =>
+        name === "dealId" ? `${fieldId}-dealId` : `${fieldId}-${name}`,
+      validate: safeParseCreateFollowUpForm,
+      save: async (data) => {
+        const saved = await updateFollowUpTaskAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        return { result: { savedAt: saved.savedAt } };
+      },
+      onSuccess: () => {
+        setOpen(false);
+        refreshAfterSuccess(() => router.refresh());
+      },
+    });
+  }
 
   const dealItems = [
     { value: "", label: "Kies een lead…" },
@@ -70,20 +91,20 @@ export function EditTaskListDialog({
       hint: deal.hint ?? undefined,
     })),
   ];
-  const canSubmit = Boolean(dealId || task.contactId || task.companyId);
 
   return (
-    <DialogRoot open={open} onOpenChange={onOpenChange}>
+    <DialogRoot open={open} onOpenChange={setOpen}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Taak bewerken</DialogTitle>
           <p className="text-sm text-fg-muted">
             Pas de vervolgactie aan en koppel die aan een lead.
           </p>
         </DialogHeader>
         <form
-          key={open ? `${task.id}-open` : `${task.id}-closed`}
-          action={formAction}
+          key={open ? `${task.id}-${form.submissionId}` : `${task.id}-closed`}
+          action={onSubmit}
+          noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
           <input type="hidden" name="id" value={task.id} />
@@ -95,10 +116,17 @@ export function EditTaskListDialog({
             <input type="hidden" name="companyId" value={task.companyId} />
           ) : null}
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${fieldId}-dealId`} label="Lead">
+            <FormField
+              id={`${fieldId}-dealId`}
+              label="Lead"
+              error={form.shownErrors.dealId}
+            >
               <ComboboxMenu
                 value={dealId}
-                onValueChange={setDealId}
+                onValueChange={(next) => {
+                  setDealId(next);
+                  form.markTouched("dealId");
+                }}
                 items={dealItems}
                 placeholder="Kies een lead…"
                 searchPlaceholder="Zoek een lead…"
@@ -115,16 +143,13 @@ export function EditTaskListDialog({
               initialDate={defaults.date}
               initialTime={defaults.time}
             />
-            {state?.error ? (
-              <p className="text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending} disabled={!canSubmit}>
-              Opslaan
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Opslaan"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

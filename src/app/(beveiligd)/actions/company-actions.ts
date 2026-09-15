@@ -19,6 +19,7 @@ import {
   validateCompanyVat,
 } from "@/lib/company-service";
 import { toActionError } from "@/lib/errors";
+import { parseSubmissionId } from "@/lib/form-submission";
 import { companyPath } from "@/lib/paths";
 import type { VatRegime, ViesStatus } from "@/lib/vat";
 
@@ -31,11 +32,16 @@ export type CreatedCompanyOption = {
 /** Compact aanmaken zonder redirect, voor selects op lead en offerte. */
 export async function createCompanyInlineAction(
   formData: FormData,
-): Promise<{ error?: string; company?: CreatedCompanyOption }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  company?: CreatedCompanyOption;
+}> {
   try {
     const session = await requireSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseComposerCompanyForm(formData);
-    const company = await createCompany(input, session.user.id);
+    const company = await createCompany(input, session.user.id, { submissionId });
     revalidatePath("/bedrijven", "layout");
     revalidatePath("/overzicht");
     revalidatePath("/leads", "layout");
@@ -54,11 +60,16 @@ export async function createCompanyInlineAction(
 export async function createCompanyAction(
   _prev: { error?: string; company?: CreatedCompanyOption } | null,
   formData: FormData,
-): Promise<{ error?: string; company?: CreatedCompanyOption }> {
+): Promise<{
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  company?: CreatedCompanyOption;
+}> {
   try {
     const session = await requireSession();
+    const submissionId = parseSubmissionId(formData.get("submissionId"));
     const input = parseCompanyForm(formData);
-    const company = await createCompany(input, session.user.id);
+    const company = await createCompany(input, session.user.id, { submissionId });
     revalidatePath("/bedrijven", "layout");
     revalidatePath("/overzicht");
     revalidatePath("/leads", "layout");

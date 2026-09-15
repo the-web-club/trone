@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { AppError } from "@/lib/errors";
+import {
+  formInvalidFromZod,
+  throwValidationFromZod,
+} from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 
 function emptyToUndefined(value: unknown): unknown {
   if (value == null) return undefined;
@@ -42,10 +46,7 @@ function hasFilledValue(value: unknown): boolean {
 
 function parseContactInput(data: unknown): ContactInput {
   const parsed = contactSchema.safeParse(data);
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
   return parsed.data;
 }
 
@@ -126,4 +127,22 @@ export function parseOptionalComposerContactForm(
   ].some(hasFilledValue);
   if (!anyFilled) return null;
   return parseContactInput(fields);
+}
+
+export function safeParseContactForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = contactSchema.safeParse({
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    jobTitle: formData.get("jobTitle"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    notes: formData.get("notes"),
+    isPrimary: formData.get("isPrimary"),
+  });
+  if (!parsed.success) return formInvalidFromZod(parsed.error);
+  return { success: true };
 }

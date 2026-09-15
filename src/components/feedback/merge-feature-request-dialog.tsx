@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { mergeFeatureRequestAction } from "@/app/(beveiligd)/actions/feature-request-actions";
-import { Button } from "@/components/ui/button";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { ComboboxMenu } from "@/components/ui/combobox";
 import {
   DialogBody,
@@ -14,6 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
+import { refreshAfterSuccess, requiredField } from "@/lib/form-submission";
 import type { FeatureRequestMergeTarget } from "@/lib/feature-request-service";
 
 export function MergeFeatureRequestDialog({
@@ -29,45 +32,64 @@ export function MergeFeatureRequestDialog({
 }) {
   const router = useRouter();
   const fieldId = useId();
+  const form = useFormSubmission({
+    pendingLabel: "Samenvoegen…",
+    successLabel: "Samengevoegd",
+  });
   const [targetId, setTargetId] = useState("");
-  const [state, formAction, pending] = useActionState(
-    mergeFeatureRequestAction,
-    null,
-  );
-  const notifiedAt = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!state?.mergedAt || notifiedAt.current === state.mergedAt) return;
-    notifiedAt.current = state.mergedAt;
-    onOpenChange(false);
-    setTargetId("");
-    router.refresh();
-  }, [state?.mergedAt, onOpenChange, router]);
+  function setOpen(next: boolean) {
+    form.handleOpenChange(next, (value) => {
+      onOpenChange(value);
+      if (!value) setTargetId("");
+    });
+  }
+
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      fieldOrder: ["targetId"],
+      fieldElementId: () => `${fieldId}-target`,
+      validate: (data) =>
+        requiredField(data, "targetId", "Kies een verzoek om mee samen te voegen."),
+      save: async (data) => {
+        const saved = await mergeFeatureRequestAction(null, data);
+        if (saved.error) return { error: saved.error };
+        return { result: { mergedAt: saved.mergedAt } };
+      },
+      onSuccess: () => {
+        setTargetId("");
+        setOpen(false);
+        refreshAfterSuccess(() => router.refresh());
+      },
+    });
+  }
 
   return (
-    <DialogRoot
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) setTargetId("");
-      }}
-    >
+    <DialogRoot open={open} onOpenChange={setOpen}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Verzoeken samenvoegen</DialogTitle>
           <p className="text-sm text-fg-muted">
             Stemmen worden uniek samengevoegd op het doelverzoek. Dit verzoek
             blijft bereikbaar als samengevoegd.
           </p>
         </DialogHeader>
-        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+        <form action={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
           <input type="hidden" name="sourceId" value={sourceId} />
           <input type="hidden" name="targetId" value={targetId} />
           <DialogBody className="flex flex-col gap-3">
-            <FormField id={`${fieldId}-target`} label="Samenvoegen met">
+            <FormField
+              id={`${fieldId}-target`}
+              label="Samenvoegen met"
+              error={form.shownErrors.targetId}
+            >
               <ComboboxMenu
                 value={targetId}
-                onValueChange={setTargetId}
+                onValueChange={(next) => {
+                  setTargetId(next);
+                  form.markTouched("targetId");
+                }}
                 items={[
                   { value: "", label: "Kies een verzoek…" },
                   ...targets.map((target) => ({
@@ -80,16 +102,15 @@ export function MergeFeatureRequestDialog({
                 emptyLabel="Geen ander verzoek gevonden"
               />
             </FormField>
-            {state?.error ? (
-              <p className="text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending} disabled={pending || !targetId}>
-              Samenvoegen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Samenvoegen"
+              pendingLabel="Samenvoegen…"
+              successLabel="Samengevoegd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

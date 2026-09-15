@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { AppError } from "@/lib/errors";
 import { isIsoCountryCode, normalizeCountryCode } from "@/lib/countries";
+import { formInvalidFromZod, throwValidationFromZod } from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 
 function emptyToUndefined(value: unknown): unknown {
   if (value == null) return undefined;
@@ -49,10 +50,7 @@ export const COMPANY_VAT_RATE_OPTIONS = [0, 9, 21] as const;
 
 function parseCompanyInput(data: unknown): CompanyInput {
   const parsed = companySchema.safeParse(data);
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(first?.message ?? "Controleer het formulier.", "VALIDATION");
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
   return parsed.data;
 }
 
@@ -143,4 +141,57 @@ export function parseComposerCompanyForm(formData: FormData): CompanyInput {
     country: formData.get("companyCountry") || "NL",
     vatRate: 21,
   });
+}
+
+const COMPOSER_FIELD_MAP: Record<string, string> = {
+  name: "companyName",
+  email: "companyEmail",
+  phone: "companyPhone",
+  country: "companyCountry",
+};
+
+export function safeParseComposerCompanyForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = companySchema.safeParse({
+    name: formData.get("companyName"),
+    email: formData.get("companyEmail"),
+    phone: formData.get("companyPhone"),
+    country: formData.get("companyCountry") || "NL",
+    vatRate: 21,
+  });
+  if (!parsed.success) {
+    const invalid = formInvalidFromZod(parsed.error);
+    const fieldErrors: FieldErrors = {};
+    for (const [key, message] of Object.entries(invalid.fieldErrors)) {
+      fieldErrors[COMPOSER_FIELD_MAP[key] ?? key] = message;
+    }
+    return { success: false, fieldErrors, formError: invalid.formError };
+  }
+  return { success: true };
+}
+
+export function safeParseCompanyForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const parsed = companySchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    vatNumber: formData.get("vatNumber"),
+    cocNumber: formData.get("cocNumber"),
+    website: formData.get("website"),
+    phone: formData.get("phone"),
+    addressLine: formData.get("addressLine"),
+    postalCode: formData.get("postalCode"),
+    city: formData.get("city"),
+    country: formData.get("country") || "NL",
+    vatRate: formData.get("vatRate") || 21,
+    notes: formData.get("notes"),
+  });
+  if (!parsed.success) return formInvalidFromZod(parsed.error);
+  return { success: true };
 }

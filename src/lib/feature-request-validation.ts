@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/lib/errors";
+import { throwValidationFromZod } from "@/lib/form-validation";
+import type { FieldErrors } from "@/lib/form-submission";
 
 export const featureRequestTypes = [
   "BUG",
@@ -118,18 +120,32 @@ export function parseCreateFeatureRequestForm(
     description: formData.get("description"),
   });
 
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new AppError(
-      first?.message ?? "Controleer het formulier.",
-      "VALIDATION",
-    );
-  }
+  if (!parsed.success) throwValidationFromZod(parsed.error);
 
   return {
     type: parsed.data.type,
     title: parsed.data.title,
     description: parsed.data.description ?? null,
+  };
+}
+
+export function safeParseCreateFeatureRequestForm(
+  formData: FormData,
+):
+  | { success: true }
+  | { success: false; fieldErrors: FieldErrors; formError: string } {
+  const errors = validateCreateFeatureRequestFields({
+    type: String(formData.get("type") ?? ""),
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  });
+  const fieldErrors = { ...errors };
+  const keys = Object.keys(fieldErrors);
+  if (keys.length === 0) return { success: true };
+  return {
+    success: false,
+    fieldErrors,
+    formError: fieldErrors[keys[0] as keyof typeof fieldErrors] ?? "Controleer het formulier.",
   };
 }
 

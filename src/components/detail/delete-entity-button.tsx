@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -12,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
 
 export function DeleteEntityButton({
   id,
@@ -36,58 +39,75 @@ export function DeleteEntityButton({
   onOpenChange?: (open: boolean) => void;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [state, formAction, pending] = useActionState(action, null);
+  const form = useFormSubmission({
+    pendingLabel: "Verwijderen…",
+    successLabel: "Verwijderd",
+  });
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
   const isMenu = presentation === "menu";
   const showTrigger = presentation !== "hidden";
 
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      validate: () => ({ success: true }),
+      save: async (data) => {
+        const saved = await action(null, data);
+        if (saved.error) return { error: saved.error };
+        return { result: true };
+      },
+      onSuccess: () => form.handleOpenChange(false, setOpen),
+    });
+  }
+
   return (
     <DialogRoot
       open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-      }}
+      onOpenChange={(next) => form.handleOpenChange(next, setOpen)}
     >
       {showTrigger ? (
-      <DialogTrigger
-        render={
-          <Button
-            type="button"
-            variant={isMenu ? "ghost" : "secondary"}
-            className={isMenu ? detailMenuButtonClassName(true) : undefined}
-          />
-        }
-      >
-        {label}
-      </DialogTrigger>
+        <DialogTrigger
+          render={
+            <Button
+              type="button"
+              variant={isMenu ? "ghost" : "secondary"}
+              className={isMenu ? detailMenuButtonClassName(true) : undefined}
+            />
+          }
+        >
+          {label}
+        </DialogTrigger>
       ) : null}
       <DialogContent size="sm">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <form action={formAction}>
+        <form action={onSubmit} noValidate>
           <input type="hidden" name="id" value={id} />
           <DialogBody>
             <p className="text-sm text-fg-muted">{description}</p>
-            {state?.error ? (
-              <p className="mt-3 text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <div className="mt-3">
+              <FormStatus error={form.error} statusMessage={form.statusMessage} />
+            </div>
           </DialogBody>
           <DialogFooter>
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setOpen(false)}
+              disabled={form.status === "submitting"}
+              onClick={() => form.handleOpenChange(false, setOpen)}
             >
               Annuleren
             </Button>
-            <Button type="submit" variant="destructive" loading={pending}>
-              Verwijderen
-            </Button>
+            <SubmitStatusButton
+              variant="destructive"
+              readyLabel="Verwijderen"
+              pendingLabel="Verwijderen…"
+              successLabel="Verwijderd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

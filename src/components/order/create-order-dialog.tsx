@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createOrderFromQuoteAction } from "@/app/(beveiligd)/actions/order-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -12,8 +15,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
 import { formatEuroExact } from "@/lib/format";
+import { refreshAfterSuccess } from "@/lib/form-submission";
+import { orderPath } from "@/lib/paths";
 import { quoteLinePresentation } from "@/lib/quote-catalog";
+import { safeParseCreateOrderFromQuoteForm } from "@/lib/order-validation";
 
 export type CreateOrderLine = {
   id: string;
@@ -31,13 +38,14 @@ export function CreateOrderDialog({
   quoteId: string;
   items: CreateOrderLine[];
 }) {
+  const router = useRouter();
+  const form = useFormSubmission({
+    pendingLabel: "Aanmaken…",
+    successLabel: "Aangemaakt",
+  });
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(items.map((item) => item.id)),
-  );
-  const [state, action, pending] = useActionState(
-    createOrderFromQuoteAction,
-    null,
   );
 
   function toggle(id: string) {
@@ -55,20 +63,43 @@ export function CreateOrderDialog({
     0,
   );
 
+  async function onSubmit(formData: FormData) {
+    await form.submit({
+      formData,
+      validate: safeParseCreateOrderFromQuoteForm,
+      save: async (data) => {
+        const saved = await createOrderFromQuoteAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        if (saved.order) return { result: saved.order };
+        return { error: "Er ging iets mis. Probeer het opnieuw." };
+      },
+      onSuccess: (order) => {
+        form.handleOpenChange(false, setOpen);
+        refreshAfterSuccess(() => router.push(orderPath(order)));
+      },
+    });
+  }
+
   return (
-    <DialogRoot open={open} onOpenChange={setOpen}>
+    <DialogRoot
+      open={open}
+      onOpenChange={(next) => form.handleOpenChange(next, setOpen)}
+    >
       <DialogTrigger
         render={<Button type="button">Order aanmaken</Button>}
       />
       <DialogContent size="lg">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Order aanmaken</DialogTitle>
           <p className="text-sm text-fg-muted">
             Kies welke offerteregels mee gaan. Prijzen blijven bevroren zoals
             de klant ze accepteerde.
           </p>
         </DialogHeader>
-        <form action={action}>
+        <form action={onSubmit} noValidate>
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <input type="hidden" name="quoteId" value={quoteId} />
           <DialogBody className="flex flex-col gap-3">
             {items.map((item) => {
@@ -115,11 +146,7 @@ export function CreateOrderDialog({
                 </label>
               );
             })}
-            {state?.error ? (
-              <p className="text-sm text-danger" role="alert">
-                {state.error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter layout="auto" className="justify-between">
             <p className="text-sm text-fg-muted">
@@ -127,13 +154,12 @@ export function CreateOrderDialog({
               {selectedItems.length === 1 ? "regel" : "regels"} ·{" "}
               {formatEuroExact(selectedTotal)} excl. btw
             </p>
-            <Button
-              type="submit"
-              loading={pending}
-              disabled={selectedItems.length === 0}
-            >
-              Order aanmaken
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Order aanmaken"
+              pendingLabel="Aanmaken…"
+              successLabel="Aangemaakt"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

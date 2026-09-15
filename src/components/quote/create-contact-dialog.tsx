@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 import { createContactAction } from "@/app/(beveiligd)/actions/contact-actions";
 import type { ComposerCreatedContact } from "@/app/(beveiligd)/actions/composer-customer-actions";
+import { FormStatus } from "@/components/form/form-status";
+import { useFormSubmission } from "@/components/form/use-form-submission";
 import { Button } from "@/components/ui/button";
 import {
   DialogBody,
@@ -15,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { SubmitStatusButton } from "@/components/ui/submit-status-button";
+import { safeParseContactForm } from "@/lib/contact-validation";
 
 export function CreateQuoteContactDialog({
   companyId,
@@ -33,29 +37,38 @@ export function CreateQuoteContactDialog({
 }) {
   const id = useId();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const form = useFormSubmission({
+    pendingLabel: "Toevoegen…",
+    successLabel: "Toegevoegd",
+  });
   const open = openProp ?? uncontrolledOpen;
 
   function setOpen(next: boolean) {
-    if (openProp === undefined) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-    if (!next) setError(null);
+    form.handleOpenChange(next, (value) => {
+      if (openProp === undefined) setUncontrolledOpen(value);
+      onOpenChange?.(value);
+    });
   }
 
   async function onSubmit(formData: FormData) {
-    setPending(true);
-    setError(null);
-    const result = await createContactAction(null, formData);
-    setPending(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (result.contact) {
-      onCreated(result.contact);
-      setOpen(false);
-    }
+    await form.submit({
+      formData,
+      fieldOrder: ["firstName", "lastName", "phone", "email"],
+      fieldElementId: (name) => `${id}-${name}`,
+      validate: safeParseContactForm,
+      save: async (data) => {
+        const saved = await createContactAction(null, data);
+        if (saved.error) {
+          return { error: saved.error, fieldErrors: saved.fieldErrors };
+        }
+        if (saved.contact) return { result: saved.contact };
+        return { error: "Er ging iets mis. Probeer het opnieuw." };
+      },
+      onSuccess: (contact) => {
+        onCreated(contact);
+        setOpen(false);
+      },
+    });
   }
 
   return (
@@ -74,22 +87,27 @@ export function CreateQuoteContactDialog({
         />
       ) : null}
       <DialogContent size="md">
-        <DialogHeader>
+        <DialogHeader dismissible={form.status !== "submitting"}>
           <DialogTitle>Nieuw contact</DialogTitle>
         </DialogHeader>
-        <form action={onSubmit} key={open ? `${id}-open` : `${id}-closed`}>
+        <form action={onSubmit} noValidate key={form.submissionId}>
+          <input type="hidden" name="submissionId" value={form.submissionId} />
           <input type="hidden" name="companyId" value={companyId} />
           {companyId ? (
             <input type="hidden" name="isPrimary" value="on" />
           ) : null}
           <DialogBody className="flex flex-col gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <FormField id={`${id}-firstName`} label="Voornaam">
+              <FormField
+                id={`${id}-firstName`}
+                label="Voornaam"
+                error={form.shownErrors.firstName}
+              >
                 <Input
                   name="firstName"
-                  required
                   autoComplete="given-name"
                   defaultValue={defaultFirstName ?? ""}
+                  onBlur={() => form.markTouched("firstName")}
                 />
               </FormField>
               <FormField id={`${id}-lastName`} label="Achternaam">
@@ -100,20 +118,28 @@ export function CreateQuoteContactDialog({
               <FormField id={`${id}-phone`} label="Telefoon">
                 <Input name="phone" type="tel" autoComplete="tel" />
               </FormField>
-              <FormField id={`${id}-email`} label="E-mailadres">
-                <Input name="email" type="email" autoComplete="email" />
+              <FormField
+                id={`${id}-email`}
+                label="E-mailadres"
+                error={form.shownErrors.email}
+              >
+                <Input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  onBlur={() => form.markTouched("email")}
+                />
               </FormField>
             </div>
-            {error ? (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            ) : null}
+            <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" loading={pending}>
-              Toevoegen
-            </Button>
+            <SubmitStatusButton
+              readyLabel="Toevoegen"
+              pendingLabel="Toevoegen…"
+              successLabel="Toegevoegd"
+              status={form.status}
+            />
           </DialogFooter>
         </form>
       </DialogContent>
