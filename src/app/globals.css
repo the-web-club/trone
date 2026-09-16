@@ -202,6 +202,10 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  html[data-mobile-drawer-open] .page-shell {
+    overflow: hidden;
+  }
+
   @media (min-width: 640px) {
     .page-shell {
       padding-top: 1.25rem;

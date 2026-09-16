@@ -14,6 +14,9 @@ export const DrawerRoot = Drawer.Root;
 export const DrawerTrigger = Drawer.Trigger;
 export const DrawerClose = Drawer.Close;
 
+const mobileDrawerLayer =
+  "fixed top-0 right-0 left-0 w-full max-w-none mx-0 bottom-[var(--mobile-bottom-nav-total-height)]";
+
 export function DrawerSheet({
   className,
   children,
@@ -23,14 +26,20 @@ export function DrawerSheet({
     <Drawer.Portal>
       <Drawer.Backdrop
         className={cn(
-          "fixed inset-0 z-[var(--z-overlay)] bg-overlay",
+          mobileDrawerLayer,
+          "z-[var(--z-mobile-backdrop)] bg-overlay",
           drawerBackdropMotion,
         )}
       />
-      <Drawer.Viewport className="fixed inset-0 z-[var(--z-modal)] flex flex-col justify-end overflow-x-clip overflow-y-hidden overscroll-none">
+      <Drawer.Viewport
+        className={cn(
+          mobileDrawerLayer,
+          "z-[var(--z-mobile-drawer)] flex flex-col justify-end overflow-x-clip overflow-y-hidden overscroll-none pointer-events-none",
+        )}
+      >
         <Drawer.Popup
           className={cn(
-            "flex h-auto w-full min-h-0 max-h-[calc(100dvh-env(safe-area-inset-top,0px))] max-w-none min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-t-[24px] rounded-b-none bg-surface-raised pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--shadow-lift)] outline-none",
+            "pointer-events-auto flex h-auto w-full min-h-0 max-h-full max-w-none min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-t-[24px] rounded-b-none border-t border-border bg-surface-raised shadow-none outline-none",
             drawerPopupMotion,
             className,
           )}

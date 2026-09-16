@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
+import { createElement, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { controlMotion, pressableLinkMotion } from "@/components/motion/styles";
+import {
+  clearMobileBottomNavTotalHeight,
+  setMobileBottomNavTotalHeight,
+} from "@/components/shell/mobile-bottom-nav-height";
 import {
   appMainNav,
   bottomNavIcon,
@@ -37,10 +42,29 @@ function activeColor(active: boolean) {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const sync = () => {
+      setMobileBottomNavTotalHeight(nav.getBoundingClientRect().height);
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(nav);
+    return () => {
+      observer.disconnect();
+      clearMobileBottomNavTotalHeight();
+    };
+  }, []);
 
   return (
     <nav
-      className="desktop-nav:hidden shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom,0px)]"
+      ref={navRef}
+      className="relative z-[var(--z-mobile-bottom-nav)] desktop-nav:hidden shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom,0px)]"
       aria-label="Hoofdnavigatie"
     >
       <div className="flex h-16 items-stretch">
@@ -56,6 +80,14 @@ export function MobileBottomNav() {
   );
 }
 
+function BottomNavGlyph({ item }: { item: AppNavEntry }) {
+  return createElement(bottomNavIcon(item), {
+    className: "size-5",
+    strokeWidth: 1.75,
+    "aria-hidden": true,
+  });
+}
+
 function BottomNavLink({
   item,
   pathname,
@@ -64,7 +96,6 @@ function BottomNavLink({
   pathname: string;
 }) {
   const active = isNavItemActive(pathname, item.href);
-  const Icon = bottomNavIcon(item);
 
   return (
     <Link
@@ -78,19 +109,31 @@ function BottomNavLink({
         activeColor(active),
       )}
     >
-      <Icon className="size-5" strokeWidth={1.75} aria-hidden />
+      <BottomNavGlyph item={item} />
       <span>{item.label}</span>
     </Link>
   );
 }
 
 function CompaniesNavItem({ pathname }: { pathname: string }) {
+  const [openForPath, setOpenForPath] = useState<string | null>(null);
+  const open = openForPath === pathname;
   const group = companiesNavGroup;
   const active = isCompaniesGroupActive(pathname);
-  const Icon = bottomNavIcon(group as AppNavEntry);
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-mobile-drawer-open", open);
+    return () => {
+      document.documentElement.removeAttribute("data-mobile-drawer-open");
+    };
+  }, [open]);
 
   return (
-    <DrawerRoot>
+    <DrawerRoot
+      modal={false}
+      open={open}
+      onOpenChange={(next) => setOpenForPath(next ? pathname : null)}
+    >
       <DrawerTrigger
         aria-current={active ? "page" : undefined}
         className={cn(
@@ -100,7 +143,7 @@ function CompaniesNavItem({ pathname }: { pathname: string }) {
           activeColor(active),
         )}
       >
-        <Icon className="size-5" strokeWidth={1.75} aria-hidden />
+        <BottomNavGlyph item={group} />
         <span>{group.label}</span>
       </DrawerTrigger>
       <DrawerSheet>
