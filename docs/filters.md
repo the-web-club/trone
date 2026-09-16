@@ -61,6 +61,18 @@ Desktop dropdowns en de mobiele filter-sheet gebruiken dezelfde facetpayload. Op
 
 ## Performance
 
+Gemeten op de huidige SkySQL-dataset (cold connection, alle entiteiten parallel):
+
+| Entiteit | Records | Facet-query |
+| --- | --- | --- |
+| Lead | 1.292 | 1.534 ms |
+| Bedrijf | 658 | 1.561 ms |
+| Contact | 1.560 | 1.763 ms |
+| Offerte | 15 | 1.424 ms |
+| Order | 3 | 1.468 ms |
+
+Een lijstpagina doet dit gebundeld met de result-query, niet per filter of per optie. Een groot deel van de cold time is TLS naar de serverless-database; daarna hergebruikt de pool de connectie.
+
 Richtwaarde: één gebundelde request per filteractie, begrensd aantal `GROUP BY`s (niet per optie), geen full table dump naar de browser.
 
 Bestaande indexen die deze plannen ondersteunen:
