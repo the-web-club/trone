@@ -4,6 +4,7 @@ import { Bold, Italic, List, Strikethrough } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ClipboardEvent,
@@ -62,23 +63,27 @@ export function RichTextEditor({
   const hiddenRef = useRef<HTMLInputElement>(null);
   const initialHtml = useRef(richTextToHtml(defaultValue));
   const initialValue = normalizeRichText(defaultValue) ?? "";
-  const [empty, setEmpty] = useState(() => isRichTextEmpty(defaultValue));
+  const [value, setValue] = useState(initialValue);
   const [active, setActive] = useState<ActiveFormats>(initialFormats);
+  const empty = isRichTextEmpty(value);
+
+  const readEditorValue = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return "";
+    const next = sanitizeRichText(editor.innerHTML);
+    return isRichTextEmpty(next) ? "" : next;
+  }, []);
 
   const sync = useCallback(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const next = sanitizeRichText(editor.innerHTML);
-    const blank = isRichTextEmpty(next);
-    if (hiddenRef.current) hiddenRef.current.value = blank ? "" : next;
-    setEmpty(blank);
+    const next = readEditorValue();
+    setValue(next);
     setActive({
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       strike: document.queryCommandState("strikeThrough"),
       list: document.queryCommandState("insertUnorderedList"),
     });
-  }, []);
+  }, [readEditorValue]);
 
   const assignEditor = useCallback((node: HTMLDivElement | null) => {
     editorRef.current = node;
@@ -106,15 +111,18 @@ export function RichTextEditor({
     return () => document.removeEventListener("selectionchange", onSelectionChange);
   }, []);
 
-  useEffect(() => {
-    const form = hiddenRef.current?.closest("form");
+  useLayoutEffect(() => {
+    const form =
+      hiddenRef.current?.closest("form") ?? editorRef.current?.closest("form");
     if (!form) return;
-    function onSubmit() {
-      sync();
+
+    function onFormData(event: FormDataEvent) {
+      event.formData.set(name, readEditorValue());
     }
-    form.addEventListener("submit", onSubmit);
-    return () => form.removeEventListener("submit", onSubmit);
-  }, [sync]);
+
+    form.addEventListener("formdata", onFormData);
+    return () => form.removeEventListener("formdata", onFormData);
+  }, [name, readEditorValue]);
 
   function apply(command: FormatCommand) {
     if (disabled) return;
@@ -232,12 +240,7 @@ export function RichTextEditor({
           suppressContentEditableWarning
         />
       </div>
-      <input
-        ref={hiddenRef}
-        type="hidden"
-        name={name}
-        defaultValue={initialValue}
-      />
+      <input ref={hiddenRef} type="hidden" name={name} value={value} readOnly />
     </div>
   );
 }
