@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import {
   assertCanCommentOnFeatureRequest,
   assertCanEditFeatureRequest,
@@ -267,7 +269,7 @@ export async function createFeatureRequest(
         "verzoek",
       );
 
-      return prisma.featureRequest.create({
+      const created = await prisma.featureRequest.create({
         data: {
           id: createId(),
           slug,
@@ -280,6 +282,19 @@ export async function createFeatureRequest(
         },
         select: { id: true, slug: true, title: true, type: true },
       });
+      // Alleen op het echte create-pad: bij een herhaalde submissie levert
+      // createWithSubmissionId het bestaande verzoek terug zonder deze callback.
+      // De beschrijving is vrije tekst en blijft buiten het event.
+      await logAuditEvent({
+        eventType: "CREATE",
+        category: "SETTINGS",
+        action: AUDIT_ACTIONS.feedbackCreate,
+        entityType: "featureRequest",
+        entityId: created.id,
+        entityLabel: created.title,
+        metadata: { slug: created.slug, type: created.type, status: "OPEN" },
+      });
+      return created;
     },
   });
 }
@@ -292,7 +307,13 @@ export async function updateFeatureRequest(
   const prisma = getPrismaClient();
   const current = await prisma.featureRequest.findUnique({
     where: { id },
-    select: { id: true, authorUserId: true, status: true, slug: true },
+    select: {
+      id: true,
+      authorUserId: true,
+      status: true,
+      slug: true,
+      title: true,
+    },
   });
   if (!current) {
     throw new AppError("Verzoek niet gevonden.", "NOT_FOUND", 404);
@@ -300,7 +321,7 @@ export async function updateFeatureRequest(
 
   assertCanEditFeatureRequest(actor, current);
 
-  return prisma.featureRequest.update({
+  const updated = await prisma.featureRequest.update({
     where: { id: current.id },
     data: {
       ...(input.type ? { type: input.type } : {}),
@@ -311,6 +332,23 @@ export async function updateFeatureRequest(
     },
     select: { id: true, slug: true },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.feedbackUpdate,
+    entityType: "featureRequest",
+    entityId: updated.id,
+    entityLabel: input.title ?? current.title,
+    // Alleen wélke velden zijn meegestuurd; de beschrijving zelf nooit.
+    metadata: {
+      velden: [
+        ...(input.type ? ["type"] : []),
+        ...(input.title != null ? ["title"] : []),
+        ...(input.description !== undefined ? ["description"] : []),
+      ],
+    },
+  });
+  return updated;
 }
 
 export async function updateFeatureRequestStatus(
@@ -329,23 +367,44 @@ export async function updateFeatureRequestStatus(
   const prisma = getPrismaClient();
   const current = await prisma.featureRequest.findUnique({
     where: { id },
-    select: { id: true, status: true, slug: true },
+    select: { id: true, status: true, slug: true, title: true },
   });
   if (!current) {
     throw new AppError("Verzoek niet gevonden.", "NOT_FOUND", 404);
   }
   if (current.status === "MERGED") {
+    // Een geweigerde statuswijziging is ook informatie: iemand probeerde het.
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "SETTINGS",
+      action: AUDIT_ACTIONS.feedbackStatusChange,
+      result: "FAILURE",
+      entityType: "featureRequest",
+      entityId: current.id,
+      entityLabel: current.title,
+      metadata: { vorige: current.status, gevraagd: status },
+    });
     throw new AppError(
       "De status van een samengevoegd verzoek kan niet worden gewijzigd.",
       "VALIDATION",
     );
   }
 
-  return prisma.featureRequest.update({
+  const updated = await prisma.featureRequest.update({
     where: { id: current.id },
     data: { status },
     select: { id: true, slug: true },
   });
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.feedbackStatusChange,
+    entityType: "featureRequest",
+    entityId: updated.id,
+    entityLabel: current.title,
+    metadata: { vorige: current.status, nieuwe: status },
+  });
+  return updated;
 }
 
 export async function addFeatureRequestVote(
@@ -356,7 +415,7 @@ export async function addFeatureRequestVote(
   const prisma = getPrismaClient();
   const request = await prisma.featureRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, title: true },
   });
   if (!request) {
     throw new AppError("Verzoek niet gevonden.", "NOT_FOUND", 404);
@@ -370,6 +429,17 @@ export async function addFeatureRequestVote(
         requestId: request.id,
         userId: actor.id,
       },
+    });
+    // Een dubbele stem loopt via de catch en levert geen nieuwe rij op; die
+    // wordt daarom ook niet gelogd.
+    await logAuditEvent({
+      eventType: "CREATE",
+      category: "SETTINGS",
+      action: AUDIT_ACTIONS.feedbackVote,
+      entityType: "featureRequest",
+      entityId: request.id,
+      entityLabel: request.title,
+      metadata: { actie: "toevoegen" },
     });
     return { voted: true, created: true };
   } catch (error) {
@@ -388,7 +458,7 @@ export async function removeFeatureRequestVote(
   const prisma = getPrismaClient();
   const request = await prisma.featureRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, title: true },
   });
   if (!request) {
     throw new AppError("Verzoek niet gevonden.", "NOT_FOUND", 404);
@@ -398,6 +468,18 @@ export async function removeFeatureRequestVote(
   const result = await prisma.featureRequestVote.deleteMany({
     where: { requestId: request.id, userId: actor.id },
   });
+  // Zonder verwijderde rij is er niets veranderd en dus niets te loggen.
+  if (result.count > 0) {
+    await logAuditEvent({
+      eventType: "DELETE",
+      category: "SETTINGS",
+      action: AUDIT_ACTIONS.feedbackVote,
+      entityType: "featureRequest",
+      entityId: request.id,
+      entityLabel: request.title,
+      metadata: { actie: "verwijderen" },
+    });
+  }
   return { voted: false, removed: result.count };
 }
 
@@ -410,14 +492,14 @@ export async function addFeatureRequestComment(
   const prisma = getPrismaClient();
   const request = await prisma.featureRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, title: true },
   });
   if (!request) {
     throw new AppError("Verzoek niet gevonden.", "NOT_FOUND", 404);
   }
   assertCanCommentOnFeatureRequest(request.status);
 
-  return prisma.featureRequestComment.create({
+  const comment = await prisma.featureRequestComment.create({
     data: {
       id: createId(),
       requestId: request.id,
@@ -426,6 +508,17 @@ export async function addFeatureRequestComment(
     },
     include: commentInclude,
   });
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.feedbackComment,
+    entityType: "featureRequest",
+    entityId: request.id,
+    entityLabel: request.title,
+    // De reactietekst blijft buiten het log; alleen de lengte gaat mee.
+    metadata: { reactieId: comment.id, lengte: body.length },
+  });
+  return comment;
 }
 
 export async function mergeFeatureRequests(
@@ -436,7 +529,7 @@ export async function mergeFeatureRequests(
   assertCanManageFeatureRequests(actor);
   const prisma = getPrismaClient();
 
-  return prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     const [source, target] = await Promise.all([
       tx.featureRequest.findUnique({
         where: { id: sourceId },
@@ -458,6 +551,11 @@ export async function mergeFeatureRequests(
         sourceSlug: source.slug,
         targetSlug: target.slug,
         idempotent: true,
+        sourceId: source.id,
+        targetId: target.id,
+        sourceTitle: source.title,
+        movedVotes: 0,
+        droppedVotes: 0,
       };
     }
 
@@ -494,6 +592,35 @@ export async function mergeFeatureRequests(
       sourceSlug: source.slug,
       targetSlug: target.slug,
       idempotent: false,
+      sourceId: source.id,
+      targetId: target.id,
+      sourceTitle: source.title,
+      movedVotes: plan.moveUserIds.length,
+      droppedVotes: plan.dropUserIds.length,
     };
   });
+
+  // Een herhaalde samenvoeging verandert niets en levert dus geen event op.
+  if (!outcome.idempotent) {
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "SETTINGS",
+      action: AUDIT_ACTIONS.feedbackMerge,
+      entityType: "featureRequest",
+      entityId: outcome.sourceId,
+      entityLabel: outcome.sourceTitle,
+      metadata: {
+        bronId: outcome.sourceId,
+        doelId: outcome.targetId,
+        stemmenVerplaatst: outcome.movedVotes,
+        stemmenVervallen: outcome.droppedVotes,
+      },
+    });
+  }
+
+  return {
+    sourceSlug: outcome.sourceSlug,
+    targetSlug: outcome.targetSlug,
+    idempotent: outcome.idempotent,
+  };
 }

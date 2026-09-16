@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { Prisma, TaskStatus } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import {
   APP_TIME_ZONE,
   calendarDateInTimeZone,
@@ -259,7 +261,7 @@ async function resolveFollowUpLinks(
   options?: { preferDealLinks?: boolean },
 ) {
   const prisma = getPrismaClient();
-  let dealId = input.dealId ?? null;
+  const dealId = input.dealId ?? null;
   let contactId = input.contactId ?? null;
   let companyId = input.companyId ?? null;
 
@@ -314,8 +316,8 @@ export async function createFollowUpTask(
     matches: (existing) =>
       existing.title === title &&
       (existing.dealId ?? null) === (dealId ?? null),
-    create: () =>
-      prisma.$transaction(async (tx) => {
+    create: async () => {
+      const created = await prisma.$transaction(async (tx) => {
         const task = await tx.task.create({
           data: {
             id: createId(),
@@ -348,7 +350,30 @@ export async function createFollowUpTask(
           },
         });
         return task;
-      }),
+      });
+
+      // Alleen loggen op het echte create-pad: bij een herhaalde submissie
+      // levert createWithSubmissionId het bestaande record terug zonder deze
+      // callback aan te roepen. Het event staat buiten de transactie, zodat een
+      // logregel de taak nooit kan terugdraaien.
+      await logAuditEvent({
+        eventType: "CREATE",
+        category: "DATA",
+        action: AUDIT_ACTIONS.taskCreate,
+        entityType: "task",
+        entityId: created.id,
+        entityLabel: created.title,
+        metadata: {
+          soort: created.kind,
+          toegewezen: created.assigneeUserId,
+          alleenDatum: created.dueDateOnly,
+          dealId,
+          contactId,
+          companyId,
+        },
+      });
+      return created;
+    },
   });
 }
 
@@ -373,7 +398,7 @@ export async function updateFollowUpTask(
   );
 
   const prisma = getPrismaClient();
-  return prisma.task.update({
+  const updated = await prisma.task.update({
     where: { id },
     data: {
       title: input.title.trim(),
@@ -386,6 +411,36 @@ export async function updateFollowUpTask(
     },
     include: taskInclude,
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.taskUpdate,
+    entityType: "task",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    // Alleen wélke velden veranderden, niet de ingevulde waarden.
+    metadata: { velden: changedTaskFields(existing, updated) },
+  });
+  return updated;
+}
+
+/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
+function changedTaskFields(
+  before: { [key: string]: unknown },
+  after: { [key: string]: unknown },
+): string[] {
+  const tracked = [
+    "title",
+    "kind",
+    "dueAt",
+    "dueDateOnly",
+    "dealId",
+    "contactId",
+    "companyId",
+  ];
+  return tracked.filter(
+    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
+  );
 }
 
 export async function getTask(id: string) {
@@ -409,6 +464,15 @@ export async function completeTask(id: string, userId: string) {
     data: { status: "DONE", completedAt: new Date() },
     include: taskInclude,
   });
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "DATA",
+    action: AUDIT_ACTIONS.taskStatusChange,
+    entityType: "task",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    metadata: { vorige: task.status, nieuwe: updated.status },
+  });
   if (task.dealId || task.contactId || task.companyId) {
     await logEvent({
       type: "TASK_DONE",
@@ -426,6 +490,22 @@ export async function deleteTask(id: string) {
   const task = await getTask(id);
   const prisma = getPrismaClient();
   await prisma.task.delete({ where: { id: task.id } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.taskDelete,
+    entityType: "task",
+    entityId: task.id,
+    entityLabel: task.title,
+    severity: "NOTICE",
+    metadata: {
+      status: task.status,
+      soort: task.kind,
+      dealId: task.dealId,
+      contactId: task.contactId,
+      companyId: task.companyId,
+    },
+  });
   return task;
 }
 
@@ -433,11 +513,21 @@ export async function reopenTask(id: string) {
   const task = await getTask(id);
   if (task.status === "OPEN") return task;
   const prisma = getPrismaClient();
-  return prisma.task.update({
+  const updated = await prisma.task.update({
     where: { id },
     data: { status: "OPEN", completedAt: null },
     include: taskInclude,
   });
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "DATA",
+    action: AUDIT_ACTIONS.taskStatusChange,
+    entityType: "task",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    metadata: { vorige: task.status, nieuwe: updated.status },
+  });
+  return updated;
 }
 
 export function isTaskOverdue(task: {

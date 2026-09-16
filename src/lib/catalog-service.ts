@@ -1,5 +1,7 @@
 import "server-only";
 
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { AppError } from "@/lib/errors";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
@@ -80,10 +82,24 @@ export async function updateProductBasePrice(productId: string, basePrice: numbe
     throw new AppError("Product niet gevonden.", "NOT_FOUND", 404);
   }
 
-  return prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: productId },
     data: { basePrice },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogPriceUpdate,
+    entityType: "product",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    metadata: {
+      sku: updated.sku,
+      vorige: Number(product.basePrice),
+      nieuwe: Number(updated.basePrice),
+    },
+  });
+  return updated;
 }
 
 export async function updateOptionValuePrice(
@@ -104,10 +120,24 @@ export async function updateOptionValuePrice(
     );
   }
 
-  return prisma.optionValue.update({
+  const updated = await prisma.optionValue.update({
     where: { id: optionValueId },
     data: { priceDelta },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogPriceUpdate,
+    entityType: "optionValue",
+    entityId: updated.id,
+    entityLabel: updated.value,
+    metadata: {
+      optie: updated.optionId,
+      vorige: Number(value.priceDelta),
+      nieuwe: Number(updated.priceDelta),
+    },
+  });
+  return updated;
 }
 
 export async function updateOptionValueSwatch(
@@ -130,10 +160,24 @@ export async function updateOptionValueSwatch(
     data.swatchImageUrl = await uploadImage(input.file, `swatches/${optionValueId}`);
   }
 
-  return prisma.optionValue.update({
+  const updated = await prisma.optionValue.update({
     where: { id: optionValueId },
     data,
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogSwatchUpdate,
+    entityType: "optionValue",
+    entityId: updated.id,
+    entityLabel: updated.value,
+    metadata: {
+      velden: Object.keys(data),
+      hex: data.swatchHex ?? null,
+      afbeelding: Boolean(input.file),
+    },
+  });
+  return updated;
 }
 
 export async function listProductImages(productId?: string) {
@@ -187,7 +231,7 @@ export async function addProductImage(
     });
   }
 
-  return prisma.productImage.create({
+  const image = await prisma.productImage.create({
     data: {
       id,
       productId,
@@ -203,6 +247,21 @@ export async function addProductImage(
     },
     include: { selections: true },
   });
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogImageAdd,
+    entityType: "productImage",
+    entityId: image.id,
+    entityLabel: product.name,
+    metadata: {
+      product: product.id,
+      sku: product.sku,
+      standaard: isDefault,
+      selecties: selections.length,
+    },
+  });
+  return image;
 }
 
 export async function deleteProductImage(imageId: string) {
@@ -211,7 +270,17 @@ export async function deleteProductImage(imageId: string) {
   if (!image) {
     throw new AppError("Afbeelding niet gevonden.", "NOT_FOUND", 404);
   }
-  return prisma.productImage.delete({ where: { id: imageId } });
+  const deleted = await prisma.productImage.delete({ where: { id: imageId } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogImageDelete,
+    entityType: "productImage",
+    entityId: image.id,
+    severity: "NOTICE",
+    metadata: { product: image.productId, standaard: image.isDefault },
+  });
+  return deleted;
 }
 
 export async function setDefaultImage(imageId: string) {
@@ -225,8 +294,17 @@ export async function setDefaultImage(imageId: string) {
     where: { productId: image.productId, isDefault: true },
     data: { isDefault: false },
   });
-  return prisma.productImage.update({
+  const updated = await prisma.productImage.update({
     where: { id: imageId },
     data: { isDefault: true },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.catalogImageDefault,
+    entityType: "productImage",
+    entityId: updated.id,
+    metadata: { product: updated.productId, vorige: image.isDefault },
+  });
+  return updated;
 }

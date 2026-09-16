@@ -1,14 +1,16 @@
 import "server-only";
 
 import type { OrderStatus, Prisma } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import {
   endExclusiveOfCalendarDate,
   normalizeDateOnlyInput,
   startOfCalendarDate,
 } from "@/lib/date-input";
+import { companyNamesByIds } from "@/lib/company-service";
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { companyNamesByIds } from "@/lib/company-service";
 import { createId, whereIdOrOrderNumber } from "@/lib/id";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { nextNumber, SEQ_ORDER_2026 } from "@/lib/number-sequence-service";
@@ -122,11 +124,11 @@ export async function getOrderFilterFacets(
       _count: { _all: true },
     }),
   ]);
-  return {
-    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
   const names = await companyNamesByIds(
     companyGroups.map((group) => group.companyId),
   );
+  return {
+    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
     byStatus: statusGroups.map((group) => ({
       value: group.status,
       count: group._count._all,
@@ -137,9 +139,9 @@ export async function getOrderFilterFacets(
     ),
     byCompany: companyGroups.map((group) => ({
       value: group.companyId,
+      label: names.get(group.companyId) ?? group.companyId,
       count: group._count._all,
     })),
-      label: names.get(group.companyId) ?? group.companyId,
   };
 }
 
@@ -348,6 +350,23 @@ export async function createOrderFromQuote(
     companyId: quote.companyId,
   });
 
+  // Alleen op het echte create-pad: een herhaalde submissie is hierboven al
+  // met de bestaande order teruggegeven en levert dus geen tweede event op.
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.orderCreate,
+    entityType: "order",
+    entityId: orderId,
+    entityLabel: orderNumber,
+    metadata: {
+      offerte: quote.id,
+      bedrijf: quote.companyId,
+      regels: selected.length,
+      totaal: totals.total,
+    },
+  });
+
   return getOrder(orderId);
 }
 
@@ -374,6 +393,15 @@ export async function updateOrderStatus(
       dealId: current.dealId,
       contactId: current.contactId,
       companyId: current.companyId,
+    });
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "DATA",
+      action: AUDIT_ACTIONS.orderStatusChange,
+      entityType: "order",
+      entityId: updated.id,
+      entityLabel: updated.orderNumber,
+      metadata: { vorige: current.status, nieuwe: updated.status },
     });
   }
 

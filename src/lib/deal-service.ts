@@ -2,6 +2,8 @@ import "server-only";
 
 import { cache } from "react";
 import { Prisma, type DealStatus } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import {
   endExclusiveOfCalendarDate,
   normalizeDateOnlyInput,
@@ -637,6 +639,15 @@ export async function exportDealsCsv(
 
   const csv = `\uFEFF${[header, ...rows].map((row) => row.join(";")).join("\r\n")}\r\n`;
   const today = new Date().toISOString().slice(0, 10);
+  // Een export haalt persoonsgegevens uit het systeem; het aantal rijen is de
+  // enige metadata. De filterwaarden blijven er bewust buiten.
+  await logAuditEvent({
+    eventType: "EXPORT_COMPLETED",
+    category: "IMPORT_EXPORT",
+    action: AUDIT_ACTIONS.exportLeads,
+    result: capped ? "PARTIAL" : "SUCCESS",
+    metadata: { aantal: rows.length },
+  });
   return {
     csv,
     filename: `leads-${today}.csv`,
@@ -816,6 +827,23 @@ export async function createDeal(
       },
     });
     await replaceDealApplications(prisma, created.id, input.applications);
+    // Alleen op het echte create-pad: een herhaalde submissie eindigt bij
+    // settleExistingDeal en levert dus geen tweede event op.
+    await logAuditEvent({
+      eventType: "CREATE",
+      category: "LEADS",
+      action: AUDIT_ACTIONS.leadCreate,
+      entityType: "deal",
+      entityId: created.id,
+      entityLabel: created.title,
+      metadata: {
+        slug: created.slug,
+        fase: created.stageId,
+        status: created.status,
+        bedrijf: created.companyId,
+        eigenaar: created.ownerUserId,
+      },
+    });
     return created;
   } catch (error) {
     if (submissionId && isUniqueConstraintError(error)) {
@@ -863,7 +891,40 @@ export async function updateDeal(id: string, input: DealInput, userId?: string) 
     });
   }
 
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadUpdate,
+    entityType: "deal",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    // Alleen wélke velden veranderden, niet de ingevulde waarden.
+    metadata: {
+      velden: changedDealFields(current, updated),
+      faseGewijzigd: current.stageId !== updated.stageId,
+    },
+  });
+
   return updated;
+}
+
+/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
+function changedDealFields(
+  before: { [key: string]: unknown },
+  after: { [key: string]: unknown },
+): string[] {
+  const tracked = [
+    "title",
+    "companyId",
+    "contactId",
+    "stageId",
+    "sourceId",
+    "valueEstimate",
+    "status",
+  ];
+  return tracked.filter(
+    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
+  );
 }
 
 export async function moveDealToStage(
@@ -897,16 +958,40 @@ export async function moveDealToStage(
     companyId: deal.companyId,
   });
 
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadStatusChange,
+    entityType: "deal",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    metadata: {
+      vorigeFase: deal.stageId,
+      nieuweFase: stageId,
+      status: updated.status,
+    },
+  });
+
   return updated;
 }
 
 export async function setDealHot(id: string, isHot: boolean) {
   const deal = await getDeal(id);
   const prisma = getPrismaClient();
-  return prisma.deal.update({
+  const updated = await prisma.deal.update({
     where: { id: deal.id },
     data: { isHot },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadHotToggle,
+    entityType: "deal",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    metadata: { isHot: updated.isHot },
+  });
+  return updated;
 }
 
 export async function setDealOwner(id: string, ownerUserId: string | null) {
@@ -925,10 +1010,20 @@ export async function setDealOwner(id: string, ownerUserId: string | null) {
     }
   }
 
-  return prisma.deal.update({
+  const updated = await prisma.deal.update({
     where: { id: deal.id },
     data: { ownerUserId: nextOwnerId },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadOwnerChange,
+    entityType: "deal",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    metadata: { vorige: deal.ownerUserId, nieuwe: nextOwnerId },
+  });
+  return updated;
 }
 
 const qualificationSelect = {
@@ -988,10 +1083,28 @@ export async function setDealQualificationAnswer(
   });
 
   const answers = leadScoreAnswersFromFields(updated);
+  const result = calculateLeadScore(answers);
+
+  // Buiten de transactie: een logregel hoort niet onder de rijlock te vallen.
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadQualification,
+    entityType: "deal",
+    entityId: current.id,
+    entityLabel: current.title,
+    metadata: {
+      vraag: questionId,
+      antwoord: parsed,
+      score: result.score,
+      beoordeeld: result.assessedCount,
+    },
+  });
+
   return {
     slug: updated.slug,
     answers,
-    result: calculateLeadScore(answers),
+    result,
   };
 }
 
@@ -1009,6 +1122,17 @@ export async function addDealActivity(
     contactId: deal.contactId,
     companyId: deal.companyId,
   });
+  // Het label komt van de lead; de body is vrije tekst en hoort niet in het log.
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadActivityCreate,
+    entityType: "timelineEvent",
+    entityId: event.id,
+    entityLabel: deal.title,
+    metadata: { type: event.type, lead: deal.id },
+  });
+  return event;
 }
 
 export async function syncDealValueFromQuotes(
@@ -1030,5 +1154,20 @@ export async function deleteDeal(id: string) {
   const current = await getDeal(id);
   const prisma = getPrismaClient();
   await prisma.deal.delete({ where: { id: current.id } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "LEADS",
+    action: AUDIT_ACTIONS.leadDelete,
+    entityType: "deal",
+    entityId: current.id,
+    entityLabel: current.title,
+    severity: "NOTICE",
+    metadata: {
+      slug: current.slug,
+      fase: current.stageId,
+      status: current.status,
+      offertes: current.quotes.length,
+    },
+  });
   return current;
 }

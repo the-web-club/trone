@@ -6,6 +6,8 @@ import type {
   TimelineEventType,
   TimelineOutcome,
 } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { AppError } from "@/lib/errors";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { createId } from "@/lib/id";
@@ -15,6 +17,7 @@ import { getContactCompanyId } from "@/lib/contact-company";
 import type { FollowUpInput } from "@/lib/task-validation";
 import {
   isManualTimelineType,
+  timelineEventTypeLabels,
   type ManualTimelineType,
 } from "@/lib/timeline-validation";
 import {
@@ -147,8 +150,8 @@ export async function logEvent(input: LogEventInput) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
-    const event = await tx.timelineEvent.create({
+  const event = await prisma.$transaction(async (tx) => {
+    const created = await tx.timelineEvent.create({
       data: {
         id: createId(),
         type: input.type,
@@ -176,7 +179,7 @@ export async function logEvent(input: LogEventInput) {
           dealId: links.dealId,
           contactId: links.contactId,
           companyId: links.companyId,
-          sourceEventId: event.id,
+          sourceEventId: created.id,
         },
       });
       const dueLabel = followUp.dueDateOnly
@@ -194,8 +197,30 @@ export async function logEvent(input: LogEventInput) {
       });
     }
 
-    return event;
+    return created;
   });
+
+  // Deze functie loopt ook mee als neveneffect van fase-, offerte- en
+  // orderwijzigingen, dus komt er een event bij naast dat van de bovenliggende
+  // actie. `body` bevat gespreksnotities en e-mailteksten en blijft daarom
+  // volledig buiten het log; alleen enums en gekoppelde id's gaan mee.
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.timelineCreate,
+    entityType: "timelineEvent",
+    entityId: event.id,
+    entityLabel: timelineEventTypeLabels[event.type],
+    metadata: {
+      type: event.type,
+      richting: event.direction,
+      uitkomst: event.outcome,
+      dealId: event.dealId,
+      contactId: event.contactId,
+      companyId: event.companyId,
+    },
+  });
+  return event;
 }
 
 export async function getTimelineEvent(id: string) {
@@ -227,23 +252,72 @@ export async function updateTimelineEvent(
   input: { type: ManualTimelineType; body?: string },
 ) {
   const current = await getTimelineEvent(id);
+  if (!isManualTimelineType(current.type)) {
+    // Een geweigerde poging op een systeemgebeurtenis is zelf informatie.
+    await logAuditEvent({
+      eventType: "UPDATE",
+      category: "DATA",
+      action: AUDIT_ACTIONS.timelineUpdate,
+      result: "FAILURE",
+      entityType: "timelineEvent",
+      entityId: current.id,
+      entityLabel: timelineEventTypeLabels[current.type],
+      metadata: { type: current.type, reden: "Systeemgebeurtenis" },
+    });
+  }
   assertManualEvent(current);
   const prisma = getPrismaClient();
 
-  return prisma.timelineEvent.update({
+  const nextBody = input.body?.trim() ? input.body.trim() : null;
+  const updated = await prisma.timelineEvent.update({
     where: { id },
     data: {
       type: input.type,
-      body: input.body?.trim() ? input.body.trim() : null,
+      body: nextBody,
     },
     include: timelineInclude,
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.timelineUpdate,
+    entityType: "timelineEvent",
+    entityId: updated.id,
+    entityLabel: timelineEventTypeLabels[updated.type],
+    // Alleen de namen van de gewijzigde velden: de tekst van `body` mag hier
+    // niet terechtkomen.
+    metadata: {
+      type: updated.type,
+      velden: [
+        ...(current.type !== updated.type ? ["type"] : []),
+        ...(current.body !== nextBody ? ["body"] : []),
+      ],
+    },
+  });
+  return updated;
 }
 
 export async function deleteTimelineEvent(id: string) {
-  await getTimelineEvent(id);
+  const event = await getTimelineEvent(id);
   const prisma = getPrismaClient();
   await prisma.timelineEvent.delete({ where: { id } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.timelineDelete,
+    entityType: "timelineEvent",
+    entityId: event.id,
+    entityLabel: timelineEventTypeLabels[event.type],
+    severity: "NOTICE",
+    metadata: {
+      type: event.type,
+      richting: event.direction,
+      uitkomst: event.outcome,
+      dealId: event.dealId,
+      contactId: event.contactId,
+      companyId: event.companyId,
+    },
+  });
 }
 
 async function listTimeline(where: Prisma.TimelineEventWhereInput) {

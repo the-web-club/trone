@@ -1,5 +1,7 @@
 import "server-only";
 
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { createId } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import {
@@ -29,6 +31,7 @@ export async function getLetterhead(): Promise<Letterhead> {
 
 export async function updateLetterhead(input: Letterhead) {
   const prisma = getPrismaClient();
+  const current = await getLetterhead();
   await prisma.appSetting.upsert({
     where: { key: SETTING_KEYS.letterhead },
     update: { value: JSON.stringify(input) },
@@ -38,7 +41,25 @@ export async function updateLetterhead(input: Letterhead) {
       value: JSON.stringify(input),
     },
   });
-  return getLetterhead();
+  const letterhead = await getLetterhead();
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.settingsLetterhead,
+    entityType: "appSetting",
+    entityId: SETTING_KEYS.letterhead,
+    entityLabel: "Briefhoofd",
+    // Alleen wélke velden veranderden: het adres zelf hoort niet in het log.
+    metadata: { velden: changedLetterheadFields(current, letterhead) },
+  });
+  return letterhead;
+}
+
+/** Namen van de gewijzigde briefhoofdvelden; bewust zonder de waarden zelf. */
+function changedLetterheadFields(before: Letterhead, after: Letterhead): string[] {
+  return (Object.keys(after) as Array<keyof Letterhead>).filter(
+    (field) => before[field] !== after[field],
+  );
 }
 
 export async function updateThresholds(input: ThresholdsInput) {
@@ -57,5 +78,19 @@ export async function updateThresholds(input: ThresholdsInput) {
     });
   }
 
-  return getThresholds();
+  const thresholds = await getThresholds();
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "SETTINGS",
+    action: AUDIT_ACTIONS.settingsThresholds,
+    entityType: "appSetting",
+    entityLabel: "Drempelwaarden",
+    // Drempels zijn getallen, geen persoonsgegevens: waarden mogen mee.
+    metadata: {
+      stilDagen: thresholds.stilDagen,
+      opvolgingMaanden: thresholds.opvolgingMaanden,
+      hotWaarde: thresholds.hotWaarde,
+    },
+  });
+  return thresholds;
 }

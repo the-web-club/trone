@@ -101,6 +101,13 @@ function NavLink({
       prefetch
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
+      // Expliciete audit-sleutel: de centrale tracker zou anders op de href
+      // terugvallen, en dan verschuift de sleutel zodra een route wijzigt.
+      data-audit-action={`navigation${item.href.replace(/\//g, ".")}`}
+      data-audit-target={`nav${item.href}`}
+      data-audit-label={item.label}
+      data-audit-component={mobile ? "MobileNav" : "AppSidebar"}
+      data-audit-type="nav-item"
       className={cn(
         sidebarNavItemClassName(active, mobile),
         nested &&
@@ -175,6 +182,11 @@ function CompaniesNavGroup({
         aria-controls={submenuId}
         onClick={() => setOpen(!open)}
         onKeyDown={onGroupKeyDown}
+        data-audit-action="ui.nav_group_toggle"
+        data-audit-target={`nav-group.${group.id}`}
+        data-audit-label={group.label}
+        data-audit-component={mobile ? "MobileNav" : "AppSidebar"}
+        data-audit-type="dropdown-trigger"
         className={cn(sidebarNavItemClassName(groupActive, mobile), "w-full")}
       >
         <Icon aria-hidden />

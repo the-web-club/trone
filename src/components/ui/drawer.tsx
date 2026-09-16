@@ -38,6 +38,10 @@ export function DrawerSheet({
         )}
       >
         <Drawer.Popup
+          // Onderscheidt een drawer van een dialog voor de centrale audit-
+          // tracker; die kijkt naar dit attribuut om DRAWER_OPENED te loggen
+          // in plaats van MODAL_OPENED.
+          data-drawer=""
           className={cn(
             "pointer-events-auto flex h-auto w-full min-h-0 max-h-full max-w-none min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-t-[24px] rounded-b-none border-t border-border bg-surface-raised shadow-none outline-none",
             drawerPopupMotion,

@@ -1,12 +1,14 @@
 import "server-only";
 
 import { cache } from "react";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { nextContactSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
-import { formatPersonName } from "@/lib/format";
 import { getCompany, SELECT_OPTION_LIMIT } from "@/lib/company-service";
 import {
   getContactCompanyId,
@@ -59,8 +61,6 @@ export const listContactsForSelect = cache(async function listContactsForSelect(
   });
 });
 
-export async function listContacts() {
-  const prisma = getPrismaClient();
 const CONTACTS_PER_COMPANY_LIMIT = 200;
 const CONTACT_SELECT_MAX = 100;
 
@@ -119,6 +119,8 @@ export async function searchContactsForSelect(options?: {
   );
 }
 
+export async function listContacts() {
+  const prisma = getPrismaClient();
   return prisma.contact.findMany({
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     include: { company: { select: { id: true, slug: true, name: true } } },
@@ -145,9 +147,9 @@ export function buildContactListWhere(
   const and: Prisma.ContactWhereInput[] = [];
   const query = effectiveSearchQuery(filters.query);
   if (query) {
+    const term = escapeLikeTerm(query);
     and.push({
       OR: [
-    const term = escapeLikeTerm(query);
         { firstName: { contains: term } },
         { lastName: { contains: term } },
         { email: { contains: term } },
@@ -252,8 +254,6 @@ export type ContactFilterFacets = ContactOwnerFacets & {
   classificationStale: boolean;
 };
 
-export async function getContactFilterFacets(
-  filters: ContactListFilters = {},
 /**
  * Alle contactfacetten in één gebundelde set aggregatiequery's.
  *
@@ -262,6 +262,8 @@ export async function getContactFilterFacets(
  * was dat de duurste query van de hele app. Nu telt de database met
  * COUNT(DISTINCT) en komen er alleen groepsrijen terug.
  */
+export async function getContactFilterFacets(
+  filters: ContactListFilters = {},
   currentUserId?: string,
 ): Promise<ContactFilterFacets> {
   const facets = await contactFacetCountsSql({
@@ -403,6 +405,23 @@ export async function createContact(
           ...toContactData(input, nextCompanyId),
         },
       });
+      // Alleen op het echte create-pad: bij een herhaalde submissie geeft
+      // createWithSubmissionId het bestaande record terug zonder deze callback.
+      await logAuditEvent({
+        eventType: "CREATE",
+        category: "CONTACTS",
+        action: AUDIT_ACTIONS.contactCreate,
+        entityType: "contact",
+        entityId: contact.id,
+        entityLabel: formatPersonName(contact.firstName, contact.lastName),
+        metadata: {
+          slug: contact.slug,
+          bedrijf: contact.companyId,
+          eigenaar: contact.ownerUserId,
+          primair: contact.isPrimary,
+        },
+      });
+      return contact;
     },
   });
 }
@@ -427,6 +446,16 @@ export async function setContactOwner(id: string, ownerUserId: string | null) {
     where: { id: contact.id },
     data: { ownerUserId: nextOwnerId },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "CONTACTS",
+    action: AUDIT_ACTIONS.contactOwnerChange,
+    entityType: "contact",
+    entityId: updated.id,
+    entityLabel: formatPersonName(updated.firstName, updated.lastName),
+    metadata: { vorige: contact.ownerUserId, nieuwe: nextOwnerId },
+  });
+  return updated;
 }
 
 export async function updateContact(
@@ -458,6 +487,36 @@ export async function updateContact(
       slug,
     },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "CONTACTS",
+    action: AUDIT_ACTIONS.contactUpdate,
+    entityType: "contact",
+    entityId: updated.id,
+    entityLabel: formatPersonName(updated.firstName, updated.lastName),
+    // Alleen wélke velden veranderden, niet de ingevulde waarden.
+    metadata: { velden: changedContactFields(contact, updated) },
+  });
+  return updated;
+}
+
+/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
+function changedContactFields(
+  before: { [key: string]: unknown },
+  after: { [key: string]: unknown },
+): string[] {
+  const tracked = [
+    "firstName",
+    "lastName",
+    "jobTitle",
+    "email",
+    "phone",
+    "notes",
+    "isPrimary",
+  ];
+  return tracked.filter(
+    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
+  );
 }
 
 export async function setContactCompany(
@@ -492,6 +551,22 @@ export async function setContactCompany(
     }),
   ]);
   if (dealCount + quoteCount + orderCount > 0) {
+    // Een geweigerde herkoppeling is ook informatie: iemand probeerde het.
+    await logAuditEvent({
+      eventType: "LINK_CHANGED",
+      category: "CONTACTS",
+      action: AUDIT_ACTIONS.contactCompanyLink,
+      result: "FAILURE",
+      entityType: "contact",
+      entityId: contact.id,
+      entityLabel: formatPersonName(contact.firstName, contact.lastName),
+      metadata: {
+        reden: "Gekoppelde records bij een ander bedrijf",
+        vorige: currentCompanyId,
+        nieuwe: nextCompanyId,
+        aantal: dealCount + quoteCount + orderCount,
+      },
+    });
     throw new AppError(
       "Dit contact is gekoppeld aan een lead, offerte of order met een ander bedrijf. Pas die koppeling eerst aan.",
       "VALIDATION",
@@ -510,11 +585,39 @@ export async function setContactCompany(
       isPrimary,
     },
   });
+  await logAuditEvent({
+    eventType: "LINK_CHANGED",
+    category: "CONTACTS",
+    action: AUDIT_ACTIONS.contactCompanyLink,
+    entityType: "contact",
+    entityId: updated.id,
+    entityLabel: formatPersonName(updated.firstName, updated.lastName),
+    metadata: {
+      vorige: currentCompanyId,
+      nieuwe: nextCompanyId,
+      primair: updated.isPrimary,
+    },
+  });
+  return updated;
 }
 
 export async function deleteContact(id: string) {
   const current = await getContact(id);
   const prisma = getPrismaClient();
   await prisma.contact.delete({ where: { id: current.id } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "CONTACTS",
+    action: AUDIT_ACTIONS.contactDelete,
+    entityType: "contact",
+    entityId: current.id,
+    entityLabel: formatPersonName(current.firstName, current.lastName),
+    severity: "NOTICE",
+    metadata: {
+      slug: current.slug,
+      bedrijf: getContactCompanyId(current),
+      leads: current.deals.length,
+    },
+  });
   return current;
 }

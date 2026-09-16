@@ -1,5 +1,7 @@
 import "server-only";
 
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { getPrismaClient } from "@/lib/db";
 import { createId } from "@/lib/id";
 import {
@@ -48,7 +50,7 @@ export async function createInvoiceFromOrder(orderId: string) {
   await ensureInvoiceSequence();
   const invoiceNumber = await nextNumber(prisma, SEQ_INVOICE_2026);
 
-  return prisma.invoice.create({
+  const invoice = await prisma.invoice.create({
     data: {
       id: createId(),
       orderId: order.id,
@@ -63,4 +65,21 @@ export async function createInvoiceFromOrder(orderId: string) {
       order: { select: { orderNumber: true } },
     },
   });
+
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.invoiceCreate,
+    entityType: "invoice",
+    entityId: invoice.id,
+    entityLabel: invoice.invoiceNumber,
+    metadata: {
+      order: order.id,
+      bedrijf: order.companyId,
+      bedrag: Number(invoice.amount),
+      btwTarief: Number(frozen.vatRate),
+    },
+  });
+
+  return invoice;
 }

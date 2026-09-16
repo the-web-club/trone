@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Building2,
   MessageSquarePlus,
+  ScrollText,
   SlidersHorizontal,
   SunMoon,
   Users,
@@ -93,6 +94,14 @@ export default async function InstellingenPage() {
           title="Feedback"
           description="Stel verbeteringen voor en stem op ideeën van anderen."
         />
+        {canManage ? (
+          <SettingsCard
+            href="/instellingen/logs"
+            icon={ScrollText}
+            title="Logs"
+            description="Wie deed wat, wanneer, op welke pagina en met welk resultaat."
+          />
+        ) : null}
       </SettingsSection>
     </div>
   );

@@ -986,3 +986,85 @@ model FeatureRequestComment {
   @@index([authorUserId])
   @@map("feature_request_comment")
 }
+
+// ---------------------------------------------------------------------
+// Audit- en eventlog (Instellingen > Logs)
+//
+// Append-only. Rijen worden nooit gewijzigd of verwijderd door de app; er
+// bestaat geen update- of delete-pad in de UI of in de server helpers.
+//
+// Bewust GEEN relatie naar `User`: een audit-event moet leesbaar blijven
+// nadat een gebruiker is verwijderd, en een foreign key zou de verwijdering
+// blokkeren of (met cascade) juist het bewijs weggooien. De actor wordt
+// daarom als snapshot opgeslagen naast de losse `actorUserId`.
+//
+// Single-tenant: er is geen organizationId in dit datamodel (zie de kop van
+// dit bestand). De leesrechten lopen via de bestaande rol-gates, en de query
+// accepteert nooit een scope uit clientdata. Zie src/lib/audit/access.ts.
+//
+// `eventType`, `category` en `action` zijn strings en geen enums, zodat een
+// nieuw event geen migratie kost. De toegestane standaardwaarden staan in
+// één registry: src/lib/audit/registry.ts.
+// ---------------------------------------------------------------------
+model AuditEvent {
+  id String @id
+
+  /// Vaste vorm: SCREAMING_SNAKE (PAGE_VIEW, UI_CLICK, CREATE, ...).
+  eventType String @db.VarChar(64)
+  /// AUTH, NAVIGATION, UI, DATA, LEADS, ... — zie registry.
+  category  String @db.VarChar(32)
+  /// Puntnotatie: lead.create, settings.update, navigation.companies.
+  action    String @db.VarChar(96)
+  /// CLIENT, SERVER_ACTION, API, WEBHOOK, SYSTEM, CRON.
+  source    String @db.VarChar(24)
+  /// INFO, NOTICE, WARNING, ERROR, CRITICAL.
+  severity  String @db.VarChar(16)
+  /// SUCCESS, FAILURE, DENIED, PARTIAL.
+  result    String @db.VarChar(16)
+
+  /// Null bij systeem-, cron- en webhookevents. Geen foreign key: zie kop.
+  actorUserId        String? @db.VarChar(191)
+  actorNameSnapshot  String? @db.VarChar(191)
+  actorEmailSnapshot String? @db.VarChar(191)
+  actorRoleSnapshot  String? @db.VarChar(32)
+
+  entityType  String? @db.VarChar(48)
+  entityId    String? @db.VarChar(191)
+  entityLabel String? @db.VarChar(191)
+
+  /// Alleen het pad, nooit de querystring (privacy). Zie sanitize.ts.
+  route      String? @db.VarChar(255)
+  httpMethod String? @db.VarChar(8)
+
+  /// Klikdoel: data-audit-target, data-testid of een veilige fallback.
+  targetKey   String? @db.VarChar(191)
+  targetLabel String? @db.VarChar(191)
+
+  sessionId String? @db.VarChar(191)
+  requestId String? @db.VarChar(64)
+  /// Idempotency-sleutel voor clientbatches; uniek zodat een netwerkherhaling
+  /// geen tweede rij oplevert. Null voor serverevents.
+  clientEventId String? @unique @db.VarChar(64)
+
+  /// Gesaniteerde JSON: allowlist, gemaximeerde diepte en grootte.
+  metadata Json?
+
+  /// Afgeleid zoekveld: lowercase action + route + entityLabel + targetLabel +
+  /// actorsnapshot. Wordt bij het aanmaken gezet. Append-only, dus nooit stale.
+  searchIndex String? @db.Text
+
+  occurredAt   DateTime
+  receivedAt   DateTime @default(now())
+  eventVersion Int      @default(1) @db.SmallInt
+
+  @@index([occurredAt, id], map: "audit_event_occurredAt_id_idx")
+  @@index([eventType, occurredAt, id], map: "audit_event_eventType_occurredAt_id_idx")
+  @@index([actorUserId, occurredAt, id], map: "audit_event_actorUserId_occurredAt_id_idx")
+  @@index([category, occurredAt, id], map: "audit_event_category_occurredAt_id_idx")
+  @@index([source, occurredAt, id], map: "audit_event_source_occurredAt_id_idx")
+  @@index([result, occurredAt, id], map: "audit_event_result_occurredAt_id_idx")
+  @@index([severity, occurredAt, id], map: "audit_event_severity_occurredAt_id_idx")
+  @@index([action, occurredAt, id], map: "audit_event_action_occurredAt_id_idx")
+  @@index([entityType, entityId, occurredAt], map: "audit_event_entity_occurredAt_idx")
+  @@map("audit_event")
+}

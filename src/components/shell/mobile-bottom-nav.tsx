@@ -102,6 +102,11 @@ function BottomNavLink({
       href={item.href}
       prefetch
       aria-current={active ? "page" : undefined}
+      data-audit-action={`navigation${item.href.replace(/\//g, ".")}`}
+      data-audit-target={`bottom-nav${item.href}`}
+      data-audit-label={item.label}
+      data-audit-component="MobileBottomNav"
+      data-audit-type="nav-item"
       className={cn(
         itemClassName,
         controlMotion,
@@ -136,6 +141,11 @@ function CompaniesNavItem({ pathname }: { pathname: string }) {
     >
       <DrawerTrigger
         aria-current={active ? "page" : undefined}
+        data-audit-action="ui.bottom_nav_group_open"
+        data-audit-target={`bottom-nav-group.${group.id}`}
+        data-audit-label={group.label}
+        data-audit-component="MobileBottomNav"
+        data-audit-type="drawer-trigger"
         className={cn(
           itemClassName,
           controlMotion,

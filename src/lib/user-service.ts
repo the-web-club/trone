@@ -2,6 +2,8 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { randomBytes } from "node:crypto";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { getAuth } from "@/lib/auth";
 import { uploadImage } from "@/lib/blob";
 import { getPrismaClient } from "@/lib/db";
@@ -193,10 +195,24 @@ export async function updateUserImage(
   const user = await getUser(userId);
   const prisma = getPrismaClient();
   const image = file ? await uploadImage(file, `avatars/${user.id}`) : null;
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: user.id },
     data: { image },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "USERS",
+    action: AUDIT_ACTIONS.userAvatarUpdate,
+    entityType: "user",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    // De blob-URL zelf voegt niets toe aan het log.
+    metadata: {
+      verwijderd: file === null,
+      eigenProfiel: actor.userId === updated.id,
+    },
+  });
+  return updated;
 }
 
 async function ensureUserSlug<T extends { id: string; name: string; slug: string | null }>(
@@ -314,7 +330,20 @@ export async function inviteUser(
     }
   }
 
-  await sendInvitation(created.user.id);
+  // Pas hier loggen: alle eerdere paden leveren een bestaand teamlid terug en
+  // zijn dus geen nieuwe uitnodiging.
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "USERS",
+    action: AUDIT_ACTIONS.userInvite,
+    entityType: "user",
+    entityId: created.user.id,
+    entityLabel: created.user.name,
+    severity: "NOTICE",
+    metadata: { rol: input.role },
+  });
+  // Niet via sendInvitation: dit is de eerste uitnodiging, geen herhaling.
+  await deliverInvitation(created.user.id);
   return created.user;
 }
 
@@ -332,7 +361,11 @@ async function createPasswordResetToken(userId: string, ttlMs: number) {
   return token;
 }
 
-export async function sendInvitation(userId: string) {
+/**
+ * Verstuurt de uitnodigingsmail en logt alleen de verzending. Zo krijgt een
+ * eerste uitnodiging geen `invite_resend`-event.
+ */
+async function deliverInvitation(userId: string) {
   const user = await getUser(userId);
   if (!user.isActive) {
     throw new AppError("Een gedeactiveerd teamlid kan geen uitnodiging ontvangen.", "VALIDATION");
@@ -349,6 +382,33 @@ export async function sendInvitation(userId: string) {
       name: user.name,
       url: invitationResetUrl(token, process.env.BETTER_AUTH_URL),
     }),
+  });
+
+  // Alleen de soort mail en de ontvanger; nooit het token of de uitnodigingslink.
+  await logAuditEvent({
+    eventType: "EMAIL_SENT",
+    category: "COMMUNICATION",
+    action: AUDIT_ACTIONS.emailSend,
+    entityType: "user",
+    entityId: user.id,
+    entityLabel: user.email,
+    metadata: { soort: "uitnodiging", geldigDagen: INVITATION_VALID_DAYS },
+  });
+
+  return user;
+}
+
+export async function sendInvitation(userId: string) {
+  const user = await deliverInvitation(userId);
+
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "USERS",
+    action: AUDIT_ACTIONS.userInviteResend,
+    entityType: "user",
+    entityId: user.id,
+    entityLabel: user.name,
+    metadata: { soort: "uitnodiging" },
   });
 }
 
@@ -371,6 +431,29 @@ export async function requestPasswordReset(email: string) {
       url: invitationResetUrl(token, process.env.BETTER_AUTH_URL),
     }),
   });
+
+  // Loopt zonder sessie: de actor is hier bewust de systeemactor. Nooit het
+  // token of de resetlink loggen, en alleen loggen als er echt een mail uitging.
+  await logAuditEvent({
+    eventType: "PASSWORD_RESET_REQUESTED",
+    category: "AUTH",
+    action: AUDIT_ACTIONS.passwordResetRequest,
+    entityType: "user",
+    entityId: user.id,
+    entityLabel: user.name,
+    severity: "NOTICE",
+    metadata: { geldigUren: PASSWORD_RESET_VALID_HOURS },
+  });
+
+  await logAuditEvent({
+    eventType: "EMAIL_SENT",
+    category: "COMMUNICATION",
+    action: AUDIT_ACTIONS.emailSend,
+    entityType: "user",
+    entityId: user.id,
+    entityLabel: user.email,
+    metadata: { soort: "wachtwoordreset" },
+  });
 }
 
 export async function updateUserRole(userId: string, role: UserRole, actorUserId: string) {
@@ -379,19 +462,59 @@ export async function updateUserRole(userId: string, role: UserRole, actorUserId
   if (user.role === "admin" && role !== "admin") {
     const remaining = await countActiveAdmins(userId);
     if (remaining === 0) {
+      // Een geweigerde rolwijziging is ook informatie: iemand probeerde het.
+      await logAuditEvent({
+        eventType: "UPDATE",
+        category: "USERS",
+        action: AUDIT_ACTIONS.userRoleChange,
+        result: "FAILURE",
+        entityType: "user",
+        entityId: user.id,
+        entityLabel: user.name,
+        metadata: {
+          reden: "Laatste beheerder",
+          vorige: user.role,
+          nieuwe: role,
+        },
+      });
       throw new AppError("De laatste beheerder kan geen andere rol krijgen.", "VALIDATION");
     }
   }
 
   if (userId === actorUserId && user.role === "admin" && role !== "admin") {
+    await logAuditEvent({
+      eventType: "UPDATE",
+      category: "USERS",
+      action: AUDIT_ACTIONS.userRoleChange,
+      result: "FAILURE",
+      entityType: "user",
+      entityId: user.id,
+      entityLabel: user.name,
+      metadata: {
+        reden: "Eigen beheerdersrol",
+        vorige: user.role,
+        nieuwe: role,
+      },
+    });
     throw new AppError("Je kunt je eigen beheerdersrol niet wijzigen.", "VALIDATION");
   }
 
   const prisma = getPrismaClient();
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: userId },
     data: { role },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "USERS",
+    action: AUDIT_ACTIONS.userRoleChange,
+    entityType: "user",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    severity: "NOTICE",
+    metadata: { vorige: user.role, nieuwe: updated.role },
+  });
+  return updated;
 }
 
 export async function setUserActive(
@@ -402,12 +525,33 @@ export async function setUserActive(
   const user = await getUser(userId);
 
   if (userId === actorUserId && !isActive) {
+    // Geweigerde deactivatie: relevant voor een beheerder om terug te zien.
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "USERS",
+      action: AUDIT_ACTIONS.userDeactivate,
+      result: "FAILURE",
+      entityType: "user",
+      entityId: user.id,
+      entityLabel: user.name,
+      metadata: { reden: "Eigen account" },
+    });
     throw new AppError("Je kunt jezelf niet deactiveren.", "VALIDATION");
   }
 
   if (user.role === "admin" && user.isActive && !isActive) {
     const remaining = await countActiveAdmins(userId);
     if (remaining === 0) {
+      await logAuditEvent({
+        eventType: "STATUS_CHANGED",
+        category: "USERS",
+        action: AUDIT_ACTIONS.userDeactivate,
+        result: "FAILURE",
+        entityType: "user",
+        entityId: user.id,
+        entityLabel: user.name,
+        metadata: { reden: "Laatste beheerder" },
+      });
       throw new AppError("De laatste beheerder kan niet worden gedeactiveerd.", "VALIDATION");
     }
   }
@@ -423,9 +567,26 @@ export async function setUserActive(
     },
   });
 
+  let purgedSessions = 0;
   if (!isActive) {
-    await prisma.session.deleteMany({ where: { userId } });
+    const purged = await prisma.session.deleteMany({ where: { userId } });
+    purgedSessions = purged.count;
   }
+
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "USERS",
+    action: isActive ? AUDIT_ACTIONS.userActivate : AUDIT_ACTIONS.userDeactivate,
+    entityType: "user",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    severity: "NOTICE",
+    metadata: {
+      actief: isActive,
+      vorige: user.isActive,
+      sessiesVerwijderd: purgedSessions,
+    },
+  });
 
   return updated;
 }

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { requireSession } from "@/lib/auth-session";
 import { isAppError } from "@/lib/errors";
 import { renderQuotePdf } from "@/lib/quote-pdf";
@@ -22,6 +24,20 @@ export async function GET(
     const letterhead = await getLetterhead();
     const view = toQuotePdfView(quote, { versionNumber, letterhead });
     const pdf = await renderQuotePdf(view);
+
+    // Een PDF-download is een export van klantgegevens; die hoort in het log.
+    await logAuditEvent({
+      eventType: "EXPORT_COMPLETED",
+      category: "IMPORT_EXPORT",
+      action: AUDIT_ACTIONS.quoteExportPdf,
+      source: "API",
+      httpMethod: "GET",
+      route: new URL(request.url).pathname,
+      entityType: "quote",
+      entityId: quote.id,
+      entityLabel: quote.quoteNumber,
+      metadata: { versie: versionNumber ?? quote.currentVersionNumber },
+    });
 
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,

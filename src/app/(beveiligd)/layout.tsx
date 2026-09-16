@@ -1,3 +1,4 @@
+import { AuditTracker } from "@/components/audit/audit-tracker";
 import { AppShell } from "@/components/shell/app-shell";
 import { requireSession } from "@/lib/auth-session";
 
@@ -19,6 +20,11 @@ export default async function BeveiligdLayout({
           : null
       }
     >
+      {/*
+        Centrale client-side tracker. Staat hier zodat elke beveiligde pagina
+        hem meekrijgt en er geen losse logging per pagina nodig is.
+      */}
+      <AuditTracker />
       {children}
     </AppShell>
   );

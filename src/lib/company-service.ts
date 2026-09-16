@@ -1,7 +1,9 @@
 import "server-only";
 
 import { cache } from "react";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { nextCompanySlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
@@ -120,9 +122,9 @@ export async function companyNamesByIds(
     where: { id: { in: unique } },
     select: { id: true, name: true },
   });
+  return new Map(rows.map((row) => [row.id, row.name]));
 }
 
-  return new Map(rows.map((row) => [row.id, row.name]));
 export type CompanyListFilters = {
   query?: string;
   city?: string;
@@ -222,8 +224,6 @@ export function resolveCompanyListWhere(
   return where;
 }
 
-export async function listCompanyRows(
-  filters: CompanyListFilters = {},
 const companyRowSelect = {
   id: true,
   slug: true,
@@ -236,6 +236,8 @@ const companyRowSelect = {
   _count: { select: { contacts: true, deals: true } },
 } satisfies Prisma.CompanySelect;
 
+export async function listCompanyRows(
+  filters: CompanyListFilters = {},
   currentUserId?: string,
 ): Promise<
   PagedList<{
@@ -255,8 +257,6 @@ const companyRowSelect = {
     filters.page,
     filters.pageSize,
   );
-
-  const [total, items] = await Promise.all([
   const leads = parseCompanyLeadsFilter(filters.leads);
 
   // Exacte of 5+-bucket: de database bepaalt de pagina, wij halen die rijen op.
@@ -268,7 +268,7 @@ const companyRowSelect = {
       take,
     );
     if (ids.length === 0) return { items: [], total, page, pageSize };
-    prisma.company.count({ where }),
+
     const rows = await prisma.company.findMany({
       where: { id: { in: ids } },
       select: companyRowSelect,
@@ -282,6 +282,8 @@ const companyRowSelect = {
   }
 
   const where = resolveCompanyListWhere(filters, currentUserId);
+  const [total, items] = await Promise.all([
+    prisma.company.count({ where }),
     prisma.company.findMany({
       where,
       orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -330,13 +332,13 @@ export type CompanyFilterFacets = CompanyOwnerFacets & {
   classificationStale: boolean;
 };
 
-export async function getCompanyFilterFacets(
-  filters: CompanyListFilters = {},
 /**
  * Alle bedrijfsfacetten in één gebundelde set aggregatiequery's. Elke
  * dimensie negeert zijn eigen filter; de `leads`-bucket blijft wel staan
  * behalve in zijn eigen facet.
  */
+export async function getCompanyFilterFacets(
+  filters: CompanyListFilters = {},
   currentUserId?: string,
 ): Promise<CompanyFilterFacets> {
   const bucket = companyLeadBucketSql(filters.leads);
@@ -538,6 +540,27 @@ export async function validateCompanyVat(
     },
   });
 
+  // Externe aanroep naar VIES: een integratie-event, met de uitkomst maar
+  // zonder het btw-nummer zelf.
+  // ONBEKEND betekent dat VIES geen uitspraak deed (dienst onbereikbaar of
+  // niet-EU); dat is geen fout van ons, maar wel een onvolledige uitkomst.
+  const viesUnknown = result.status === "ONBEKEND";
+  await logAuditEvent({
+    eventType: "INTEGRATION_CALL",
+    category: "INTEGRATION",
+    action: AUDIT_ACTIONS.integrationVies,
+    entityType: "company",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    result: viesUnknown ? "PARTIAL" : "SUCCESS",
+    metadata: {
+      status: result.status,
+      land: country,
+      regime: treatment.vatRegime,
+      tariefToegepast: applyRate,
+    },
+  });
+
   return {
     company: updated,
     result,
@@ -578,6 +601,22 @@ export async function createCompany(
         company.id,
         input.relationTypes,
       );
+      // Alleen loggen op het echte create-pad: bij een herhaalde submissie
+      // levert createWithSubmissionId het bestaande record terug zonder deze
+      // callback aan te roepen, en dan is er ook geen nieuw event.
+      await logAuditEvent({
+        eventType: "CREATE",
+        category: "COMPANIES",
+        action: AUDIT_ACTIONS.companyCreate,
+        entityType: "company",
+        entityId: company.id,
+        entityLabel: company.name,
+        metadata: {
+          slug: company.slug,
+          land: company.country,
+          eigenaar: company.ownerUserId,
+        },
+      });
       return company;
     },
   });
@@ -603,6 +642,16 @@ export async function setCompanyOwner(id: string, ownerUserId: string | null) {
     where: { id: company.id },
     data: { ownerUserId: nextOwnerId },
   });
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "COMPANIES",
+    action: AUDIT_ACTIONS.companyOwnerChange,
+    entityType: "company",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    metadata: { vorige: company.ownerUserId, nieuwe: nextOwnerId },
+  });
+  return updated;
 }
 
 export async function updateCompany(id: string, input: CompanyInput) {
@@ -651,7 +700,46 @@ export async function updateCompany(id: string, input: CompanyInput) {
     updated.id,
     input.relationTypes,
   );
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "COMPANIES",
+    action: AUDIT_ACTIONS.companyUpdate,
+    entityType: "company",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    // Alleen wélke velden veranderden, niet de ingevulde waarden.
+    metadata: {
+      velden: changedCompanyFields(current, updated),
+      btwIdentiteitGewijzigd: vatIdentityChanged,
+    },
+  });
   return updated;
+}
+
+/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
+function changedCompanyFields(
+  before: { [key: string]: unknown },
+  after: { [key: string]: unknown },
+): string[] {
+  const tracked = [
+    "name",
+    "email",
+    "phone",
+    "website",
+    "vatNumber",
+    "cocNumber",
+    "addressLine",
+    "postalCode",
+    "city",
+    "country",
+    "vatRate",
+    "industryCode",
+    "sectorCode",
+    "notes",
+  ];
+  return tracked.filter(
+    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
+  );
 }
 
 function countLabel(count: number, one: string, many: string): string | null {
@@ -681,6 +769,17 @@ export async function deleteCompany(id: string) {
 
   if (related.length > 0) {
     const total = quotes + orders + invoices;
+    // Een geweigerde verwijdering is ook informatie: iemand probeerde het.
+    await logAuditEvent({
+      eventType: "DELETE",
+      category: "COMPANIES",
+      action: AUDIT_ACTIONS.companyDelete,
+      result: "FAILURE",
+      entityType: "company",
+      entityId: current.id,
+      entityLabel: current.name,
+      metadata: { reden: "Nog gekoppelde records", aantal: total },
+    });
     throw new AppError(
       `Dit bedrijf kan niet worden verwijderd omdat er nog ${joinNlAnd(related)} aan gekoppeld ${total === 1 ? "is" : "zijn"}.`,
       "CONFLICT",
@@ -689,31 +788,15 @@ export async function deleteCompany(id: string) {
   }
 
   await prisma.company.delete({ where: { id: current.id } });
+  await logAuditEvent({
+    eventType: "DELETE",
+    category: "COMPANIES",
+    action: AUDIT_ACTIONS.companyDelete,
+    entityType: "company",
+    entityId: current.id,
+    entityLabel: current.name,
+    severity: "NOTICE",
+    metadata: { slug: current.slug, land: current.country },
+  });
   return current;
 }
-/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
-function changedCompanyFields(
-  before: { [key: string]: unknown },
-  after: { [key: string]: unknown },
-): string[] {
-  const tracked = [
-    "name",
-    "email",
-    "phone",
-    "website",
-    "vatNumber",
-    "cocNumber",
-    "addressLine",
-    "postalCode",
-    "city",
-    "country",
-    "vatRate",
-    "industryCode",
-    "sectorCode",
-    "notes",
-  ];
-  return tracked.filter(
-    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
-  );
-}
-

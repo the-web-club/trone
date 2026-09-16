@@ -27,6 +27,9 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/db", () => ({
   getPrismaClient: () => ({
+    // De feedback-mutaties schrijven ook audit-events; zonder deze delegate
+    // slikt logAuditEvent de fout in en logt hij naar stderr tijdens de test.
+    auditEvent: { create: vi.fn(), createMany: vi.fn() },
     featureRequest: {
       findUnique: mockFindUnique,
       findFirst: mockFindFirst,

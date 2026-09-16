@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import { normalizeDateOnlyInput, startOfCalendarDate } from "@/lib/date-input";
 import { getPrismaClient } from "@/lib/db";
 import {
@@ -666,6 +668,23 @@ async function main() {
   console.log("Bedrijven:", bedrijven);
   console.log("Leads:    ", leads);
 
+  // Bron SYSTEM en geen actor: dit script draait buiten een request, dus er is
+  // geen sessie. Alleen de bestandsnamen en tellingen gaan het log in, nooit
+  // rijinhoud uit de CSV. Bij --dry-run wordt er niets geschreven, ook geen event.
+  if (!dryRun) {
+    await logAuditEvent({
+      eventType: "IMPORT_STARTED",
+      category: "IMPORT_EXPORT",
+      action: AUDIT_ACTIONS.importLeads,
+      source: "SYSTEM",
+      entityType: "company",
+      metadata: {
+        bedrijvenBestand: basename(bedrijven),
+        leadsBestand: basename(leads),
+      },
+    });
+  }
+
   const { stats: companyStats, unrecognized, codes } = await importCompanies(
     bedrijven,
     dryRun,
@@ -675,6 +694,27 @@ async function main() {
 
   const leadStats = await importLeads(leads, codes, dryRun);
   printStats("Leads", leadStats, { linked: true, notes: true });
+
+  if (!dryRun) {
+    const errors = companyStats.errors.length + leadStats.errors.length;
+    await logAuditEvent({
+      eventType: errors > 0 ? "IMPORT_FAILED" : "IMPORT_COMPLETED",
+      category: "IMPORT_EXPORT",
+      action: AUDIT_ACTIONS.importLeads,
+      source: "SYSTEM",
+      result: errors > 0 ? "PARTIAL" : "SUCCESS",
+      entityType: "company",
+      metadata: {
+        bedrijvenAangemaakt: companyStats.created,
+        bedrijvenBijgewerkt: companyStats.updated,
+        bedrijvenOvergeslagen: companyStats.skipped,
+        leadsAangemaakt: leadStats.created,
+        leadsBijgewerkt: leadStats.updated,
+        leadsOvergeslagen: leadStats.skipped,
+        fouten: errors,
+      },
+    });
+  }
 }
 
 main()

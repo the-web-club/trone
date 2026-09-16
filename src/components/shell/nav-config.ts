@@ -87,6 +87,7 @@ const pageTitles: Array<{ href: string; label: string }> = [
   { href: "/instellingen/medewerkers", label: "Teamleden" },
   { href: "/instellingen/drempels", label: "Drempels" },
   { href: "/instellingen/bedrijfsgegevens", label: "Bedrijfsgegevens" },
+  { href: "/instellingen/logs", label: "Logs" },
 ];
 
 const overviewPaths = new Set([

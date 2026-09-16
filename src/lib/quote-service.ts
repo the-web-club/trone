@@ -1,14 +1,16 @@
 import "server-only";
 
 import type { Prisma, QuoteStatus } from "@/generated/prisma/client";
+import { logAuditEvent } from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
 import {
   endExclusiveOfCalendarDate,
   normalizeDateOnlyInput,
   startOfCalendarDate,
 } from "@/lib/date-input";
+import { companyNamesByIds } from "@/lib/company-service";
 import { AppError } from "@/lib/errors";
 import { createId, isUuid, whereIdOrQuoteNumber } from "@/lib/id";
-import { companyNamesByIds } from "@/lib/company-service";
 import { getPrismaClient } from "@/lib/db";
 import { paginateArgs } from "@/lib/list-query";
 import { loadPricingContext } from "@/lib/pricing-context";
@@ -285,11 +287,11 @@ export async function getQuoteFilterFacets(
       _count: { _all: true },
     }),
   ]);
-  return {
-    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
   const names = await companyNamesByIds(
     companyGroups.map((group) => group.companyId),
   );
+  return {
+    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
     byStatus: statusGroups.map((group) => ({
       value: group.status,
       count: group._count._all,
@@ -300,9 +302,9 @@ export async function getQuoteFilterFacets(
     ),
     byCompany: companyGroups.map((group) => ({
       value: group.companyId,
+      label: names.get(group.companyId) ?? group.companyId,
       count: group._count._all,
     })),
-      label: names.get(group.companyId) ?? group.companyId,
   };
 }
 
@@ -753,12 +755,38 @@ export async function createQuote(input: QuoteInput, userId?: string) {
   });
 
   await syncDealValueFromQuotes(input.dealId ?? null);
-  return getQuote(quoteId);
+  const quote = await getQuote(quoteId);
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.quoteCreate,
+    entityType: "quote",
+    entityId: quote.id,
+    entityLabel: quote.quoteNumber,
+    metadata: {
+      bedrijf: quote.companyId,
+      lead: quote.dealId,
+      regels: quote.items.length,
+      totaal: Number(quote.total),
+    },
+  });
+  return quote;
 }
 
 export async function editDraft(id: string, input: QuoteInput, userId?: string) {
   const current = await getQuote(id);
   if (current.status !== "DRAFT") {
+    // Een bewerkpoging op een vastgelegde offerte is zelf ook informatie.
+    await logAuditEvent({
+      eventType: "UPDATE",
+      category: "DATA",
+      action: AUDIT_ACTIONS.quoteUpdate,
+      result: "FAILURE",
+      entityType: "quote",
+      entityId: current.id,
+      entityLabel: current.quoteNumber,
+      metadata: { reden: "Offerte is geen concept", status: current.status },
+    });
     throw new AppError("Alleen een conceptofferte kan worden gewijzigd.", "VALIDATION");
   }
 
@@ -823,7 +851,21 @@ export async function editDraft(id: string, input: QuoteInput, userId?: string) 
     await syncDealValueFromQuotes(current.dealId);
   }
 
-  return getQuote(id);
+  const quote = await getQuote(id);
+  await logAuditEvent({
+    eventType: "UPDATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.quoteUpdate,
+    entityType: "quote",
+    entityId: quote.id,
+    entityLabel: quote.quoteNumber,
+    metadata: {
+      regels: quote.items.length,
+      totaal: Number(quote.total),
+      bedrijfGewijzigd: current.companyId !== input.companyId,
+    },
+  });
+  return quote;
 }
 
 export async function updateQuote(id: string, input: QuoteInput, userId?: string) {
@@ -833,6 +875,17 @@ export async function updateQuote(id: string, input: QuoteInput, userId?: string
 export async function sendQuote(id: string, userId?: string) {
   const current = await getQuote(id);
   if (current.status !== "DRAFT") {
+    // Een tweede verzendpoging op een al verstuurde offerte hoort in het log.
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "DATA",
+      action: AUDIT_ACTIONS.quoteSend,
+      result: "FAILURE",
+      entityType: "quote",
+      entityId: current.id,
+      entityLabel: current.quoteNumber,
+      metadata: { reden: "Offerte is geen concept", status: current.status },
+    });
     throw new AppError("Alleen een conceptofferte kan worden verstuurd.", "VALIDATION");
   }
   if (current.items.length === 0) {
@@ -947,7 +1000,23 @@ export async function sendQuote(id: string, userId?: string) {
     companyId: current.companyId,
   });
 
-  return getQuote(id);
+  const sent = await getQuote(id);
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "DATA",
+    action: AUDIT_ACTIONS.quoteSend,
+    entityType: "quote",
+    entityId: sent.id,
+    entityLabel: sent.quoteNumber,
+    // De versie die met het versturen is vastgelegd.
+    metadata: {
+      versie: sent.currentVersionNumber,
+      vorige: current.status,
+      nieuwe: sent.status,
+      totaal: Number(sent.total),
+    },
+  });
+  return sent;
 }
 
 export async function createRevision(id: string) {
@@ -957,6 +1026,16 @@ export async function createRevision(id: string) {
     quote.status !== "REJECTED" &&
     quote.status !== "EXPIRED"
   ) {
+    await logAuditEvent({
+      eventType: "CREATE",
+      category: "DATA",
+      action: AUDIT_ACTIONS.quoteRevision,
+      result: "FAILURE",
+      entityType: "quote",
+      entityId: quote.id,
+      entityLabel: quote.quoteNumber,
+      metadata: { reden: "Status staat geen nieuwe versie toe", status: quote.status },
+    });
     throw new AppError(
       "Een nieuwe versie kan alleen van een verstuurde of afgewezen offerte.",
       "VALIDATION",
@@ -1009,7 +1088,21 @@ export async function createRevision(id: string) {
     });
   });
 
-  return getQuote(id);
+  const revised = await getQuote(id);
+  await logAuditEvent({
+    eventType: "CREATE",
+    category: "DATA",
+    action: AUDIT_ACTIONS.quoteRevision,
+    entityType: "quote",
+    entityId: revised.id,
+    entityLabel: revised.quoteNumber,
+    metadata: {
+      versie: nextNumber,
+      vorigeVersie: last.versionNumber,
+      totaal: Number(revised.total),
+    },
+  });
+  return revised;
 }
 
 export async function updateQuoteStatus(
@@ -1032,6 +1125,17 @@ export async function updateQuoteStatus(
 
   const quote = await getQuoteWithVersions(id);
   if (quote.status !== "SENT") {
+    // Geweigerde statusovergang: zichtbaar houden wie wat probeerde.
+    await logAuditEvent({
+      eventType: "STATUS_CHANGED",
+      category: "DATA",
+      action: AUDIT_ACTIONS.quoteStatusChange,
+      result: "FAILURE",
+      entityType: "quote",
+      entityId: quote.id,
+      entityLabel: quote.quoteNumber,
+      metadata: { vorige: quote.status, gevraagd: status },
+    });
     throw new AppError(
       "Alleen een verzonden offerte kan worden afgerond.",
       "VALIDATION",
@@ -1075,5 +1179,19 @@ export async function updateQuoteStatus(
   }
 
   await syncDealValueFromQuotes(quote.dealId);
-  return getQuote(id);
+  const updated = await getQuote(id);
+  await logAuditEvent({
+    eventType: "STATUS_CHANGED",
+    category: "DATA",
+    action: AUDIT_ACTIONS.quoteStatusChange,
+    entityType: "quote",
+    entityId: updated.id,
+    entityLabel: updated.quoteNumber,
+    metadata: {
+      vorige: quote.status,
+      nieuwe: updated.status,
+      versie: updated.currentVersionNumber,
+    },
+  });
+  return updated;
 }
