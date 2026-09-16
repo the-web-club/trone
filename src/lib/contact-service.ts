@@ -13,6 +13,7 @@ import {
 } from "@/lib/contact-company";
 import type { ContactInput } from "@/lib/contact-validation";
 import { createWithSubmissionId } from "@/lib/idempotent-create";
+import { contactClassificationWhere } from "@/lib/classification-where";
 import type { ContactOwnerFacets } from "@/lib/contacts-query";
 import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
 
@@ -55,6 +56,9 @@ export type ContactListFilters = {
   query?: string;
   companyId?: string;
   eigenaar?: string;
+  industries?: string[];
+  sectors?: string[];
+  applications?: string[];
   page?: number;
   pageSize?: number;
 };
@@ -89,6 +93,13 @@ export function buildContactListWhere(
     and.push({ ownerUserId: eigenaar });
   }
 
+  const classification = contactClassificationWhere({
+    industries: filters.industries ?? [],
+    sectors: filters.sectors ?? [],
+    applications: filters.applications ?? [],
+  });
+  if (classification) and.push(classification);
+
   return and.length ? { AND: and } : {};
 }
 
@@ -115,7 +126,15 @@ export async function listContactRows(
         lastName: true,
         email: true,
         ownerUserId: true,
-        company: { select: { id: true, slug: true, name: true } },
+        company: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            industryCode: true,
+            sectorCode: true,
+          },
+        },
       },
       skip,
       take,
@@ -168,7 +187,15 @@ export const getContact = cache(
     const contact = await prisma.contact.findUnique({
       where: whereIdOrSlug(id),
       include: {
-        company: { select: { id: true, slug: true, name: true } },
+        company: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            industryCode: true,
+            sectorCode: true,
+          },
+        },
         deals: {
           orderBy: { createdAt: "desc" },
           select: {

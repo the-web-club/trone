@@ -32,6 +32,15 @@ export function firstSearchParam(
   return value ?? "";
 }
 
+export function allSearchParams(
+  params: Record<string, string | string[] | undefined>,
+  key: string,
+): string[] {
+  const value = params[key];
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 export function parsePageParam(value: string | null | undefined): number {
   return Math.max(Number(value || "1") || 1, 1);
 }

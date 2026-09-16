@@ -7,6 +7,11 @@ import {
   deleteDealAction,
   patchDealAction,
 } from "@/app/(beveiligd)/actions/deal-actions";
+import { patchCompanyAction } from "@/app/(beveiligd)/actions/company-actions";
+import {
+  CompanyIndustrySectorFields,
+  DealApplicationsField,
+} from "@/components/classification/classification-fields";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import { DetailActionMenu, detailMenuButtonClassName } from "@/components/detail/detail-action-menu";
 import { Button } from "@/components/ui/button";
@@ -53,7 +58,14 @@ export type LeadDetailRecord = {
   valueEstimate: number | null;
   valueEstimateLabel: string;
   quotedTotal: number | null;
-  company: { id: string; slug: string; name: string } | null;
+  applications: string[];
+  company: {
+    id: string;
+    slug: string;
+    name: string;
+    industryCode: string | null;
+    sectorCode: string | null;
+  } | null;
   contact: {
     id: string;
     slug: string;
@@ -76,6 +88,8 @@ export type LeadDetailCompany = {
   id: string;
   slug: string;
   name: string;
+  industryCode?: string | null;
+  sectorCode?: string | null;
 };
 
 export type LeadDetailContact = {
@@ -224,6 +238,7 @@ export function LeadDetail({
                 deal={deal}
                 relationOptions={relationOptions}
                 save={save}
+                canEdit={canEdit}
               />
             </Suspense>
             <LeadQualification
@@ -244,12 +259,15 @@ function LeadDetailFields({
   deal,
   relationOptions,
   save,
+  canEdit,
 }: {
   deal: LeadDetailRecord;
   relationOptions: Promise<LeadRelationOptions>;
   save: (patch: DealPatch) => Promise<string | null>;
+  canEdit: boolean;
 }) {
   const { sources, companies, contacts } = use(relationOptions);
+  const router = useRouter();
   const relation = useCompanyContactFields({
     initialCompanyId: deal.companyId,
     initialContactId: deal.contactId,
@@ -410,6 +428,42 @@ function LeadDetailFields({
           }}
           onSave={saveCompany}
         />
+        {relation.companyId ? (
+          <CompanyIndustrySectorFields
+            industryCode={
+              company?.id === relation.companyId
+                ? (company.industryCode ?? null)
+                : null
+            }
+            sectorCode={
+              company?.id === relation.companyId
+                ? (company.sectorCode ?? null)
+                : null
+            }
+            disabled={!canEdit}
+            hint="Bedrijfsgegevens. Geldt voor dit bedrijf en alle gekoppelde aanvragen."
+            onSaveIndustry={async (next) => {
+              const result = await patchCompanyAction(relation.companyId, {
+                industryCode: next || null,
+                sectorCode:
+                  company?.id === relation.companyId
+                    ? (company.sectorCode ?? null)
+                    : null,
+              });
+              if (result.error) return result.error;
+              router.refresh();
+              return null;
+            }}
+            onSaveSector={async (next) => {
+              const result = await patchCompanyAction(relation.companyId, {
+                sectorCode: next || null,
+              });
+              if (result.error) return result.error;
+              router.refresh();
+              return null;
+            }}
+          />
+        ) : null}
         <InlineSelectField
           label="Contact"
           value={relation.contactId}
@@ -457,6 +511,11 @@ function LeadDetailFields({
             {deal.valueEstimateLabel}
           </DetailValueField>
         )}
+        <DealApplicationsField
+          values={deal.applications}
+          disabled={!canEdit}
+          onSave={(applications) => save({ applications })}
+        />
       </DetailFieldGrid>
       <CreateCompanyDialog
         showTrigger={false}

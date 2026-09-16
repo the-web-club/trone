@@ -28,6 +28,9 @@ export async function GET(request: Request) {
         datumveld: parsed.datumveld,
         sortering: parsed.sortering,
         leadscore: parsed.leadscore,
+        industries: parsed.branche,
+        sectors: parsed.sector,
+        applications: parsed.toepassing,
       },
       session.user.id,
     );

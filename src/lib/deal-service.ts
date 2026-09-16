@@ -8,9 +8,15 @@ import {
   parseAmountInput,
   startOfCalendarDate,
 } from "@/lib/date-input";
+import {
+  formatApplicationLabels,
+  getIndustryLabel,
+  getSectorLabel,
+} from "@/lib/classification";
 import { nextDealSlug } from "@/lib/entity-slug";
 import { getContactCompanyId } from "@/lib/contact-company";
 import { getPrismaClient } from "@/lib/db";
+import { dealClassificationWhere } from "@/lib/classification-where";
 import {
   assertDealContactCompany,
   dealCreationMatches,
@@ -42,11 +48,13 @@ import type {
   DealDateField,
   DealSort,
   DealStatusFilter,
+  DealsFilterValues,
 } from "@/lib/deals-query";
 import {
   effectiveDealValue,
   sumActiveQuoteTotals,
 } from "@/lib/deal-value";
+import { KANBAN_COLUMN_PAGE_SIZE } from "@/lib/kanban-deal";
 
 export const listDealStages = cache(
   async function listDealStages() {
@@ -120,6 +128,9 @@ export type DealListFilters = {
   datumveld?: DealDateField;
   sortering?: DealSort;
   leadscore?: LeadScoreFilter | "";
+  industries?: string[];
+  sectors?: string[];
+  applications?: string[];
   page?: number;
   pageSize?: number;
 };
@@ -146,10 +157,19 @@ const dealListSelect = {
   leadScore: true,
   leadScoreAssessed: true,
   leadScoreNoMatch: true,
-  company: { select: { id: true, slug: true, name: true } },
+  company: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      industryCode: true,
+      sectorCode: true,
+    },
+  },
   contact: { select: { id: true, slug: true, firstName: true, lastName: true } },
   stage: { select: { id: true, name: true, isWon: true, isLost: true } },
   source: { select: { id: true, name: true } },
+  applications: { select: { code: true } },
   quotes: {
     orderBy: { updatedAt: "desc" as const },
     select: { id: true, quoteNumber: true, status: true, total: true },
@@ -159,6 +179,29 @@ const dealListSelect = {
 export const DEAL_LIST_PAGE_SIZE = 25;
 const KANBAN_LIST_CAP = 1000;
 const DEAL_CSV_EXPORT_CAP = 5000;
+const KANBAN_EXCLUDE_ID_CAP = 2000;
+
+export function dealListFiltersFromValues(
+  values: DealsFilterValues,
+): Omit<DealListFilters, "page" | "pageSize"> {
+  return {
+    zoeken: values.zoeken,
+    stageId: values.fase || undefined,
+    sourceId: values.bron || undefined,
+    eigenaar: values.eigenaar,
+    status: values.status,
+    waardeMin: values.waardeMin || undefined,
+    waardeMax: values.waardeMax || undefined,
+    van: values.van || undefined,
+    tot: values.tot || undefined,
+    datumveld: values.datumveld,
+    sortering: values.sortering,
+    leadscore: values.leadscore,
+    industries: values.branche,
+    sectors: values.sector,
+    applications: values.toepassing,
+  };
+}
 
 function normalizeSearch(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -250,6 +293,13 @@ export function buildDealListWhere(
     and.push(leadScoreFilterWhereInput(filters.leadscore));
   }
 
+  const classification = dealClassificationWhere({
+    industries: filters.industries ?? [],
+    sectors: filters.sectors ?? [],
+    applications: filters.applications ?? [],
+  });
+  if (classification) and.push(classification);
+
   return and.length > 0 ? { AND: and } : {};
 }
 
@@ -324,6 +374,70 @@ export async function listAllDeals(
   ]);
 
   return { items, total, capped: total > items.length };
+}
+
+export async function listKanbanDeals(
+  filters: Omit<DealListFilters, "page" | "pageSize" | "stageId"> = {},
+  currentUserId?: string,
+): Promise<{ items: DealListItem[]; total: number }> {
+  const prisma = getPrismaClient();
+  const where = buildDealListWhere(filters, currentUserId);
+  const orderBy = buildDealOrderBy(filters.sortering);
+  const stages = await listDealStages();
+
+  const [total, columns] = await Promise.all([
+    prisma.deal.count({ where }),
+    Promise.all(
+      stages.map((stage) =>
+        prisma.deal.findMany({
+          where: { AND: [where, { stageId: stage.id }] },
+          select: dealListSelect,
+          orderBy,
+          take: KANBAN_COLUMN_PAGE_SIZE,
+        }),
+      ),
+    ),
+  ]);
+
+  return { items: columns.flat(), total };
+}
+
+function uniqueExcludeIds(excludeIds: string[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const value of excludeIds) {
+    if (typeof value !== "string") continue;
+    const id = value.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+    if (ids.length >= KANBAN_EXCLUDE_ID_CAP) break;
+  }
+  return ids;
+}
+
+export async function listKanbanColumnPage(
+  filters: Omit<DealListFilters, "page" | "pageSize"> & { stageId: string },
+  currentUserId: string | undefined,
+  excludeIds: string[] = [],
+): Promise<{ items: DealListItem[] }> {
+  const prisma = getPrismaClient();
+  const stageId = filters.stageId.trim();
+  if (!stageId) return { items: [] };
+
+  const where = buildDealListWhere({ ...filters, stageId }, currentUserId);
+  const excluded = uniqueExcludeIds(excludeIds);
+  const pagedWhere: Prisma.DealWhereInput =
+    excluded.length > 0 ? { AND: [where, { id: { notIn: excluded } }] } : where;
+
+  const items = await prisma.deal.findMany({
+    where: pagedWhere,
+    select: dealListSelect,
+    orderBy: buildDealOrderBy(filters.sortering),
+    take: KANBAN_COLUMN_PAGE_SIZE,
+  });
+
+  return { items };
 }
 
 export type DealTeamMember = {
@@ -517,6 +631,8 @@ export async function exportDealsCsv(
   const header = [
     "Titel",
     "Bedrijf",
+    "Hoofdbranche",
+    "Sector",
     "Contact",
     "Fase",
     "Leadscore",
@@ -524,6 +640,7 @@ export async function exportDealsCsv(
     "Status",
     "Waarde",
     "Bron",
+    "Toepassingen",
     "Eigenaar",
     "Aangemaakt",
     "Verwachte sluiting",
@@ -544,6 +661,8 @@ export async function exportDealsCsv(
     return [
       deal.title,
       deal.company?.name ?? "",
+      getIndustryLabel(deal.company?.industryCode) ?? "",
+      getSectorLabel(deal.company?.industryCode, deal.company?.sectorCode) ?? "",
       contact,
       deal.stage.name,
       leadScoreFractionLabel(score) ?? "Niet beoordeeld",
@@ -551,6 +670,7 @@ export async function exportDealsCsv(
       deal.status,
       value == null ? "" : String(value),
       deal.source?.name ?? "",
+      formatApplicationLabels(deal.applications.map((item) => item.code)),
       owner,
       deal.createdAt.toISOString(),
       deal.expectedClose ? deal.expectedClose.toISOString().slice(0, 10) : "",
@@ -573,7 +693,15 @@ export const getDeal = cache(
     const deal = await prisma.deal.findUnique({
       where: whereIdOrSlug(id),
       include: {
-        company: { select: { id: true, slug: true, name: true } },
+        company: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            industryCode: true,
+            sectorCode: true,
+          },
+        },
         contact: {
           select: {
             id: true,
@@ -585,6 +713,7 @@ export const getDeal = cache(
         },
         stage: true,
         source: { select: { id: true, name: true } },
+        applications: { select: { code: true } },
         quotes: {
           orderBy: { createdAt: "desc" },
           include: {
@@ -652,6 +781,19 @@ async function assertDealRelations(input: DealInput) {
   return { stage, companyId };
 }
 
+async function replaceDealApplications(
+  prisma: ReturnType<typeof getPrismaClient>,
+  dealId: string,
+  codes: string[] | undefined,
+) {
+  if (codes === undefined) return;
+  await prisma.dealApplication.deleteMany({ where: { dealId } });
+  if (codes.length === 0) return;
+  await prisma.dealApplication.createMany({
+    data: codes.map((code) => ({ dealId, code })),
+  });
+}
+
 function isUniqueConstraintError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -700,7 +842,7 @@ export async function createDeal(
 
   const slug = await nextDealSlug(prisma, input.title);
   try {
-    return await prisma.deal.create({
+    const created = await prisma.deal.create({
       data: {
         id: createId(),
         slug,
@@ -715,6 +857,8 @@ export async function createDeal(
         ownerUserId: ownerUserId ?? null,
       },
     });
+    await replaceDealApplications(prisma, created.id, input.applications);
+    return created;
   } catch (error) {
     if (submissionId && isUniqueConstraintError(error)) {
       const existing = await prisma.deal.findUnique({
@@ -748,6 +892,7 @@ export async function updateDeal(id: string, input: DealInput, userId?: string) 
       status: statusForStage(stage),
     },
   });
+  await replaceDealApplications(prisma, updated.id, input.applications);
 
   if (current.stageId !== input.stageId) {
     await logEvent({

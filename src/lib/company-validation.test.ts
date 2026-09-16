@@ -82,6 +82,34 @@ describe("mergeCompanyPatch", () => {
     });
   });
 
+  it("verwijdert een ongeldige sector bij branchewijziging", () => {
+    const classified = mergeCompanyPatch(current, {
+      industryCode: "landbouw_tuinbouw_bosbouw",
+      sectorCode: "akkerbouw",
+    });
+    expect(classified.industryCode).toBe("landbouw_tuinbouw_bosbouw");
+    expect(classified.sectorCode).toBe("akkerbouw");
+    expect(
+      mergeCompanyPatch(classified, {
+        industryCode: "transport_logistiek",
+      }),
+    ).toEqual({
+      ...classified,
+      industryCode: "transport_logistiek",
+      sectorCode: undefined,
+    });
+  });
+
+  it("weigert een ongeldige sectorcombinatie zonder branchewijziging", () => {
+    const classified = mergeCompanyPatch(current, {
+      industryCode: "transport_logistiek",
+      sectorCode: "wegtransport",
+    });
+    expect(() =>
+      mergeCompanyPatch(classified, { sectorCode: "akkerbouw" }),
+    ).toThrow(AppError);
+  });
+
   it("weigert een lege naam", () => {
     expect(() => mergeCompanyPatch(current, { name: "   " })).toThrow(AppError);
   });

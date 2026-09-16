@@ -83,6 +83,7 @@ export default async function LeadDetailPage({
         ) ?? "—",
         company: deal.company,
         contact: deal.contact,
+        applications: deal.applications.map((item) => item.code),
         stage: {
           id: deal.stage.id,
           name: deal.stage.name,

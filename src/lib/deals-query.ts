@@ -7,7 +7,15 @@ import {
   firstSearchParam,
   parsePageParam,
   toListHref,
+  allSearchParams,
 } from "@/lib/list-query";
+import {
+  joinClassificationParam,
+  parseApplicationFilterValues,
+  parseClassificationParamValues,
+  parseIndustryFilterValues,
+  parseSectorFilterValues,
+} from "@/lib/classification";
 
 export type DealsView = "lijst" | "kanban";
 
@@ -32,6 +40,9 @@ export type DealsQueryValues = {
   datumveld?: string;
   sortering?: string;
   leadscore?: string;
+  branche?: string[] | string;
+  sector?: string[] | string;
+  toepassing?: string[] | string;
   pagina?: number;
   view?: DealsView | string | null;
 };
@@ -49,6 +60,9 @@ export type DealsFilterValues = {
   datumveld: DealDateField;
   sortering: DealSort;
   leadscore: LeadScoreFilter | "";
+  branche?: string[];
+  sector?: string[];
+  toepassing?: string[];
 };
 
 export function parseDealsView(
@@ -111,6 +125,15 @@ export function parseDealsSearchParams(
     datumveld: parseDealDateField(firstSearchParam(params, "datumveld")),
     sortering: parseDealSort(firstSearchParam(params, "sortering")),
     leadscore: parseLeadScoreFilter(firstSearchParam(params, "leadscore")),
+    branche: parseIndustryFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "branche")),
+    ),
+    sector: parseSectorFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "sector")),
+    ),
+    toepassing: parseApplicationFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "toepassing")),
+    ),
     pagina: parsePageParam(firstSearchParam(params, "pagina")),
     view,
   };
@@ -130,6 +153,15 @@ function buildDealsFilterQuery(values: DealsQueryValues): URLSearchParams {
   const datumveld = parseDealDateField(values.datumveld);
   const sortering = parseDealSort(values.sortering);
   const leadscore = parseLeadScoreFilter(values.leadscore);
+  const branche = parseIndustryFilterValues(
+    parseClassificationParamValues(values.branche),
+  );
+  const sector = parseSectorFilterValues(
+    parseClassificationParamValues(values.sector),
+  );
+  const toepassing = parseApplicationFilterValues(
+    parseClassificationParamValues(values.toepassing),
+  );
 
   if (zoeken) query.set("zoeken", zoeken);
   if (fase) query.set("fase", fase);
@@ -137,6 +169,9 @@ function buildDealsFilterQuery(values: DealsQueryValues): URLSearchParams {
   if (eigenaar !== "alle") query.set("eigenaar", eigenaar);
   if (status !== "alle") query.set("status", status);
   if (leadscore) query.set("leadscore", leadscore);
+  if (branche.length) query.set("branche", joinClassificationParam(branche));
+  if (sector.length) query.set("sector", joinClassificationParam(sector));
+  if (toepassing.length) query.set("toepassing", joinClassificationParam(toepassing));
   if (waardeMin != null) query.set("waarde-min", String(waardeMin));
   if (waardeMax != null) query.set("waarde-max", String(waardeMax));
   if (van) query.set("van", van);

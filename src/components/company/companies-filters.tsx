@@ -6,6 +6,12 @@ import {
 } from "@/components/list/list-filter-toolbar";
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
+import {
+  applicationFilterSelectOptions,
+  industryFilterSelectOptions,
+  sectorFilterSelectOptions,
+} from "@/components/classification/classification-filter-options";
 import {
   buildCompaniesHref,
   companyLeadsFilterLabel,
@@ -14,6 +20,11 @@ import {
   type CompanyLeadFacets,
   type CompanyOwnerFacets,
 } from "@/lib/companies-query";
+import {
+  applicationFilterLabel,
+  industryFilterLabel,
+  sectorFilterLabel,
+} from "@/lib/classification";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { countryLabel } from "@/lib/list-copy";
 
@@ -136,6 +147,30 @@ export function CompaniesFilters({
           onRemove: () => navigate({ leads: "alle" }),
         }
       : null,
+    values.branche?.length
+      ? {
+          key: "branche",
+          label: "Branche",
+          value: (values.branche ?? []).map(industryFilterLabel).join(", "),
+          onRemove: () => navigate({ branche: [] }),
+        }
+      : null,
+    values.sector?.length
+      ? {
+          key: "sector",
+          label: "Sector",
+          value: (values.sector ?? []).map(sectorFilterLabel).join(", "),
+          onRemove: () => navigate({ sector: [] }),
+        }
+      : null,
+    values.toepassing?.length
+      ? {
+          key: "toepassing",
+          label: "Toepassing",
+          value: (values.toepassing ?? []).map(applicationFilterLabel).join(", "),
+          onRemove: () => navigate({ toepassing: [] }),
+        }
+      : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
@@ -156,7 +191,10 @@ export function CompaniesFilters({
           values.plaats ||
           values.land ||
           values.eigenaar !== "alle" ||
-          values.leads !== "alle",
+          values.leads !== "alle" ||
+          values.branche?.length ||
+          values.sector?.length ||
+          values.toepassing?.length,
       )}
       onReset={() =>
         replace(
@@ -166,6 +204,9 @@ export function CompaniesFilters({
             land: "",
             eigenaar: "alle",
             leads: "alle",
+            branche: [],
+            sector: [],
+            toepassing: [],
             pagina: 1,
           }),
         )
@@ -205,6 +246,33 @@ export function CompaniesFilters({
           navigate({ leads: parseCompanyLeadsFilter(next) })
         }
         items={leadOptions}
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Branche"
+        aria-label="Filter op hoofdbranche"
+        values={values.branche ?? []}
+        onValuesChange={(branche) => navigate({ branche })}
+        items={industryFilterSelectOptions()}
+        placeholder="Alle"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Sector"
+        aria-label="Filter op sector"
+        values={values.sector ?? []}
+        onValuesChange={(sector) => navigate({ sector })}
+        items={sectorFilterSelectOptions()}
+        placeholder="Alle"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Toepassing"
+        aria-label="Filter op toepassing"
+        values={values.toepassing ?? []}
+        onValuesChange={(toepassing) => navigate({ toepassing })}
+        items={applicationFilterSelectOptions()}
+        placeholder="Alle"
         className="w-full md:w-auto"
       />
     </ListFilterToolbar>

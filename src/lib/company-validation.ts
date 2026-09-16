@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  normalizeIndustrySector,
+  parseClassificationParamValues,
+  parseRelationTypeCodes,
+} from "@/lib/classification";
 import { isIsoCountryCode, normalizeCountryCode } from "@/lib/countries";
 import { formInvalidFromZod, throwValidationFromZod } from "@/lib/form-validation";
 import type { FieldErrors } from "@/lib/form-submission";
@@ -27,6 +32,9 @@ export const companySchema = z.object({
     .refine(isIsoCountryCode, "Kies een land"),
   vatRate: z.coerce.number().min(0, "Btw moet 0 of hoger zijn").max(100, "Btw mag maximaal 100 zijn").default(21),
   notes: z.preprocess(emptyToUndefined, z.string().optional()),
+  industryCode: z.preprocess(emptyToUndefined, z.string().optional()),
+  sectorCode: z.preprocess(emptyToUndefined, z.string().optional()),
+  relationTypes: z.array(z.string()).optional(),
 });
 
 export type CompanyInput = z.infer<typeof companySchema>;
@@ -44,14 +52,48 @@ export type CompanyPatch = {
   country?: string;
   vatRate?: number;
   notes?: string | null;
+  industryCode?: string | null;
+  sectorCode?: string | null;
+  relationTypes?: string[];
 };
 
 export const COMPANY_VAT_RATE_OPTIONS = [0, 9, 21] as const;
 
-function parseCompanyInput(data: unknown): CompanyInput {
+function parseCompanyInput(
+  data: unknown,
+  previous?: { industryCode?: string | null; sectorCode?: string | null },
+): CompanyInput {
   const parsed = companySchema.safeParse(data);
   if (!parsed.success) throwValidationFromZod(parsed.error);
-  return parsed.data;
+  const raw =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const hasIndustrySector =
+    "industryCode" in raw || "sectorCode" in raw;
+  if (!hasIndustrySector) {
+    return {
+      ...parsed.data,
+      relationTypes:
+        "relationTypes" in raw
+          ? parseRelationTypeCodes(parsed.data.relationTypes ?? [])
+          : parsed.data.relationTypes,
+    };
+  }
+  const classification = normalizeIndustrySector(
+    {
+      industryCode: parsed.data.industryCode ?? null,
+      sectorCode: parsed.data.sectorCode ?? null,
+    },
+    previous,
+  );
+  return {
+    ...parsed.data,
+    industryCode: classification.industryCode ?? undefined,
+    sectorCode: classification.sectorCode ?? undefined,
+    relationTypes:
+      "relationTypes" in raw
+        ? parseRelationTypeCodes(parsed.data.relationTypes ?? [])
+        : parsed.data.relationTypes,
+  };
 }
 
 export function parseCompanyForm(formData: FormData): CompanyInput {
@@ -68,6 +110,19 @@ export function parseCompanyForm(formData: FormData): CompanyInput {
     country: formData.get("country") || "NL",
     vatRate: formData.get("vatRate") || 21,
     notes: formData.get("notes"),
+    ...(formData.has("industryCode") || formData.has("sectorCode")
+      ? {
+          industryCode: formData.get("industryCode"),
+          sectorCode: formData.get("sectorCode"),
+        }
+      : {}),
+    ...(formData.has("relationTypes")
+      ? {
+          relationTypes: parseClassificationParamValues(
+            formData.getAll("relationTypes").map((value) => String(value)),
+          ),
+        }
+      : {}),
   });
 }
 
@@ -84,6 +139,9 @@ export function companyRecordToInput(company: {
   country: string;
   vatRate: { toString(): string } | number | string;
   notes?: string | null;
+  industryCode?: string | null;
+  sectorCode?: string | null;
+  relationTypes?: Array<{ code: string }> | string[] | null;
 }): CompanyInput {
   const raw = company.vatRate;
   const vatRate = Number(typeof raw === "object" ? raw.toString() : raw);
@@ -101,6 +159,11 @@ export function companyRecordToInput(company: {
     country: company.country,
     vatRate,
     notes: company.notes ?? undefined,
+    industryCode: company.industryCode ?? undefined,
+    sectorCode: company.sectorCode ?? undefined,
+    relationTypes: (company.relationTypes ?? []).map((item) =>
+      typeof item === "string" ? item : item.code,
+    ),
   });
 }
 
@@ -116,20 +179,29 @@ export function mergeCompanyPatch(
   current: CompanyInput,
   patch: CompanyPatch,
 ): CompanyInput {
-  return parseCompanyInput({
-    name: patch.name ?? current.name,
-    email: mergeOptional(patch.email, current.email),
-    vatNumber: mergeOptional(patch.vatNumber, current.vatNumber),
-    cocNumber: mergeOptional(patch.cocNumber, current.cocNumber),
-    website: mergeOptional(patch.website, current.website),
-    phone: mergeOptional(patch.phone, current.phone),
-    addressLine: mergeOptional(patch.addressLine, current.addressLine),
-    postalCode: mergeOptional(patch.postalCode, current.postalCode),
-    city: mergeOptional(patch.city, current.city),
-    country: patch.country ?? current.country,
-    vatRate: patch.vatRate ?? current.vatRate,
-    notes: mergeOptional(patch.notes, current.notes),
-  });
+  return parseCompanyInput(
+    {
+      name: patch.name ?? current.name,
+      email: mergeOptional(patch.email, current.email),
+      vatNumber: mergeOptional(patch.vatNumber, current.vatNumber),
+      cocNumber: mergeOptional(patch.cocNumber, current.cocNumber),
+      website: mergeOptional(patch.website, current.website),
+      phone: mergeOptional(patch.phone, current.phone),
+      addressLine: mergeOptional(patch.addressLine, current.addressLine),
+      postalCode: mergeOptional(patch.postalCode, current.postalCode),
+      city: mergeOptional(patch.city, current.city),
+      country: patch.country ?? current.country,
+      vatRate: patch.vatRate ?? current.vatRate,
+      notes: mergeOptional(patch.notes, current.notes),
+      industryCode: mergeOptional(patch.industryCode, current.industryCode),
+      sectorCode: mergeOptional(patch.sectorCode, current.sectorCode),
+      relationTypes: patch.relationTypes ?? current.relationTypes ?? [],
+    },
+    {
+      industryCode: current.industryCode ?? null,
+      sectorCode: current.sectorCode ?? null,
+    },
+  );
 }
 
 /** Compacte intake vanaf de configurator: naam, telefoon, e-mail. */

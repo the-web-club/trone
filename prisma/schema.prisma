@@ -126,9 +126,12 @@ model Company {
   viesCheckedName  String?
   notes            String?   @db.Text
   ownerUserId     String?
+  industryCode    String?
+  sectorCode      String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  relationTypes CompanyRelationType[]
   contacts      Contact[]
   deals         Deal[]
   quotes        Quote[]
@@ -143,7 +146,20 @@ model Company {
   @@index([city])
   @@index([country])
   @@index([ownerUserId])
+  @@index([industryCode])
+  @@index([sectorCode])
+  @@index([industryCode, sectorCode])
   @@map("company")
+}
+
+model CompanyRelationType {
+  companyId String
+  code      String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, code])
+  @@index([code])
+  @@map("company_relation_type")
 }
 
 model Contact {
@@ -234,6 +250,7 @@ model Deal {
   contact    Contact?        @relation(fields: [contactId], references: [id])
   stage      DealStage       @relation(fields: [stageId], references: [id])
   source     LeadSource?     @relation(fields: [sourceId], references: [id])
+  applications   DealApplication[]
   activities     DealActivity[]
   quotes         Quote[]
   orders         Order[]
@@ -252,6 +269,16 @@ model Deal {
   @@index([leadScoreAssessed])
   @@index([leadScoreSort])
   @@map("deal")
+}
+
+model DealApplication {
+  dealId String
+  code   String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, code])
+  @@index([code])
+  @@map("deal_application")
 }
 
 enum ActivityType {

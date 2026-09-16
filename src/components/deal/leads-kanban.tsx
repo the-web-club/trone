@@ -13,10 +13,14 @@ import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { moveDealToStageAction } from "@/app/(beveiligd)/actions/deal-actions";
+import {
+  listKanbanColumnPageAction,
+  moveDealToStageAction,
+} from "@/app/(beveiligd)/actions/deal-actions";
 import { Lift, Stagger, StaggerItem } from "@/components/motion";
 import { controlMotion } from "@/components/motion/styles";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectMenu } from "@/components/ui/select";
 import { DealHotIcon } from "@/components/deal/deal-hot-icon";
@@ -24,16 +28,17 @@ import { LeadScoreView } from "@/components/deal/lead-score-view";
 import { CompanyLink } from "@/components/entity-links";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { formatEuro } from "@/lib/format";
-import { dealPath } from "@/lib/paths";
 import {
-  leadScoreFromDeal,
-  type LeadScoreAnswerFields,
-} from "@/lib/lead-score";
+  KANBAN_COLUMN_PAGE_SIZE,
+  type KanbanDeal,
+} from "@/lib/kanban-deal";
+import type { DealsFilterValues } from "@/lib/deals-query";
+import { dealPath } from "@/lib/paths";
+import { leadScoreFromDeal } from "@/lib/lead-score";
 import { cn } from "@/lib/cn";
 import {
   quoteStatusLabels,
   quoteStatusTones,
-  type QuoteStatusInput,
 } from "@/lib/quote-validation";
 
 export type KanbanStage = {
@@ -43,18 +48,7 @@ export type KanbanStage = {
   isLost: boolean;
 };
 
-export type KanbanDeal = {
-  id: string;
-  slug: string;
-  title: string;
-  stageId: string;
-  company: { slug: string; name: string } | null;
-  quoteStatus: QuoteStatusInput | null;
-  valueEstimate: number | null;
-  isHot: boolean;
-  ownerName: string | null;
-  ownerImage: string | null;
-} & LeadScoreAnswerFields;
+export type { KanbanDeal };
 
 function stageTone(stage: KanbanStage): "default" | "success" | "danger" {
   if (stage.isWon) return "success";
@@ -165,15 +159,22 @@ function DealCard({
 function StageColumn({
   stage,
   deals,
+  total,
   stages,
+  loading,
   onMove,
+  onLoadMore,
 }: {
   stage: KanbanStage;
   deals: KanbanDeal[];
+  total: number;
   stages: KanbanStage[];
+  loading: boolean;
   onMove: (dealId: string, stageId: string) => void;
+  onLoadMore: () => void;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `stage:${stage.id}` });
+  const remaining = Math.max(total - deals.length, 0);
 
   return (
     <section
@@ -186,7 +187,7 @@ function StageColumn({
     >
       <header className="mb-2 flex items-center justify-between gap-2 px-1">
         <h2 className="truncate text-sm font-medium text-fg">{stage.name}</h2>
-        <Badge tone={stageTone(stage)}>{deals.length}</Badge>
+        <Badge tone={stageTone(stage)}>{total}</Badge>
       </header>
       <Stagger className="flex flex-1 flex-col gap-2">
         {deals.map((deal) => (
@@ -195,6 +196,20 @@ function StageColumn({
           </StaggerItem>
         ))}
       </Stagger>
+      {remaining > 0 ? (
+        <div className="mt-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            loading={loading}
+            onClick={onLoadMore}
+          >
+            Laad meer
+            <span className="text-fg-muted">nog {remaining}</span>
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -202,18 +217,26 @@ function StageColumn({
 export function LeadsKanban({
   stages,
   deals,
+  stageTotals,
+  filters,
 }: {
   stages: KanbanStage[];
   deals: KanbanDeal[];
+  stageTotals: Record<string, number>;
+  filters: DealsFilterValues;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(deals);
   const [fromServer, setFromServer] = useState(deals);
+  const [totals, setTotals] = useState(stageTotals);
+  const [loadingStageId, setLoadingStageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (deals !== fromServer) {
     setFromServer(deals);
     setItems(deals);
+    setTotals(stageTotals);
+    setLoadingStageId(null);
   }
 
   const sensors = useSensors(
@@ -237,6 +260,11 @@ export function LeadsKanban({
     setItems((list) =>
       list.map((deal) => (deal.id === dealId ? { ...deal, stageId } : deal)),
     );
+    setTotals((currentTotals) => ({
+      ...currentTotals,
+      [current.stageId]: Math.max((currentTotals[current.stageId] ?? 1) - 1, 0),
+      [stageId]: (currentTotals[stageId] ?? 0) + 1,
+    }));
 
     const result = await moveDealToStageAction(dealId, stageId);
     if (result.error) {
@@ -245,10 +273,56 @@ export function LeadsKanban({
           deal.id === dealId ? { ...deal, stageId: current.stageId } : deal,
         ),
       );
+      setTotals((currentTotals) => ({
+        ...currentTotals,
+        [current.stageId]: (currentTotals[current.stageId] ?? 0) + 1,
+        [stageId]: Math.max((currentTotals[stageId] ?? 1) - 1, 0),
+      }));
       setError(result.error);
       return;
     }
     router.refresh();
+  }
+
+  async function loadMore(stageId: string) {
+    if (loadingStageId) return;
+
+    setError(null);
+    setLoadingStageId(stageId);
+    try {
+      const result = await listKanbanColumnPageAction(
+        filters,
+        stageId,
+        items.map((deal) => deal.id),
+      );
+
+      if ("error" in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      if (!("items" in result)) return;
+
+      const loadedBefore = items.filter((deal) => deal.stageId === stageId).length;
+      const existingIds = new Set(items.map((deal) => deal.id));
+      const appended = result.items.filter((deal) => !existingIds.has(deal.id));
+
+      setItems((list) => {
+        const seen = new Set(list.map((deal) => deal.id));
+        return [...list, ...result.items.filter((deal) => !seen.has(deal.id))];
+      });
+
+      if (result.items.length < KANBAN_COLUMN_PAGE_SIZE) {
+        const loadedAfter =
+          loadedBefore +
+          appended.filter((deal) => deal.stageId === stageId).length;
+        setTotals((currentTotals) => ({
+          ...currentTotals,
+          [stageId]: loadedAfter,
+        }));
+      }
+    } finally {
+      setLoadingStageId(null);
+    }
   }
 
   function onDragEnd(event: DragEndEvent) {
@@ -272,7 +346,10 @@ export function LeadsKanban({
               stage={stage}
               stages={stages}
               deals={byStage.get(stage.id) ?? []}
+              total={totals[stage.id] ?? 0}
+              loading={loadingStageId === stage.id}
               onMove={moveDeal}
+              onLoadMore={() => void loadMore(stage.id)}
             />
           ))}
         </div>

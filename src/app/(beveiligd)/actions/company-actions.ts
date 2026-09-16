@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin, requireSession } from "@/lib/auth-session";
+import {
+  requireAdmin,
+  requireSession,
+  requireWritableSession,
+} from "@/lib/auth-session";
 import {
   companyRecordToInput,
   mergeCompanyPatch,
@@ -124,13 +128,23 @@ export async function patchCompanyAction(
   patch: CompanyPatch,
 ): Promise<{ error?: string; slug?: string }> {
   try {
-    await requireSession();
+    const hasClassification =
+      patch.industryCode !== undefined ||
+      patch.sectorCode !== undefined ||
+      patch.relationTypes !== undefined;
+    if (hasClassification) {
+      await requireWritableSession();
+    } else {
+      await requireSession();
+    }
     const current = await getCompany(companyId);
     const input = mergeCompanyPatch(companyRecordToInput(current), patch);
     const company = await updateCompany(current.id, input);
     revalidatePath("/bedrijven", "layout");
     revalidatePath(companyPath(company));
     revalidatePath("/overzicht");
+    revalidatePath("/leads", "layout");
+    revalidatePath("/contacten", "layout");
     return { slug: company.slug };
   } catch (error) {
     return toActionError(error);

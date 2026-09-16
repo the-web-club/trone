@@ -5,7 +5,18 @@ import { useEffect, useRef, useState, type TransitionStartFunction } from "react
 import { ListFilterToolbar } from "@/components/list/list-filter-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import {
+  applicationFilterSelectOptions,
+  industryFilterSelectOptions,
+  sectorFilterSelectOptions,
+} from "@/components/classification/classification-filter-options";
+import {
+  applicationFilterLabel,
+  industryFilterLabel,
+  sectorFilterLabel,
+} from "@/lib/classification";
 import { formatDate, formatEuro } from "@/lib/format";
 import type { DealFilterFacets, DealTeamMember } from "@/lib/deal-service";
 import {
@@ -91,6 +102,9 @@ export function LeadsFilters({
       datumveld: next.datumveld ?? values.datumveld,
       sortering: next.sortering ?? values.sortering,
       leadscore: next.leadscore ?? values.leadscore,
+      branche: next.branche ?? values.branche,
+      sector: next.sector ?? values.sector,
+      toepassing: next.toepassing ?? values.toepassing,
       pagina: 1,
       view,
     });
@@ -240,6 +254,30 @@ export function LeadsFilters({
       label: "Leadscore",
       value: leadScoreFilterLabel(values.leadscore),
       onRemove: () => navigate({ leadscore: "" }),
+    });
+  }
+  if ((values.branche ?? []).length > 0) {
+    chips.push({
+      key: "branche",
+      label: "Branche",
+      value: (values.branche ?? []).map(industryFilterLabel).join(", "),
+      onRemove: () => navigate({ branche: [] }),
+    });
+  }
+  if ((values.sector ?? []).length > 0) {
+    chips.push({
+      key: "sector",
+      label: "Sector",
+      value: (values.sector ?? []).map(sectorFilterLabel).join(", "),
+      onRemove: () => navigate({ sector: [] }),
+    });
+  }
+  if ((values.toepassing ?? []).length > 0) {
+    chips.push({
+      key: "toepassing",
+      label: "Toepassing",
+      value: (values.toepassing ?? []).map(applicationFilterLabel).join(", "),
+      onRemove: () => navigate({ toepassing: [] }),
     });
   }
   if (hasValueRange) {
@@ -442,6 +480,37 @@ export function LeadsFilters({
         items={scoreOptions}
         contentClassName="min-w-[16rem]"
         className="w-full max-w-none md:w-auto md:max-w-[16rem]"
+      />
+
+      <MultiSelectMenu
+        prefix="Branche"
+        aria-label="Filter op hoofdbranche"
+        values={values.branche ?? []}
+        onValuesChange={(branche) => navigate({ branche })}
+        items={industryFilterSelectOptions({ includeNoCompany: true })}
+        placeholder="Alle"
+        contentClassName="min-w-[16rem]"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Sector"
+        aria-label="Filter op sector"
+        values={values.sector ?? []}
+        onValuesChange={(sector) => navigate({ sector })}
+        items={sectorFilterSelectOptions()}
+        placeholder="Alle"
+        contentClassName="min-w-[16rem]"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Toepassing"
+        aria-label="Filter op toepassing"
+        values={values.toepassing ?? []}
+        onValuesChange={(toepassing) => navigate({ toepassing })}
+        items={applicationFilterSelectOptions()}
+        placeholder="Alle"
+        contentClassName="min-w-[16rem]"
+        className="w-full md:w-auto"
       />
 
       <SelectMenu<DealSort>

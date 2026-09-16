@@ -29,10 +29,18 @@ export default async function ContactenPage({
     query: parsed.zoeken || undefined,
     companyId: parsed.bedrijf || undefined,
     eigenaar: parsed.eigenaar,
+    industries: parsed.branche ?? [],
+    sectors: parsed.sector ?? [],
+    applications: parsed.toepassing ?? [],
     page: parsed.pagina,
   };
   const hasFilters = Boolean(
-    parsed.zoeken || parsed.bedrijf || parsed.eigenaar !== "alle",
+    parsed.zoeken ||
+      parsed.bedrijf ||
+      parsed.eigenaar !== "alle" ||
+      (parsed.branche ?? []).length > 0 ||
+      (parsed.sector ?? []).length > 0 ||
+      (parsed.toepassing ?? []).length > 0,
   );
 
   const [result, companies, members, facets] = await Promise.all([

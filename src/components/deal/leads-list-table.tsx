@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatEuro, formatPersonName } from "@/lib/format";
+import { hasLeadCardFacts, leadCardFacts } from "@/lib/lead-card";
 import { joinMeta } from "@/lib/list-copy";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { dealPath } from "@/lib/paths";
@@ -97,8 +98,11 @@ function LeadsListCards({
             ? formatPersonName(row.contact.firstName, row.contact.lastName)
             : null,
         ]);
-        const valueLabel = formatEuro(row.valueEstimate);
-        const hasFacts = Boolean(valueLabel || row.quoteStatus || row.sourceName);
+        const facts = leadCardFacts({
+          valueEstimate: row.valueEstimate,
+          quoteStatus: row.quoteStatus,
+          sourceName: row.sourceName,
+        });
 
         return (
           <ListCard key={row.id} interactive>
@@ -122,20 +126,20 @@ function LeadsListCards({
                 <LeadScoreView result={leadScoreFromDeal(row)} compact />
               </ListCardControl>
             </ListCardSignals>
-            {hasFacts ? (
+            {hasLeadCardFacts(facts) ? (
               <ListCardFacts>
-                {valueLabel ? (
-                  <span className="tabular-nums text-fg">{valueLabel}</span>
+                {facts.value ? (
+                  <span className="tabular-nums text-fg">{facts.value}</span>
                 ) : null}
-                {row.quoteStatus ? (
+                {facts.quoteStatus ? (
                   <Badge
-                    tone={quoteStatusTones[row.quoteStatus]}
+                    tone={quoteStatusTones[facts.quoteStatus]}
                     className="h-auto min-h-5 max-w-full whitespace-normal"
                   >
-                    {quoteStatusLabels[row.quoteStatus]}
+                    {quoteStatusLabels[facts.quoteStatus]}
                   </Badge>
                 ) : null}
-                {row.sourceName ? <span>{row.sourceName}</span> : null}
+                {facts.sourceName ? <span>{facts.sourceName}</span> : null}
               </ListCardFacts>
             ) : null}
             <ListCardFooter>

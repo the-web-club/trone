@@ -9,11 +9,13 @@ import { requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import {
+  DEAL_LIST_PAGE_SIZE,
+  dealListFiltersFromValues,
   getDealFilterFacets,
-  listAllDeals,
   listDealStages,
   listDealTeamMembers,
   listDeals,
+  listKanbanDeals,
   listLeadSources,
 } from "@/lib/deal-service";
 import {
@@ -21,6 +23,7 @@ import {
   buildDealsHref,
   parseDealsSearchParams,
 } from "@/lib/deals-query";
+import { toKanbanDeal } from "@/lib/kanban-deal";
 import { effectiveDealValue } from "@/lib/deal-value";
 
 export const metadata: Metadata = { title: "Leads" };
@@ -35,21 +38,6 @@ export default async function LeadsPage({
   const parsed = parseDealsSearchParams(params);
   const currentUserId = session.user.id;
 
-  const listFilters = {
-    zoeken: parsed.zoeken,
-    stageId: parsed.fase || undefined,
-    sourceId: parsed.bron || undefined,
-    eigenaar: parsed.eigenaar,
-    status: parsed.status,
-    waardeMin: parsed.waardeMin || undefined,
-    waardeMax: parsed.waardeMax || undefined,
-    van: parsed.van || undefined,
-    tot: parsed.tot || undefined,
-    datumveld: parsed.datumveld,
-    sortering: parsed.sortering,
-    leadscore: parsed.leadscore,
-  };
-
   const filterValues = {
     zoeken: parsed.zoeken,
     fase: parsed.fase,
@@ -63,7 +51,11 @@ export default async function LeadsPage({
     datumveld: parsed.datumveld,
     sortering: parsed.sortering,
     leadscore: parsed.leadscore,
+    branche: parsed.branche,
+    sector: parsed.sector,
+    toepassing: parsed.toepassing,
   };
+  const listFilters = dealListFiltersFromValues(filterValues);
 
   const [stages, sources, members, facets, result, companies, contacts] =
     await Promise.all([
@@ -72,9 +64,9 @@ export default async function LeadsPage({
       listDealTeamMembers(),
       getDealFilterFacets(listFilters, currentUserId),
       parsed.view === "kanban"
-        ? listAllDeals(listFilters, currentUserId)
+        ? listKanbanDeals(listFilters, currentUserId)
         : listDeals(
-            { ...listFilters, page: parsed.pagina, pageSize: 25 },
+            { ...listFilters, page: parsed.pagina, pageSize: DEAL_LIST_PAGE_SIZE },
             currentUserId,
           ),
       listCompaniesForSelect(),
@@ -89,6 +81,8 @@ export default async function LeadsPage({
   const companyOptions = companies.map((company) => ({
     id: company.id,
     name: company.name,
+    industryCode: company.industryCode,
+    sectorCode: company.sectorCode,
   }));
 
   const ownerNames = new Map(
@@ -108,7 +102,10 @@ export default async function LeadsPage({
       parsed.waardeMax ||
       parsed.van ||
       parsed.tot ||
-      parsed.leadscore,
+      parsed.leadscore ||
+      (parsed.branche ?? []).length > 0 ||
+      (parsed.sector ?? []).length > 0 ||
+      (parsed.toepassing ?? []).length > 0,
   );
 
   let emptyMessage = "Nog geen leads. Voeg de eerste lead toe.";
@@ -128,7 +125,7 @@ export default async function LeadsPage({
       : `${result.total} ${result.total === 1 ? "lead" : "leads"}`;
 
   const exportHref = buildDealsExportHref(filterValues);
-  const pageSize = "pageSize" in result ? result.pageSize : 25;
+  const pageSize = DEAL_LIST_PAGE_SIZE;
   const totalPages = Math.max(Math.ceil(result.total / pageSize), 1);
 
   function pageHref(nextPage: number) {
@@ -160,32 +157,13 @@ export default async function LeadsPage({
             isWon: stage.isWon,
             isLost: stage.isLost,
           }))}
-          deals={result.items.map((deal) => ({
-            id: deal.id,
-            slug: deal.slug,
-            title: deal.title,
-            stageId: deal.stageId,
-            company: deal.company
-              ? { slug: deal.company.slug, name: deal.company.name }
-              : null,
-            quoteStatus: deal.quotes[0]?.status ?? null,
-            valueEstimate: effectiveDealValue(
-              deal.valueEstimate == null ? null : Number(deal.valueEstimate),
-              deal.quotes,
-            ),
-            isHot: deal.isHot,
-            ownerName: deal.ownerUserId
-              ? (ownerNames.get(deal.ownerUserId) ?? null)
-              : null,
-            ownerImage: deal.ownerUserId
-              ? (ownerImages.get(deal.ownerUserId) ?? null)
-              : null,
-            qualFit: deal.qualFit,
-            qualNeed: deal.qualNeed,
-            qualIntent: deal.qualIntent,
-            qualDecision: deal.qualDecision,
-            qualTiming: deal.qualTiming,
-          }))}
+          deals={result.items.map((deal) =>
+            toKanbanDeal(deal, ownerNames, ownerImages),
+          )}
+          stageTotals={Object.fromEntries(
+            facets.byStage.map((row) => [row.stageId, row.count]),
+          )}
+          filters={filterValues}
         />
       ) : (
         <>

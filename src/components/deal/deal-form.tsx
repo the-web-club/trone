@@ -9,7 +9,10 @@ import { ComboboxMenu } from "@/components/ui/combobox";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { FormField, FormFieldGrid } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
 import { SelectMenu } from "@/components/ui/select";
+import { applicationFieldOptions } from "@/components/classification/classification-fields";
+import { formatIndustrySector } from "@/lib/classification";
 import {
   firstInvalidDealField,
   safeParseDealForm,
@@ -24,7 +27,12 @@ import {
   visibleDealFieldErrors,
 } from "@/lib/lead-submission";
 
-export type DealFormOption = { id: string; name: string };
+export type DealFormOption = {
+  id: string;
+  name: string;
+  industryCode?: string | null;
+  sectorCode?: string | null;
+};
 
 export type DealFormContact = {
   id: string;
@@ -41,6 +49,7 @@ export type DealFormValues = {
   stageId: string;
   sourceId?: string | null;
   valueEstimate?: number | null;
+  applications?: string[];
 };
 
 export function DealForm({
@@ -108,6 +117,9 @@ export function DealForm({
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [companyQuery, setCompanyQuery] = useState("");
   const [contactQuery, setContactQuery] = useState("");
+  const [applications, setApplications] = useState<string[]>(
+    deal?.applications ?? [],
+  );
 
   useEffect(() => {
     onBusyChange?.(status === "submitting");
@@ -231,6 +243,7 @@ export function DealForm({
       <input type="hidden" name="submissionId" value={submissionId} />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="contactId" value={contactId} />
+      <input type="hidden" name="applications" value={applications.join(",")} />
 
       <DialogBody className="flex flex-col gap-3">
         <FormFieldGrid>
@@ -276,6 +289,22 @@ export function DealForm({
               }}
             />
           </FormField>
+          {companyId
+            ? (() => {
+                const selected = companyList.find((item) => item.id === companyId);
+                const summary = formatIndustrySector(
+                  selected?.industryCode,
+                  selected?.sectorCode,
+                );
+                return (
+                  <p className="col-span-2 text-xs text-fg-muted">
+                    {summary
+                      ? `Branche van dit bedrijf: ${summary}`
+                      : "Branche van dit bedrijf: onbekend"}
+                  </p>
+                );
+              })()
+            : null}
           <FormField id={`${id}-contactId`} label="Contact" error={shownErrors.contactId}>
             <ComboboxMenu
               value={contactId}
@@ -345,6 +374,19 @@ export function DealForm({
                   if (form) syncFieldErrors(form);
                 }
               }}
+            />
+          </FormField>
+          <FormField
+            id={`${id}-applications`}
+            label="Toepassingen"
+            className="col-span-2"
+          >
+            <MultiSelectMenu
+              values={applications}
+              onValuesChange={setApplications}
+              items={applicationFieldOptions()}
+              placeholder="Onbekend"
+              wrap
             />
           </FormField>
         </FormFieldGrid>

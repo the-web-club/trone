@@ -37,9 +37,11 @@ describe("buildDealsHref", () => {
         tot: "2026-08-05",
         sortering: "oudste",
         leadscore: "hoog",
+        branche: ["industrie_productie", "geen-bedrijf"],
+        toepassing: ["kraan"],
       }),
     ).toBe(
-      "/leads?zoeken=stoel&fase=stage-1&bron=src-web&eigenaar=niet-toegewezen&status=open&leadscore=hoog&waarde-min=1000&waarde-max=5000&van=2026-01-01&tot=2026-08-05&sortering=oudste",
+      "/leads?zoeken=stoel&fase=stage-1&bron=src-web&eigenaar=niet-toegewezen&status=open&leadscore=hoog&branche=industrie_productie%2Cgeen-bedrijf&toepassing=kraan&waarde-min=1000&waarde-max=5000&van=2026-01-01&tot=2026-08-05&sortering=oudste",
     );
   });
 
@@ -122,12 +124,14 @@ describe("parseDealsSearchParams", () => {
     expect(parsed.zoeken).toBe("demo");
   });
 
-  it("parses the leadscore filter", () => {
+  it("parses classification filters", () => {
     const parsed = parseDealsSearchParams({
-      leadscore: "onvolledig",
-      sortering: "leadscore",
+      branche: "industrie_productie,geen-bedrijf",
+      sector: "chemie,onbekend",
+      toepassing: "kraan,kraan",
     });
-    expect(parsed.leadscore).toBe("onvolledig");
-    expect(parsed.sortering).toBe("leadscore");
+    expect(parsed.branche).toEqual(["industrie_productie", "geen-bedrijf"]);
+    expect(parsed.sector).toEqual(["chemie", "onbekend"]);
+    expect(parsed.toepassing).toEqual(["kraan"]);
   });
 });

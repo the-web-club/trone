@@ -7,6 +7,11 @@ import {
   patchCompanyAction,
   setCompanyOwnerAction,
 } from "@/app/(beveiligd)/actions/company-actions";
+import {
+  ApplicationsFromDeals,
+  CompanyIndustrySectorFields,
+  CompanyRelationTypeField,
+} from "@/components/classification/classification-fields";
 import { CreateContactDialog } from "@/components/company/contact-form-dialog";
 import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import {
@@ -61,6 +66,10 @@ export type CompanyDetailRecord = {
   viesCheckedName: string | null;
   notes: string | null;
   ownerUserId: string | null;
+  industryCode: string | null;
+  sectorCode: string | null;
+  relationTypes: string[];
+  applicationsFromDeals: string[];
 };
 
 export type CompanyDetailContact = {
@@ -81,6 +90,7 @@ export function CompanyDetail({
   leads,
   activity,
   isAdmin = false,
+  canEdit = true,
 }: {
   company: CompanyDetailRecord;
   contacts: CompanyDetailContact[];
@@ -88,6 +98,7 @@ export function CompanyDetail({
   leads: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -151,6 +162,7 @@ export function CompanyDetail({
               company={company}
               members={members}
               save={save}
+              canEdit={canEdit}
             />
             <CompanyContacts companyId={company.id} contacts={contacts} />
             {leads}
@@ -166,10 +178,12 @@ function CompanyDetailFields({
   company,
   members,
   save,
+  canEdit,
 }: {
   company: CompanyDetailRecord;
   members: DealTeamMember[];
   save: (patch: CompanyPatch) => Promise<string | null>;
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [country, setCountry] = useState(company.country);
@@ -271,6 +285,29 @@ function CompanyDetailFields({
             layout="row"
             onSave={(website) => save({ website: website || null })}
           />
+        </DetailFieldGrid>
+      </DetailSection>
+
+      <DetailSection title="Classificatie">
+        <DetailFieldGrid>
+          <CompanyIndustrySectorFields
+            industryCode={company.industryCode}
+            sectorCode={company.sectorCode}
+            disabled={!canEdit}
+            onSaveIndustry={(next) =>
+              save({
+                industryCode: next || null,
+                sectorCode: company.sectorCode,
+              })
+            }
+            onSaveSector={(next) => save({ sectorCode: next || null })}
+          />
+          <CompanyRelationTypeField
+            values={company.relationTypes}
+            disabled={!canEdit}
+            onSave={(relationTypes) => save({ relationTypes })}
+          />
+          <ApplicationsFromDeals codes={company.applicationsFromDeals} />
         </DetailFieldGrid>
       </DetailSection>
 

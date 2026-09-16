@@ -5,8 +5,13 @@ import { CompanyDetail } from "@/components/company/company-detail";
 import { CompanyLeadsTable } from "@/components/company/company-leads-table";
 import { CompanyTimeline } from "@/components/detail/entity-activity";
 import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
-import { isAdminSession, requireSession } from "@/lib/auth-session";
+import {
+  isAdminSession,
+  isViewerSession,
+  requireSession,
+} from "@/lib/auth-session";
 import { getCompany } from "@/lib/company-service";
+import { uniqueApplicationCodes } from "@/lib/classification";
 import { listDealTeamMembers } from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
 import { companyPath } from "@/lib/paths";
@@ -64,6 +69,10 @@ export default async function BedrijfDetailPage({
         viesCheckedName: company.viesCheckedName,
         notes: company.notes,
         ownerUserId: company.ownerUserId,
+        industryCode: company.industryCode,
+        sectorCode: company.sectorCode,
+        relationTypes: company.relationTypes.map((item) => item.code),
+        applicationsFromDeals: uniqueApplicationCodes(company.deals),
       }}
       members={members}
       contacts={company.contacts.map((contact) => ({
@@ -77,6 +86,7 @@ export default async function BedrijfDetailPage({
         isPrimary: contact.isPrimary,
       }))}
       isAdmin={isAdminSession(session)}
+      canEdit={!isViewerSession(session)}
       leads={
         <CompanyLeadsTable
           leads={company.deals.map((deal) => ({

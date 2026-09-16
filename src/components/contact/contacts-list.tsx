@@ -20,6 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DealTeamMember } from "@/lib/deal-service";
+import { formatIndustrySector } from "@/lib/classification";
+import { joinMeta } from "@/lib/list-copy";
 import { formatPersonName } from "@/lib/format";
 import { contactPath } from "@/lib/paths";
 
@@ -30,7 +32,12 @@ export type ContactListRow = {
   lastName: string | null;
   email: string | null;
   ownerUserId: string | null;
-  company: { slug: string; name: string } | null;
+  company: {
+    slug: string;
+    name: string;
+    industryCode?: string | null;
+    sectorCode?: string | null;
+  } | null;
 };
 
 export function ContactsList({
@@ -76,6 +83,18 @@ export function ContactsList({
                 </TableCell>
                 <TableCell className="text-fg-muted">
                   <CompanyLink company={contact.company} />
+                  {contact.company &&
+                  formatIndustrySector(
+                    contact.company.industryCode,
+                    contact.company.sectorCode,
+                  ) ? (
+                    <p className="mt-0.5 text-xs text-fg-muted">
+                      {formatIndustrySector(
+                        contact.company.industryCode,
+                        contact.company.sectorCode,
+                      )}
+                    </p>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   <ContactOwnerSelect
@@ -115,7 +134,15 @@ export function ContactsList({
             {formatPersonName(contact.firstName, contact.lastName)}
           </ListCardTitle>
           {contact.company ? (
-            <ListCardContext>{contact.company.name}</ListCardContext>
+            <ListCardContext>
+              {joinMeta([
+                contact.company.name,
+                formatIndustrySector(
+                  contact.company.industryCode,
+                  contact.company.sectorCode,
+                ),
+              ])}
+            </ListCardContext>
           ) : null}
           {contact.email ? (
             <ListCardControl>

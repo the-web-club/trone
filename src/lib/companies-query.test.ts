@@ -105,6 +105,9 @@ describe("list query helpers", () => {
       land: "",
       eigenaar: "alle",
       leads: "alle",
+      branche: [],
+      sector: [],
+      toepassing: [],
       pagina: 1,
     });
     expect(
@@ -118,6 +121,9 @@ describe("list query helpers", () => {
       zoeken: "",
       bedrijf: "co-1",
       eigenaar: "alle",
+      branche: [],
+      sector: [],
+      toepassing: [],
       pagina: 1,
     });
     expect(parseContactsSearchParams({ eigenaar: "aan-mij" }).eigenaar).toBe(

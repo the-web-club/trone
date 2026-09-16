@@ -6,11 +6,22 @@ import {
 } from "@/components/list/list-filter-toolbar";
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
+import {
+  applicationFilterSelectOptions,
+  industryFilterSelectOptions,
+  sectorFilterSelectOptions,
+} from "@/components/classification/classification-filter-options";
 import {
   buildContactsHref,
   type ContactOwnerFacets,
   type ContactsFilterValues,
 } from "@/lib/contacts-query";
+import {
+  applicationFilterLabel,
+  industryFilterLabel,
+  sectorFilterLabel,
+} from "@/lib/classification";
 import type { DealTeamMember } from "@/lib/deal-service";
 import {
   alphanumericLength,
@@ -43,6 +54,9 @@ export function ContactsFilters({
         zoeken: next.zoeken ?? values.zoeken,
         bedrijf: next.bedrijf ?? values.bedrijf,
         eigenaar: next.eigenaar ?? values.eigenaar,
+        branche: next.branche ?? values.branche,
+        sector: next.sector ?? values.sector,
+        toepassing: next.toepassing ?? values.toepassing,
         pagina: 1,
       }),
     );
@@ -112,6 +126,30 @@ export function ContactsFilters({
           onRemove: () => navigate({ eigenaar: "alle" }),
         }
       : null,
+    values.branche?.length
+      ? {
+          key: "branche",
+          label: "Branche",
+          value: (values.branche ?? []).map(industryFilterLabel).join(", "),
+          onRemove: () => navigate({ branche: [] }),
+        }
+      : null,
+    values.sector?.length
+      ? {
+          key: "sector",
+          label: "Sector",
+          value: (values.sector ?? []).map(sectorFilterLabel).join(", "),
+          onRemove: () => navigate({ sector: [] }),
+        }
+      : null,
+    values.toepassing?.length
+      ? {
+          key: "toepassing",
+          label: "Toepassing",
+          value: (values.toepassing ?? []).map(applicationFilterLabel).join(", "),
+          onRemove: () => navigate({ toepassing: [] }),
+        }
+      : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
@@ -128,7 +166,12 @@ export function ContactsFilters({
       searchAriaLabel="Zoek contacten"
       chips={chips}
       hasActiveFilters={Boolean(
-        values.zoeken || values.bedrijf || values.eigenaar !== "alle",
+        values.zoeken ||
+          values.bedrijf ||
+          values.eigenaar !== "alle" ||
+          values.branche?.length ||
+          values.sector?.length ||
+          values.toepassing?.length,
       )}
       statusMessage={searchHint}
       onReset={() =>
@@ -137,6 +180,9 @@ export function ContactsFilters({
             zoeken: "",
             bedrijf: "",
             eigenaar: "alle",
+            branche: [],
+            sector: [],
+            toepassing: [],
             pagina: 1,
           }),
         )
@@ -160,6 +206,33 @@ export function ContactsFilters({
         items={ownerOptions}
         contentClassName="min-w-[16rem]"
         className="w-full max-w-none md:w-auto md:max-w-[16rem]"
+      />
+      <MultiSelectMenu
+        prefix="Branche"
+        aria-label="Filter op hoofdbranche"
+        values={values.branche ?? []}
+        onValuesChange={(branche) => navigate({ branche })}
+        items={industryFilterSelectOptions()}
+        placeholder="Alle"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Sector"
+        aria-label="Filter op sector"
+        values={values.sector ?? []}
+        onValuesChange={(sector) => navigate({ sector })}
+        items={sectorFilterSelectOptions()}
+        placeholder="Alle"
+        className="w-full md:w-auto"
+      />
+      <MultiSelectMenu
+        prefix="Toepassing"
+        aria-label="Filter op toepassing"
+        values={values.toepassing ?? []}
+        onValuesChange={(toepassing) => navigate({ toepassing })}
+        items={applicationFilterSelectOptions()}
+        placeholder="Alle"
+        className="w-full md:w-auto"
       />
     </ListFilterToolbar>
   );

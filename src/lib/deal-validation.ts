@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  parseApplicationCodes,
+  parseClassificationParamValues,
+} from "@/lib/classification";
+import {
   assertContactBelongsToCompany,
   type ContactCompanyRef,
 } from "@/lib/contact-company";
@@ -31,6 +35,7 @@ export const dealSchema = z.object({
     if (value === "" || value === null || value === undefined) return undefined;
     return value;
   }, z.coerce.number().min(0, "Geschatte waarde moet 0 of hoger zijn").optional()),
+  applications: z.array(z.string()).optional(),
 });
 
 export type DealInput = z.infer<typeof dealSchema>;
@@ -42,6 +47,7 @@ export type DealPatch = {
   stageId?: string;
   sourceId?: string | null;
   valueEstimate?: number | null;
+  applications?: string[];
 };
 
 export type DealFieldName =
@@ -93,6 +99,13 @@ function dealFormValues(formData: FormData) {
     stageId: formData.get("stageId"),
     sourceId: formData.get("sourceId"),
     valueEstimate: formData.get("valueEstimate"),
+    ...(formData.has("applications")
+      ? {
+          applications: parseClassificationParamValues(
+            formData.getAll("applications").map((value) => String(value)),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -136,7 +149,15 @@ function parseDealInput(data: unknown): DealInput {
       fieldErrors,
     );
   }
-  return parsed.data;
+  const raw =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  return {
+    ...parsed.data,
+    applications:
+      "applications" in raw
+        ? parseApplicationCodes(parsed.data.applications ?? [])
+        : parsed.data.applications,
+  };
 }
 
 export function parseDealForm(formData: FormData): DealInput {
@@ -154,6 +175,7 @@ export function dealRecordToInput(deal: {
   stageId: string;
   sourceId: string | null;
   valueEstimate?: { toString(): string } | number | string | null;
+  applications?: Array<{ code: string }> | string[] | null;
 }): DealInput {
   const raw = deal.valueEstimate;
   let valueEstimate: number | undefined;
@@ -169,6 +191,9 @@ export function dealRecordToInput(deal: {
     stageId: deal.stageId,
     sourceId: deal.sourceId ?? undefined,
     valueEstimate,
+    applications: (deal.applications ?? []).map((item) =>
+      typeof item === "string" ? item : item.code,
+    ),
   });
 }
 
@@ -220,6 +245,10 @@ export function mergeDealPatch(current: DealInput, patch: DealPatch): DealInput 
       patch.valueEstimate !== undefined
         ? (patch.valueEstimate ?? undefined)
         : current.valueEstimate,
+    applications:
+      patch.applications !== undefined
+        ? patch.applications
+        : current.applications,
   });
 }
 

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DealTeamMember } from "@/lib/deal-service";
+import { formatIndustrySector } from "@/lib/classification";
 import { countryLabel, joinMeta, listSummary } from "@/lib/list-copy";
 import { companyPath } from "@/lib/paths";
 
@@ -31,6 +32,8 @@ export type CompanyListRow = {
   city: string | null;
   country: string | null;
   ownerUserId: string | null;
+  industryCode?: string | null;
+  sectorCode?: string | null;
   _count: { contacts: number; deals: number };
 };
 
@@ -73,6 +76,11 @@ export function CompaniesList({
               <TableRow key={company.id} interactive>
                 <TableCell>
                   <CompanyLink company={company} primary />
+                  {formatIndustrySector(company.industryCode, company.sectorCode) ? (
+                    <p className="mt-0.5 text-xs text-fg-muted">
+                      {formatIndustrySector(company.industryCode, company.sectorCode)}
+                    </p>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-fg-muted">
                   {company.city || "—"}
@@ -120,6 +128,7 @@ export function CompaniesList({
     ) : (
       items.map((company) => {
         const context = joinMeta([
+          formatIndustrySector(company.industryCode, company.sectorCode),
           company.city,
           company.country ? countryLabel(company.country) : null,
         ]);

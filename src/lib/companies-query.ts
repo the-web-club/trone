@@ -3,7 +3,15 @@ import {
   parsePageParam,
   setIfPresent,
   toListHref,
+  allSearchParams,
 } from "@/lib/list-query";
+import {
+  joinClassificationParam,
+  parseApplicationFilterValues,
+  parseClassificationParamValues,
+  parseIndustryFilterValues,
+  parseSectorFilterValues,
+} from "@/lib/classification";
 
 export type CompanyOwnerFilter = "alle" | "niet-toegewezen" | "aan-mij" | string;
 
@@ -38,6 +46,9 @@ export type CompaniesFilterValues = {
   land: string;
   eigenaar: string;
   leads: CompanyLeadsFilter;
+  branche?: string[];
+  sector?: string[];
+  toepassing?: string[];
 };
 
 export type CompaniesQueryValues = CompaniesFilterValues & {
@@ -92,6 +103,15 @@ export function parseCompaniesSearchParams(
     land: firstSearchParam(params, "land").trim(),
     eigenaar: parseCompanyOwnerFilter(firstSearchParam(params, "eigenaar")),
     leads: parseCompanyLeadsFilter(firstSearchParam(params, "leads")),
+    branche: parseIndustryFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "branche")),
+    ),
+    sector: parseSectorFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "sector")),
+    ),
+    toepassing: parseApplicationFilterValues(
+      parseClassificationParamValues(allSearchParams(params, "toepassing")),
+    ),
     pagina: parsePageParam(firstSearchParam(params, "pagina")),
   };
 }
@@ -105,6 +125,9 @@ export function buildCompaniesHref(values: CompaniesQueryValues): string {
   setIfPresent(query, "land", values.land);
   if (eigenaar !== "alle") query.set("eigenaar", eigenaar);
   if (leads !== "alle") query.set("leads", leads);
+  setIfPresent(query, "branche", joinClassificationParam(values.branche ?? []));
+  setIfPresent(query, "sector", joinClassificationParam(values.sector ?? []));
+  setIfPresent(query, "toepassing", joinClassificationParam(values.toepassing ?? []));
   const pagina = Math.max(values.pagina ?? 1, 1);
   if (pagina > 1) query.set("pagina", String(pagina));
   return toListHref("/bedrijven", query);

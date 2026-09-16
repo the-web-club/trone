@@ -36,6 +36,9 @@ export default async function BedrijvenPage({
     country: parsed.land || undefined,
     eigenaar: parsed.eigenaar,
     leads: parsed.leads,
+    industries: parsed.branche ?? [],
+    sectors: parsed.sector ?? [],
+    applications: parsed.toepassing ?? [],
     page: parsed.pagina,
   };
   const hasFilters = Boolean(
@@ -43,7 +46,10 @@ export default async function BedrijvenPage({
       parsed.plaats ||
       parsed.land ||
       parsed.eigenaar !== "alle" ||
-      parsed.leads !== "alle",
+      parsed.leads !== "alle" ||
+      (parsed.branche ?? []).length > 0 ||
+      (parsed.sector ?? []).length > 0 ||
+      (parsed.toepassing ?? []).length > 0,
   );
 
   const [result, cities, countries, members, facets, leadFacets] =

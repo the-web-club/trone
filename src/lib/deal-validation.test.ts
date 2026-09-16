@@ -44,6 +44,16 @@ describe("mergeDealPatch", () => {
   it("weigert een lege titel", () => {
     expect(() => mergeDealPatch(current, { title: "   " })).toThrow(AppError);
   });
+
+  it("weigert ongeldige toepassingen en accepteert een lege selectie", () => {
+    expect(mergeDealPatch(current, { applications: ["kraan", "kraan"] }).applications).toEqual(
+      ["kraan"],
+    );
+    expect(mergeDealPatch(current, { applications: [] }).applications).toEqual([]);
+    expect(() => mergeDealPatch(current, { applications: ["onzin"] })).toThrow(
+      AppError,
+    );
+  });
 });
 
 function formData(fields: Record<string, string>) {

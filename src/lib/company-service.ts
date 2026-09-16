@@ -8,6 +8,7 @@ import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
 import type { CompanyInput } from "@/lib/company-validation";
 import { createWithSubmissionId } from "@/lib/idempotent-create";
+import { companyClassificationWhere } from "@/lib/classification-where";
 import {
   parseCompanyLeadsFilter,
   type CompanyLeadFacets,
@@ -32,12 +33,24 @@ export async function listCompanies(query?: string) {
 }
 
 export async function listCompaniesForSelect(): Promise<
-  Array<{ id: string; slug: string; name: string }>
+  Array<{
+    id: string;
+    slug: string;
+    name: string;
+    industryCode: string | null;
+    sectorCode: string | null;
+  }>
 > {
   const prisma = getPrismaClient();
   return prisma.company.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, slug: true, name: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      industryCode: true,
+      sectorCode: true,
+    },
   });
 }
 
@@ -47,6 +60,9 @@ export type CompanyListFilters = {
   country?: string;
   eigenaar?: string;
   leads?: string;
+  industries?: string[];
+  sectors?: string[];
+  applications?: string[];
   page?: number;
   pageSize?: number;
 };
@@ -72,6 +88,12 @@ export function buildCompanyListWhere(
   if (query) and.push({ name: { contains: query } });
   if (filters.city?.trim()) and.push({ city: filters.city.trim() });
   if (filters.country?.trim()) and.push({ country: filters.country.trim() });
+  const classification = companyClassificationWhere({
+    industries: filters.industries ?? [],
+    sectors: filters.sectors ?? [],
+    applications: filters.applications ?? [],
+  });
+  if (classification) and.push(classification);
   return and.length ? { AND: and } : {};
 }
 
@@ -129,6 +151,8 @@ export async function listCompanyRows(
     city: string | null;
     country: string;
     ownerUserId: string | null;
+    industryCode: string | null;
+    sectorCode: string | null;
     _count: { contacts: number; deals: number };
   }>
 > {
@@ -151,6 +175,8 @@ export async function listCompanyRows(
         city: true,
         country: true,
         ownerUserId: true,
+        industryCode: true,
+        sectorCode: true,
         _count: { select: { contacts: true, deals: true } },
       },
       skip,
@@ -269,6 +295,7 @@ export const getCompany = cache(
     const company = await prisma.company.findUnique({
       where: whereIdOrSlug(id),
       include: {
+        relationTypes: { select: { code: true } },
         contacts: {
           orderBy: [{ isPrimary: "desc" }, { firstName: "asc" }],
         },
@@ -279,6 +306,7 @@ export const getCompany = cache(
             slug: true,
             title: true,
             status: true,
+            applications: { select: { code: true } },
             contact: {
               select: {
                 id: true,
@@ -317,7 +345,22 @@ function toCompanyData(input: CompanyInput) {
     country: input.country,
     vatRate: input.vatRate,
     notes: input.notes ?? null,
+    industryCode: input.industryCode ?? null,
+    sectorCode: input.sectorCode ?? null,
   };
+}
+
+async function replaceCompanyRelationTypes(
+  prisma: ReturnType<typeof getPrismaClient>,
+  companyId: string,
+  codes: string[] | undefined,
+) {
+  if (codes === undefined) return;
+  await prisma.companyRelationType.deleteMany({ where: { companyId } });
+  if (codes.length === 0) return;
+  await prisma.companyRelationType.createMany({
+    data: codes.map((code) => ({ companyId, code })),
+  });
 }
 
 export async function validateCompanyVat(
@@ -389,7 +432,7 @@ export async function createCompany(
       existing.country === input.country,
     create: async () => {
       const slug = await nextCompanySlug(prisma, input.name);
-      return prisma.company.create({
+      const company = await prisma.company.create({
         data: {
           id: createId(),
           slug,
@@ -398,6 +441,12 @@ export async function createCompany(
           ownerUserId: ownerUserId ?? null,
         },
       });
+      await replaceCompanyRelationTypes(
+        prisma,
+        company.id,
+        input.relationTypes,
+      );
+      return company;
     },
   });
 }
@@ -431,10 +480,30 @@ export async function updateCompany(id: string, input: CompanyInput) {
   const vatIdentityChanged =
     (input.vatNumber ?? null) !== (current.vatNumber ?? null) ||
     input.country !== current.country;
-  return prisma.company.update({
+  const classificationData =
+    input.industryCode !== undefined || input.sectorCode !== undefined
+      ? {
+          industryCode: input.industryCode ?? null,
+          sectorCode: input.sectorCode ?? null,
+        }
+      : {};
+  const baseData = toCompanyData(input);
+  const updated = await prisma.company.update({
     where: { id: current.id },
     data: {
-      ...toCompanyData(input),
+      name: baseData.name,
+      email: baseData.email,
+      vatNumber: baseData.vatNumber,
+      cocNumber: baseData.cocNumber,
+      website: baseData.website,
+      phone: baseData.phone,
+      addressLine: baseData.addressLine,
+      postalCode: baseData.postalCode,
+      city: baseData.city,
+      country: baseData.country,
+      vatRate: baseData.vatRate,
+      notes: baseData.notes,
+      ...classificationData,
       slug,
       ...(vatIdentityChanged
         ? {
@@ -445,6 +514,12 @@ export async function updateCompany(id: string, input: CompanyInput) {
         : {}),
     },
   });
+  await replaceCompanyRelationTypes(
+    prisma,
+    updated.id,
+    input.relationTypes,
+  );
+  return updated;
 }
 
 function countLabel(count: number, one: string, many: string): string | null {

@@ -174,7 +174,7 @@ export function ListCardFooter({
   return (
     <div
       className={cn(
-        "relative z-10 mt-0.5 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2",
+        "mt-0.5 flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2",
         className,
       )}
     >
@@ -337,7 +337,7 @@ export function CompactRecordRow({
             )}
           </div>
           {status ? (
-            <div className="relative z-10 max-w-[min(100%,11rem)] shrink-0">
+            <div className="max-w-[min(100%,11rem)] shrink-0">
               {status}
             </div>
           ) : null}

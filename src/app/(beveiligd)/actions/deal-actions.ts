@@ -10,16 +10,21 @@ import {
 import {
   addDealActivity,
   createDeal,
+  dealListFiltersFromValues,
   deleteDeal,
   getDeal,
   listDealsForSelect,
   listDealStages,
+  listDealTeamMembers,
+  listKanbanColumnPage,
   moveDealToStage,
   setDealHot,
   setDealOwner,
   setDealQualificationAnswer,
   updateDeal,
 } from "@/lib/deal-service";
+import { toKanbanDeal, type KanbanDeal } from "@/lib/kanban-deal";
+import type { DealsFilterValues } from "@/lib/deals-query";
 import {
   dealRecordToInput,
   mergeDealPatch,
@@ -94,7 +99,10 @@ export async function patchDealAction(
   patch: DealPatch,
 ): Promise<{ error?: string; slug?: string }> {
   try {
-    const session = await requireSession();
+    const session =
+      patch.applications !== undefined
+        ? await requireWritableSession()
+        : await requireSession();
     const current = await getDeal(dealId);
     const input = mergeDealPatch(dealRecordToInput(current), patch);
     const deal = await updateDeal(current.id, input, session.user.id);
@@ -207,6 +215,33 @@ export async function deleteDealAction(
 export async function listDealsForSelectAction(companyId?: string | null) {
   await requireSession();
   return listDealsForSelect(companyId);
+}
+
+export async function listKanbanColumnPageAction(
+  filters: DealsFilterValues,
+  stageId: string,
+  excludeIds: string[],
+): Promise<{ items: KanbanDeal[] } | { error: string }> {
+  try {
+    const session = await requireSession();
+    const { items } = await listKanbanColumnPage(
+      { ...dealListFiltersFromValues(filters), stageId },
+      session.user.id,
+      excludeIds,
+    );
+    const members = await listDealTeamMembers();
+    const ownerNames = new Map(
+      members.map((member) => [member.id, member.name || member.email]),
+    );
+    const ownerImages = new Map(
+      members.map((member) => [member.id, member.image]),
+    );
+    return {
+      items: items.map((deal) => toKanbanDeal(deal, ownerNames, ownerImages)),
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
 }
 
 export type CreatedDealOption = {

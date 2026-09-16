@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +21,7 @@ import {
   DetailHeader,
   DetailPage,
   DetailSection,
+  DetailValueField,
 } from "@/components/detail/detail-layout";
 import {
   INLINE_SELECT_EMPTY,
@@ -30,7 +32,8 @@ import type { SelectOption } from "@/components/ui/select";
 import type { ContactPatch } from "@/lib/contact-validation";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { formatPersonName } from "@/lib/format";
-import { contactPath } from "@/lib/paths";
+import { formatIndustrySector } from "@/lib/classification";
+import { companyPath, contactPath } from "@/lib/paths";
 
 export type ContactDetailRecord = {
   id: string;
@@ -43,7 +46,13 @@ export type ContactDetailRecord = {
   notes: string | null;
   isPrimary: boolean;
   ownerUserId: string | null;
-  company: { id: string; slug: string; name: string } | null;
+  company: {
+    id: string;
+    slug: string;
+    name: string;
+    industryCode: string | null;
+    sectorCode: string | null;
+  } | null;
 };
 
 export function ContactDetail({
@@ -263,6 +272,21 @@ function ContactDetailFields({
             }}
             onSave={(companyId) => save({ companyId: companyId || null })}
           />
+          {contact.company ? (
+            <DetailValueField label="Branche" span="full">
+              {formatIndustrySector(
+                contact.company.industryCode,
+                contact.company.sectorCode,
+              ) ?? "Onbekend"}
+              {" · "}
+              <Link
+                href={companyPath(contact.company)}
+                className="text-fg hover:underline"
+              >
+                Bewerk op bedrijf
+              </Link>
+            </DetailValueField>
+          ) : null}
         </DetailFieldGrid>
       </DetailSection>
       <CreateCompanyDialog
