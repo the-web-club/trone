@@ -48,8 +48,14 @@ export function sectorFilterSelectOptions(): SelectOption[] {
 }
 
 export function applicationFilterSelectOptions(): SelectOption[] {
-  return APPLICATIONS.map((item) => ({
-    value: item.code,
-    label: applicationFilterLabel(item.code),
-  }));
+  return [
+    {
+      value: CLASSIFICATION_FILTER_UNKNOWN,
+      label: applicationFilterLabel(CLASSIFICATION_FILTER_UNKNOWN),
+    },
+    ...APPLICATIONS.map((item) => ({
+      value: item.code,
+      label: applicationFilterLabel(item.code),
+    })),
+  ];
 }

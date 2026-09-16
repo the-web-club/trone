@@ -7,6 +7,7 @@ import {
 } from "@/components/list/list-filter-toolbar";
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import type { DealTeamMember } from "@/lib/deal-service";
 import type { TaskFilterFacets } from "@/lib/task-service";
 import {
@@ -16,8 +17,9 @@ import {
   type TasksFilterValues,
 } from "@/lib/tasks-query";
 
-function count(value: number | undefined): string {
-  return String(typeof value === "number" ? value : 0);
+function count(value: number | undefined): string | undefined {
+  if (typeof value !== "number") return undefined;
+  return new Intl.NumberFormat("nl-NL").format(value);
 }
 
 export function TasksFilters({
@@ -46,32 +48,48 @@ export function TasksFilters({
     navigate({ zoeken }),
   );
 
-  const assigneeCount = new Map(
-    facets.byAssignee.map((item) => [item.userId, item.count]),
-  );
   const memberLabel = new Map(
     members.map((member) => [member.id, member.name || member.email]),
   );
 
-  const assigneeOptions: SelectOption[] = [
-    { value: "aan-mij", label: "Aan mij", hint: count(facets.assignedToMe) },
-    { value: "alle", label: "Iedereen", hint: count(facets.assigneeTotal) },
-    ...members.map((member) => ({
-      value: member.id,
-      label: member.name || member.email,
-      hint: count(assigneeCount.get(member.id)),
-      image: member.image,
-    })),
-  ];
+  const assigneeOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "aan-mij", label: "Aan mij" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ],
+    counts: [
+      { value: "aan-mij", count: facets.assignedToMe },
+      ...facets.byAssignee.map((item) => ({
+        value: item.userId,
+        count: item.count,
+      })),
+    ],
+    selected: values.eigenaar === "alle" ? [] : [values.eigenaar],
+    all: { value: "alle", label: "Iedereen", count: facets.assigneeTotal },
+  });
 
-  const whenOptions: SelectOption<TaskWhenFilter>[] = [
-    { value: "alle", label: taskWhenLabels.alle },
-    { value: "achterstallig", label: taskWhenLabels.achterstallig },
-    { value: "vandaag", label: taskWhenLabels.vandaag },
-    { value: "deze-week", label: taskWhenLabels["deze-week"] },
-    { value: "later", label: taskWhenLabels.later },
-    { value: "zonder-datum", label: taskWhenLabels["zonder-datum"] },
-  ];
+  const whenOptions: SelectOption<TaskWhenFilter>[] = facetSelectOptions({
+    catalog: [
+      { value: "achterstallig", label: taskWhenLabels.achterstallig },
+      { value: "vandaag", label: taskWhenLabels.vandaag },
+      { value: "deze-week", label: taskWhenLabels["deze-week"] },
+      { value: "later", label: taskWhenLabels.later },
+      { value: "zonder-datum", label: taskWhenLabels["zonder-datum"] },
+    ],
+    counts: [
+      { value: "achterstallig", count: facets.byWhen?.achterstallig ?? 0 },
+      { value: "vandaag", count: facets.byWhen?.vandaag ?? 0 },
+      { value: "deze-week", count: facets.byWhen?.["deze-week"] ?? 0 },
+      { value: "later", count: facets.byWhen?.later ?? 0 },
+      { value: "zonder-datum", count: facets.byWhen?.["zonder-datum"] ?? 0 },
+    ],
+    selected: values.wanneer === "alle" ? [] : [values.wanneer],
+    all: { value: "alle", label: taskWhenLabels.alle, count: facets.whenTotal },
+  });
 
   const assigneeLabel =
     values.eigenaar === "aan-mij"

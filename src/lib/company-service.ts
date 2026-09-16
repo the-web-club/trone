@@ -10,6 +10,9 @@ import type { CompanyInput } from "@/lib/company-validation";
 import { createWithSubmissionId } from "@/lib/idempotent-create";
 import { companyClassificationWhere } from "@/lib/classification-where";
 import {
+  CLASSIFICATION_FILTER_UNKNOWN,
+} from "@/lib/classification";
+import {
   parseCompanyLeadsFilter,
   type CompanyLeadFacets,
   type CompanyLeadsFilter,
@@ -18,6 +21,8 @@ import {
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { checkViesVatNumber } from "@/lib/vies-service";
 import { resolveVatTreatment } from "@/lib/vat";
+import { ownerFacetsFromGroups, rowsFromCountMap } from "@/lib/filters/aggregate";
+import { companyClassificationFacetCounts } from "@/lib/filters/classification-counts";
 
 export async function listCompanies(query?: string) {
   const prisma = getPrismaClient();
@@ -86,7 +91,12 @@ export function buildCompanyListWhere(
 
   const query = filters.query?.trim();
   if (query) and.push({ name: { contains: query } });
-  if (filters.city?.trim()) and.push({ city: filters.city.trim() });
+  const city = filters.city?.trim();
+  if (city === CLASSIFICATION_FILTER_UNKNOWN) {
+    and.push({ city: null });
+  } else if (city) {
+    and.push({ city });
+  }
   if (filters.country?.trim()) and.push({ country: filters.country.trim() });
   const classification = companyClassificationWhere({
     industries: filters.industries ?? [],
@@ -201,27 +211,7 @@ export async function getCompanyOwnerFacets(
     where: ownerWhere,
     _count: { _all: true },
   });
-
-  const ownerTotal = ownerGroups.reduce(
-    (sum, group) => sum + group._count._all,
-    0,
-  );
-  const unassignedOwner =
-    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
-
-  return {
-    ownerTotal,
-    unassignedOwner,
-    assignedToMe: currentUserId
-      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
-          ?._count._all ?? 0)
-      : 0,
-    byOwner: ownerGroups.flatMap((group) =>
-      group.ownerUserId
-        ? [{ userId: group.ownerUserId, count: group._count._all }]
-        : [],
-    ),
-  };
+  return ownerFacetsFromGroups(ownerGroups, currentUserId);
 }
 
 export async function getCompanyLeadFacets(
@@ -264,6 +254,102 @@ export async function getCompanyLeadFacets(
   }
 
   return { total, none, byCount };
+}
+
+export type CompanyFilterFacets = CompanyOwnerFacets & {
+  leads: CompanyLeadFacets;
+  byCity: Array<{ value: string; count: number }>;
+  unassignedCity: number;
+  cityTotal: number;
+  byCountry: Array<{ value: string; count: number }>;
+  countryTotal: number;
+  byIndustry: Array<{ value: string; count: number }>;
+  bySector: Array<{ value: string; count: number }>;
+  byApplication: Array<{ value: string; count: number }>;
+  classificationStale: boolean;
+};
+
+export async function getCompanyFilterFacets(
+  filters: CompanyListFilters = {},
+  currentUserId?: string,
+): Promise<CompanyFilterFacets> {
+  const prisma = getPrismaClient();
+  const [
+    owner,
+    leads,
+    cityWhere,
+    countryWhere,
+    industryWhere,
+    sectorWhere,
+    applicationWhere,
+  ] = await Promise.all([
+    getCompanyOwnerFacets(filters, currentUserId),
+    getCompanyLeadFacets(filters, currentUserId),
+    resolveCompanyListWhere({ ...filters, city: undefined }, currentUserId),
+    resolveCompanyListWhere({ ...filters, country: undefined }, currentUserId),
+    resolveCompanyListWhere({ ...filters, industries: [] }, currentUserId),
+    resolveCompanyListWhere({ ...filters, sectors: [] }, currentUserId),
+    resolveCompanyListWhere({ ...filters, applications: [] }, currentUserId),
+  ]);
+
+  const [cityGroups, countryGroups, classification] = await Promise.all([
+    prisma.company.groupBy({
+      by: ["city"],
+      where: cityWhere,
+      _count: { _all: true },
+    }),
+    prisma.company.groupBy({
+      by: ["country"],
+      where: countryWhere,
+      _count: { _all: true },
+    }),
+    companyClassificationFacetCounts({
+      industryWhere,
+      sectorWhere,
+      applicationWhere,
+    }).then(
+      (counts) => ({ counts, stale: false }),
+      () => ({
+        counts: {
+          industry: new Map<string, number>(),
+          sector: new Map<string, number>(),
+          application: new Map<string, number>(),
+        },
+        stale: true,
+      }),
+    ),
+  ]);
+
+  const unassignedCity =
+    cityGroups.find((group) => group.city == null)?._count._all ?? 0;
+
+  return {
+    ...owner,
+    leads,
+    cityTotal: cityGroups.reduce((sum, group) => sum + group._count._all, 0),
+    unassignedCity,
+    byCity: cityGroups.flatMap((group) =>
+      group.city ? [{ value: group.city, count: group._count._all }] : [],
+    ),
+    countryTotal: countryGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    ),
+    byCountry: countryGroups.map((group) => ({
+      value: group.country,
+      count: group._count._all,
+    })),
+    byIndustry: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.industry),
+    bySector: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.sector),
+    byApplication: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.application),
+    classificationStale: classification.stale,
+  };
 }
 
 export async function listCompanyCities() {

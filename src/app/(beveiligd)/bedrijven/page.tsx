@@ -7,8 +7,7 @@ import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
 import {
-  getCompanyLeadFacets,
-  getCompanyOwnerFacets,
+  getCompanyFilterFacets,
   listCompanyCities,
   listCompanyCountries,
   listCompanyRows,
@@ -52,14 +51,13 @@ export default async function BedrijvenPage({
       (parsed.toepassing ?? []).length > 0,
   );
 
-  const [result, cities, countries, members, facets, leadFacets] =
+  const [result, cities, countries, members, facets] =
     await Promise.all([
       listCompanyRows(listFilters, currentUserId),
       listCompanyCities(),
       listCompanyCountries(),
       listDealTeamMembers(),
-      getCompanyOwnerFacets(listFilters, currentUserId),
-      getCompanyLeadFacets(listFilters, currentUserId),
+      getCompanyFilterFacets(listFilters, currentUserId),
     ]);
 
   const ownerNames = new Map(
@@ -103,7 +101,6 @@ export default async function BedrijvenPage({
         countries={countries}
         members={members}
         facets={facets}
-        leadFacets={leadFacets}
       />
       <ListBody>
         <CompaniesList

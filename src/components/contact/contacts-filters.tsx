@@ -7,21 +7,20 @@ import {
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
 import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import {
-  applicationFilterSelectOptions,
-  industryFilterSelectOptions,
-  sectorFilterSelectOptions,
-} from "@/components/classification/classification-filter-options";
+  applicationFacetCatalog,
+  industryFacetCatalog,
+  sectorFacetCatalog,
+} from "@/lib/filters/definitions";
 import {
-  buildContactsHref,
-  type ContactOwnerFacets,
-  type ContactsFilterValues,
-} from "@/lib/contacts-query";
-import {
+  CLASSIFICATION_FILTER_NO_COMPANY,
   applicationFilterLabel,
   industryFilterLabel,
   sectorFilterLabel,
 } from "@/lib/classification";
+import { buildContactsHref, type ContactsFilterValues } from "@/lib/contacts-query";
+import type { ContactFilterFacets } from "@/lib/contact-service";
 import type { DealTeamMember } from "@/lib/deal-service";
 import {
   alphanumericLength,
@@ -29,10 +28,6 @@ import {
 } from "@/lib/list-query";
 
 const ALL = "__alle__";
-
-function count(value: number | undefined): string {
-  return String(typeof value === "number" ? value : 0);
-}
 
 export function ContactsFilters({
   values,
@@ -43,7 +38,7 @@ export function ContactsFilters({
   values: ContactsFilterValues;
   companies: Array<{ id: string; name: string }>;
   members: DealTeamMember[];
-  facets: ContactOwnerFacets;
+  facets: ContactFilterFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
@@ -71,32 +66,57 @@ export function ContactsFilters({
   const searchHint =
     typedAlphanumeric > 0 && typedAlphanumeric < LIST_SEARCH_MIN_ALPHANUMERIC
       ? "Typ minstens 3 letters of cijfers"
-      : undefined;
+      : facets.classificationStale
+        ? "Tellingen tijdelijk niet beschikbaar"
+        : undefined;
 
-  const ownerCount = new Map(facets.byOwner.map((item) => [item.userId, item.count]));
   const memberLabel = new Map(
     members.map((member) => [member.id, member.name || member.email]),
   );
+  const classificationCounts = facets.classificationStale
+    ? null
+    : {
+        industry: facets.byIndustry,
+        sector: facets.bySector,
+        application: facets.byApplication,
+      };
 
-  const companyOptions: SelectOption[] = [
-    { value: ALL, label: "Alle bedrijven" },
-    ...companies.map((company) => ({ value: company.id, label: company.name })),
-  ];
-  const ownerOptions: SelectOption[] = [
-    { value: "alle", label: "Alle", hint: count(facets.ownerTotal) },
-    {
-      value: "niet-toegewezen",
-      label: "Niet toegewezen",
-      hint: count(facets.unassignedOwner),
-    },
-    { value: "aan-mij", label: "Aan mij", hint: count(facets.assignedToMe) },
-    ...members.map((member) => ({
-      value: member.id,
-      label: member.name || member.email,
-      hint: count(ownerCount.get(member.id)),
-      image: member.image,
-    })),
-  ];
+  const companyOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: CLASSIFICATION_FILTER_NO_COMPANY, label: "Geen bedrijf" },
+      ...companies.map((company) => ({ value: company.id, label: company.name })),
+    ],
+    counts: [
+      {
+        value: CLASSIFICATION_FILTER_NO_COMPANY,
+        count: facets.unassignedCompany,
+      },
+      ...facets.byCompany,
+    ],
+    selected: values.bedrijf,
+    all: { value: ALL, label: "Alle bedrijven", count: facets.companyTotal },
+  });
+  const ownerOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "niet-toegewezen", label: "Niet toegewezen" },
+      { value: "aan-mij", label: "Aan mij" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ],
+    counts: [
+      { value: "niet-toegewezen", count: facets.unassignedOwner },
+      { value: "aan-mij", count: facets.assignedToMe },
+      ...facets.byOwner.map((item) => ({
+        value: item.userId,
+        count: item.count,
+      })),
+    ],
+    selected: values.eigenaar === "alle" ? [] : [values.eigenaar],
+    all: { value: "alle", label: "Alle", count: facets.ownerTotal },
+  });
 
   const ownerLabel =
     values.eigenaar === "alle"
@@ -113,8 +133,10 @@ export function ContactsFilters({
           key: "bedrijf",
           label: "Bedrijf",
           value:
-            companies.find((company) => company.id === values.bedrijf)?.name ??
-            values.bedrijf,
+            values.bedrijf === CLASSIFICATION_FILTER_NO_COMPANY
+              ? "Geen bedrijf"
+              : (companies.find((company) => company.id === values.bedrijf)
+                  ?.name ?? values.bedrijf),
           onRemove: () => navigate({ bedrijf: "" }),
         }
       : null,
@@ -212,7 +234,11 @@ export function ContactsFilters({
         aria-label="Filter op hoofdbranche"
         values={values.branche ?? []}
         onValuesChange={(branche) => navigate({ branche })}
-        items={industryFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: industryFacetCatalog({ includeNoCompany: true }),
+          counts: classificationCounts?.industry ?? null,
+          selected: values.branche ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />
@@ -221,7 +247,11 @@ export function ContactsFilters({
         aria-label="Filter op sector"
         values={values.sector ?? []}
         onValuesChange={(sector) => navigate({ sector })}
-        items={sectorFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: sectorFacetCatalog(),
+          counts: classificationCounts?.sector ?? null,
+          selected: values.sector ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />
@@ -230,7 +260,11 @@ export function ContactsFilters({
         aria-label="Filter op toepassing"
         values={values.toepassing ?? []}
         onValuesChange={(toepassing) => navigate({ toepassing })}
-        items={applicationFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: applicationFacetCatalog(),
+          counts: classificationCounts?.application ?? null,
+          selected: values.toepassing ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />

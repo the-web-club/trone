@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import {
-  applicationFilterSelectOptions,
-  industryFilterSelectOptions,
-  sectorFilterSelectOptions,
-} from "@/components/classification/classification-filter-options";
+  applicationFacetCatalog,
+  industryFacetCatalog,
+  sectorFacetCatalog,
+} from "@/lib/filters/definitions";
 import {
   applicationFilterLabel,
   industryFilterLabel,
@@ -34,10 +35,6 @@ import {
 } from "@/lib/deals-query";
 
 const ALL = "__alle__";
-
-function count(value: number | undefined): string {
-  return String(typeof value === "number" ? value : 0);
-}
 
 function formatDateLabel(value: string): string {
   const date = new Date(`${value}T12:00:00Z`);
@@ -70,12 +67,35 @@ export function LeadsFilters({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideStageFilter = view === "kanban";
 
-  const stageCount = new Map(facets.byStage.map((item) => [item.stageId, item.count]));
-  const sourceCount = new Map(facets.bySource.map((item) => [item.sourceId, item.count]));
-  const ownerCount = new Map(facets.byOwner.map((item) => [item.userId, item.count]));
+  const stageCount = facets.byStage.map((item) => ({
+    value: item.stageId,
+    count: item.count,
+  }));
+  const sourceCount = [
+    { value: "geen", count: facets.unassignedSource },
+    ...facets.bySource.map((item) => ({
+      value: item.sourceId,
+      count: item.count,
+    })),
+  ];
+  const ownerCount = [
+    { value: "niet-toegewezen", count: facets.unassignedOwner },
+    { value: "aan-mij", count: facets.assignedToMe },
+    ...facets.byOwner.map((item) => ({
+      value: item.userId,
+      count: item.count,
+    })),
+  ];
   const memberLabel = new Map(
     members.map((member) => [member.id, member.name || member.email]),
   );
+  const classificationCounts = facets.classificationStale
+    ? null
+    : {
+        industry: facets.byIndustry,
+        sector: facets.bySector,
+        application: facets.byApplication,
+      };
 
   if (values.zoeken !== zoekenFromUrl) {
     setZoekenFromUrl(values.zoeken);
@@ -132,47 +152,52 @@ export function LeadsFilters({
   const hasValueRange = Boolean(values.waardeMin || values.waardeMax);
   const secondaryCount = (hasDateRange ? 1 : 0) + (hasValueRange ? 1 : 0);
 
-  const stageOptions: SelectOption[] = [
-    { value: ALL, label: "Alle fases", hint: count(facets.stageTotal) },
-    ...stages.map((stage) => ({
-      value: stage.id,
-      label: stage.name,
-      hint: count(stageCount.get(stage.id)),
-    })),
-  ];
+  const stageOptions: SelectOption[] = facetSelectOptions({
+    catalog: stages.map((stage) => ({ value: stage.id, label: stage.name })),
+    counts: stageCount,
+    selected: values.fase,
+    all: { value: ALL, label: "Alle fases", count: facets.stageTotal },
+  });
 
-  const sourceOptions: SelectOption[] = [
-    { value: ALL, label: "Alle bronnen", hint: count(facets.sourceTotal) },
-    { value: "geen", label: "Geen bron", hint: count(facets.unassignedSource) },
-    ...sources.map((source) => ({
-      value: source.id,
-      label: source.name,
-      hint: count(sourceCount.get(source.id)),
-    })),
-  ];
+  const sourceOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "geen", label: "Geen bron" },
+      ...sources.map((source) => ({ value: source.id, label: source.name })),
+    ],
+    counts: sourceCount,
+    selected: values.bron,
+    all: { value: ALL, label: "Alle bronnen", count: facets.sourceTotal },
+  });
 
-  const ownerOptions: SelectOption[] = [
-    { value: "alle", label: "Alle", hint: count(facets.ownerTotal) },
-    {
-      value: "niet-toegewezen",
-      label: "Niet toegewezen",
-      hint: count(facets.unassignedOwner),
-    },
-    { value: "aan-mij", label: "Aan mij", hint: count(facets.assignedToMe) },
-    ...members.map((member) => ({
-      value: member.id,
-      label: member.name || member.email,
-      hint: count(ownerCount.get(member.id)),
-      image: member.image,
-    })),
-  ];
+  const ownerOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "niet-toegewezen", label: "Niet toegewezen" },
+      { value: "aan-mij", label: "Aan mij" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ],
+    counts: ownerCount,
+    selected: values.eigenaar === "alle" ? [] : [values.eigenaar],
+    all: { value: "alle", label: "Alle", count: facets.ownerTotal },
+  });
 
-  const statusOptions: SelectOption<DealStatusFilter>[] = [
-    { value: "alle", label: "Alle", hint: count(facets.statusTotal) },
-    { value: "open", label: "Open", hint: count(facets.byStatus.OPEN) },
-    { value: "won", label: "Gewonnen", hint: count(facets.byStatus.WON) },
-    { value: "lost", label: "Verloren", hint: count(facets.byStatus.LOST) },
-  ];
+  const statusOptions: SelectOption<DealStatusFilter>[] = facetSelectOptions({
+    catalog: [
+      { value: "open", label: "Open" },
+      { value: "won", label: "Gewonnen" },
+      { value: "lost", label: "Verloren" },
+    ],
+    counts: [
+      { value: "open", count: facets.byStatus.OPEN ?? 0 },
+      { value: "won", count: facets.byStatus.WON ?? 0 },
+      { value: "lost", count: facets.byStatus.LOST ?? 0 },
+    ],
+    selected: values.status === "alle" ? [] : [values.status],
+    all: { value: "alle", label: "Alle", count: facets.statusTotal },
+  });
 
   const sortOptions: SelectOption<DealSort>[] = [
     { value: "nieuwste", label: "Nieuwste" },
@@ -181,14 +206,19 @@ export function LeadsFilters({
     { value: "leadscore", label: "Leadscore" },
   ];
 
-  const scoreOptions: SelectOption<LeadScoreFilter | typeof ALL>[] = [
-    { value: ALL, label: "Alle", hint: count(facets.scoreTotal) },
-    ...LEAD_SCORE_FILTERS.map((filter) => ({
-      value: filter,
-      label: leadScoreFilterLabel(filter),
-      hint: count(facets.byScore[filter]),
-    })),
-  ];
+  const scoreOptions: SelectOption<LeadScoreFilter | typeof ALL>[] =
+    facetSelectOptions({
+      catalog: LEAD_SCORE_FILTERS.map((filter) => ({
+        value: filter,
+        label: leadScoreFilterLabel(filter),
+      })),
+      counts: LEAD_SCORE_FILTERS.map((filter) => ({
+        value: filter,
+        count: facets.byScore[filter],
+      })),
+      selected: values.leadscore,
+      all: { value: ALL, label: "Alle", count: facets.scoreTotal },
+    });
 
   const dateFieldOptions: SelectOption<DealDateField>[] = [
     { value: "aangemaakt", label: "Aangemaakt" },
@@ -426,6 +456,11 @@ export function LeadsFilters({
       hasActiveFilters={hasActiveFilters}
       onReset={resetAll}
       isPending={isPending}
+      statusMessage={
+        facets.classificationStale
+          ? "Tellingen tijdelijk niet beschikbaar"
+          : undefined
+      }
     >
       {hideStageFilter ? null : (
         <SelectMenu
@@ -487,7 +522,11 @@ export function LeadsFilters({
         aria-label="Filter op hoofdbranche"
         values={values.branche ?? []}
         onValuesChange={(branche) => navigate({ branche })}
-        items={industryFilterSelectOptions({ includeNoCompany: true })}
+        items={facetSelectOptions({
+          catalog: industryFacetCatalog({ includeNoCompany: true }),
+          counts: classificationCounts?.industry ?? null,
+          selected: values.branche ?? [],
+        })}
         placeholder="Alle"
         contentClassName="min-w-[16rem]"
         className="w-full md:w-auto"
@@ -497,7 +536,11 @@ export function LeadsFilters({
         aria-label="Filter op sector"
         values={values.sector ?? []}
         onValuesChange={(sector) => navigate({ sector })}
-        items={sectorFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: sectorFacetCatalog(),
+          counts: classificationCounts?.sector ?? null,
+          selected: values.sector ?? [],
+        })}
         placeholder="Alle"
         contentClassName="min-w-[16rem]"
         className="w-full md:w-auto"
@@ -507,7 +550,11 @@ export function LeadsFilters({
         aria-label="Filter op toepassing"
         values={values.toepassing ?? []}
         onValuesChange={(toepassing) => navigate({ toepassing })}
-        items={applicationFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: applicationFacetCatalog(),
+          counts: classificationCounts?.application ?? null,
+          selected: values.toepassing ?? [],
+        })}
         placeholder="Alle"
         contentClassName="min-w-[16rem]"
         className="w-full md:w-auto"

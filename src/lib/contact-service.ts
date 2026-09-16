@@ -14,8 +14,11 @@ import {
 import type { ContactInput } from "@/lib/contact-validation";
 import { createWithSubmissionId } from "@/lib/idempotent-create";
 import { contactClassificationWhere } from "@/lib/classification-where";
+import { CLASSIFICATION_FILTER_NO_COMPANY } from "@/lib/classification";
 import type { ContactOwnerFacets } from "@/lib/contacts-query";
 import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
+import { ownerFacetsFromGroups, rowsFromCountMap } from "@/lib/filters/aggregate";
+import { contactClassificationFacetCounts } from "@/lib/filters/classification-counts";
 
 export type ContactSelectOption = {
   id: string;
@@ -80,7 +83,9 @@ export function buildContactListWhere(
       ],
     });
   }
-  if (filters.companyId) {
+  if (filters.companyId === CLASSIFICATION_FILTER_NO_COMPANY) {
+    and.push({ companyId: null });
+  } else if (filters.companyId) {
     and.push({ companyId: filters.companyId });
   }
 
@@ -158,26 +163,86 @@ export async function getContactOwnerFacets(
     where: ownerWhere,
     _count: { _all: true },
   });
+  return ownerFacetsFromGroups(ownerGroups, currentUserId);
+}
 
-  const ownerTotal = ownerGroups.reduce(
-    (sum, group) => sum + group._count._all,
-    0,
+export type ContactFilterFacets = ContactOwnerFacets & {
+  byCompany: Array<{ value: string; count: number }>;
+  unassignedCompany: number;
+  companyTotal: number;
+  byIndustry: Array<{ value: string; count: number }>;
+  bySector: Array<{ value: string; count: number }>;
+  byApplication: Array<{ value: string; count: number }>;
+  classificationStale: boolean;
+};
+
+export async function getContactFilterFacets(
+  filters: ContactListFilters = {},
+  currentUserId?: string,
+): Promise<ContactFilterFacets> {
+  const prisma = getPrismaClient();
+  const companyWhere = buildContactListWhere(
+    { ...filters, companyId: undefined },
+    currentUserId,
   );
-  const unassignedOwner =
-    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
+  const [owner, companyGroups, classification] = await Promise.all([
+    getContactOwnerFacets(filters, currentUserId),
+    prisma.contact.groupBy({
+      by: ["companyId"],
+      where: companyWhere,
+      _count: { _all: true },
+    }),
+    contactClassificationFacetCounts({
+      industryWhere: buildContactListWhere(
+        { ...filters, industries: [] },
+        currentUserId,
+      ),
+      sectorWhere: buildContactListWhere(
+        { ...filters, sectors: [] },
+        currentUserId,
+      ),
+      applicationWhere: buildContactListWhere(
+        { ...filters, applications: [] },
+        currentUserId,
+      ),
+    }).then(
+      (counts) => ({ counts, stale: false }),
+      () => ({
+        counts: {
+          industry: new Map<string, number>(),
+          sector: new Map<string, number>(),
+          application: new Map<string, number>(),
+        },
+        stale: true,
+      }),
+    ),
+  ]);
+
+  const unassignedCompany =
+    companyGroups.find((group) => group.companyId == null)?._count._all ?? 0;
 
   return {
-    ownerTotal,
-    unassignedOwner,
-    assignedToMe: currentUserId
-      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
-          ?._count._all ?? 0)
-      : 0,
-    byOwner: ownerGroups.flatMap((group) =>
-      group.ownerUserId
-        ? [{ userId: group.ownerUserId, count: group._count._all }]
+    ...owner,
+    companyTotal: companyGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    ),
+    unassignedCompany,
+    byCompany: companyGroups.flatMap((group) =>
+      group.companyId
+        ? [{ value: group.companyId, count: group._count._all }]
         : [],
     ),
+    byIndustry: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.industry),
+    bySector: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.sector),
+    byApplication: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.application),
+    classificationStale: classification.stale,
   };
 }
 

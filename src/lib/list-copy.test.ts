@@ -28,5 +28,6 @@ describe("listSummary", () => {
     expect(listSummary(1, "lead", "leads")).toBe("1 lead");
     expect(listSummary(0, "lead", "leads")).toBe("0 leads");
     expect(listSummary(2, "lead", "leads")).toBe("2 leads");
+    expect(listSummary(1292, "lead", "leads")).toBe("1.292 leads");
   });
 });

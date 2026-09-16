@@ -7,32 +7,30 @@ import {
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
 import { MultiSelectMenu } from "@/components/ui/multi-select-menu";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import {
-  applicationFilterSelectOptions,
-  industryFilterSelectOptions,
-  sectorFilterSelectOptions,
-} from "@/components/classification/classification-filter-options";
+  applicationFacetCatalog,
+  industryFacetCatalog,
+  sectorFacetCatalog,
+} from "@/lib/filters/definitions";
+import {
+  CLASSIFICATION_FILTER_UNKNOWN,
+  applicationFilterLabel,
+  industryFilterLabel,
+  sectorFilterLabel,
+} from "@/lib/classification";
 import {
   buildCompaniesHref,
   companyLeadsFilterLabel,
   parseCompanyLeadsFilter,
   type CompaniesFilterValues,
   type CompanyLeadFacets,
-  type CompanyOwnerFacets,
 } from "@/lib/companies-query";
-import {
-  applicationFilterLabel,
-  industryFilterLabel,
-  sectorFilterLabel,
-} from "@/lib/classification";
+import type { CompanyFilterFacets } from "@/lib/company-service";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { countryLabel } from "@/lib/list-copy";
 
 const ALL = "__alle__";
-
-function count(value: number | undefined): string {
-  return String(typeof value === "number" ? value : 0);
-}
 
 export function CompaniesFilters({
   values,
@@ -40,14 +38,12 @@ export function CompaniesFilters({
   countries,
   members,
   facets,
-  leadFacets,
 }: {
   values: CompaniesFilterValues;
   cities: string[];
   countries: string[];
   members: DealTeamMember[];
-  facets: CompanyOwnerFacets;
-  leadFacets: CompanyLeadFacets;
+  facets: CompanyFilterFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
@@ -60,50 +56,80 @@ export function CompaniesFilters({
     navigate({ zoeken }),
   );
 
-  const ownerCount = new Map(facets.byOwner.map((item) => [item.userId, item.count]));
   const memberLabel = new Map(
     members.map((member) => [member.id, member.name || member.email]),
   );
+  const classificationCounts = facets.classificationStale
+    ? null
+    : {
+        industry: facets.byIndustry,
+        sector: facets.bySector,
+        application: facets.byApplication,
+      };
+  const leadFacets: CompanyLeadFacets = facets.leads;
 
-  const cityOptions: SelectOption[] = [
-    { value: ALL, label: "Alle plaatsen" },
-    ...cities.map((city) => ({ value: city, label: city })),
-  ];
-  const countryOptions: SelectOption[] = [
-    { value: ALL, label: "Alle landen" },
-    ...countries.map((country) => ({
+  const cityOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: CLASSIFICATION_FILTER_UNKNOWN, label: "Plaats onbekend" },
+      ...cities.map((city) => ({ value: city, label: city })),
+    ],
+    counts: [
+      { value: CLASSIFICATION_FILTER_UNKNOWN, count: facets.unassignedCity },
+      ...facets.byCity,
+    ],
+    selected: values.plaats,
+    all: { value: ALL, label: "Alle plaatsen", count: facets.cityTotal },
+  });
+  const countryOptions: SelectOption[] = facetSelectOptions({
+    catalog: countries.map((country) => ({
       value: country,
       label: countryLabel(country),
     })),
-  ];
-  const ownerOptions: SelectOption[] = [
-    { value: "alle", label: "Alle", hint: count(facets.ownerTotal) },
-    {
-      value: "niet-toegewezen",
-      label: "Niet toegewezen",
-      hint: count(facets.unassignedOwner),
-    },
-    { value: "aan-mij", label: "Aan mij", hint: count(facets.assignedToMe) },
-    ...members.map((member) => ({
-      value: member.id,
-      label: member.name || member.email,
-      hint: count(ownerCount.get(member.id)),
-      image: member.image,
-    })),
-  ];
-  const leadOptions: SelectOption[] = [
-    { value: "alle", label: "Alle", hint: count(leadFacets.total) },
-    { value: "geen", label: "Geen leads", hint: count(leadFacets.none) },
-    { value: "1", label: "1 lead", hint: count(leadFacets.byCount["1"]) },
-    { value: "2", label: "2 leads", hint: count(leadFacets.byCount["2"]) },
-    { value: "3", label: "3 leads", hint: count(leadFacets.byCount["3"]) },
-    { value: "4", label: "4 leads", hint: count(leadFacets.byCount["4"]) },
-    {
-      value: "5plus",
-      label: "5 of meer",
-      hint: count(leadFacets.byCount["5plus"]),
-    },
-  ];
+    counts: facets.byCountry,
+    selected: values.land,
+    all: { value: ALL, label: "Alle landen", count: facets.countryTotal },
+  });
+  const ownerOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "niet-toegewezen", label: "Niet toegewezen" },
+      { value: "aan-mij", label: "Aan mij" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ],
+    counts: [
+      { value: "niet-toegewezen", count: facets.unassignedOwner },
+      { value: "aan-mij", count: facets.assignedToMe },
+      ...facets.byOwner.map((item) => ({
+        value: item.userId,
+        count: item.count,
+      })),
+    ],
+    selected: values.eigenaar === "alle" ? [] : [values.eigenaar],
+    all: { value: "alle", label: "Alle", count: facets.ownerTotal },
+  });
+  const leadOptions: SelectOption[] = facetSelectOptions({
+    catalog: [
+      { value: "geen", label: "Geen leads" },
+      { value: "1", label: "1 lead" },
+      { value: "2", label: "2 leads" },
+      { value: "3", label: "3 leads" },
+      { value: "4", label: "4 leads" },
+      { value: "5plus", label: "5 of meer" },
+    ],
+    counts: [
+      { value: "geen", count: leadFacets.none },
+      { value: "1", count: leadFacets.byCount["1"] },
+      { value: "2", count: leadFacets.byCount["2"] },
+      { value: "3", count: leadFacets.byCount["3"] },
+      { value: "4", count: leadFacets.byCount["4"] },
+      { value: "5plus", count: leadFacets.byCount["5plus"] },
+    ],
+    selected: values.leads === "alle" ? [] : [values.leads],
+    all: { value: "alle", label: "Alle", count: leadFacets.total },
+  });
 
   const ownerLabel =
     values.eigenaar === "alle"
@@ -119,7 +145,10 @@ export function CompaniesFilters({
       ? {
           key: "plaats",
           label: "Plaats",
-          value: values.plaats,
+          value:
+            values.plaats === CLASSIFICATION_FILTER_UNKNOWN
+              ? "Plaats onbekend"
+              : values.plaats,
           onRemove: () => navigate({ plaats: "" }),
         }
       : null,
@@ -212,6 +241,11 @@ export function CompaniesFilters({
         )
       }
       isPending={isPending}
+      statusMessage={
+        facets.classificationStale
+          ? "Tellingen tijdelijk niet beschikbaar"
+          : undefined
+      }
     >
       <SelectMenu
         prefix="Plaats"
@@ -253,7 +287,11 @@ export function CompaniesFilters({
         aria-label="Filter op hoofdbranche"
         values={values.branche ?? []}
         onValuesChange={(branche) => navigate({ branche })}
-        items={industryFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: industryFacetCatalog(),
+          counts: classificationCounts?.industry ?? null,
+          selected: values.branche ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />
@@ -262,7 +300,11 @@ export function CompaniesFilters({
         aria-label="Filter op sector"
         values={values.sector ?? []}
         onValuesChange={(sector) => navigate({ sector })}
-        items={sectorFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: sectorFacetCatalog(),
+          counts: classificationCounts?.sector ?? null,
+          selected: values.sector ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />
@@ -271,7 +313,11 @@ export function CompaniesFilters({
         aria-label="Filter op toepassing"
         values={values.toepassing ?? []}
         onValuesChange={(toepassing) => navigate({ toepassing })}
-        items={applicationFilterSelectOptions()}
+        items={facetSelectOptions({
+          catalog: applicationFacetCatalog(),
+          counts: classificationCounts?.application ?? null,
+          selected: values.toepassing ?? [],
+        })}
         placeholder="Alle"
         className="w-full md:w-auto"
       />

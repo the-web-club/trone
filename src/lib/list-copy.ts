@@ -1,6 +1,8 @@
+import { formatCount } from "@/lib/format";
+
 export function listSummary(total: number, singular: string, plural: string) {
   if (total === 1) return `1 ${singular}`;
-  return `${total} ${plural}`;
+  return `${formatCount(total)} ${plural}`;
 }
 
 /** Join visible fragments with a middot; skip empty values without leftover separators. */

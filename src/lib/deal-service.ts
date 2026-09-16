@@ -44,6 +44,12 @@ import {
   type LeadScoreResult,
 } from "@/lib/lead-score";
 import { logEvent } from "@/lib/timeline-service";
+import {
+  ownerFacetsFromGroups,
+  rowsFromCountMap,
+  sumGroupCounts,
+} from "@/lib/filters/aggregate";
+import { dealClassificationFacetCounts } from "@/lib/filters/classification-counts";
 import type {
   DealDateField,
   DealSort,
@@ -457,6 +463,8 @@ export async function listDealTeamMembers(): Promise<DealTeamMember[]> {
   });
 }
 
+export type FacetCountRow = { value: string; count: number };
+
 export type DealFilterFacets = {
   stageTotal: number;
   byStage: Array<{ stageId: string; count: number }>;
@@ -471,12 +479,17 @@ export type DealFilterFacets = {
   byStatus: Partial<Record<DealStatus, number>>;
   scoreTotal: number;
   byScore: Record<LeadScoreFilter, number>;
+  byIndustry: FacetCountRow[];
+  bySector: FacetCountRow[];
+  byApplication: FacetCountRow[];
+  stale: boolean;
+  classificationStale: boolean;
 };
 
 /**
  * Facet counts for the leads filter bar.
- * Each dimension ignores its own filter so counts stay meaningful.
- * GroupBy queries; totals/unassigned are derived from the groups.
+ * Each dimension ignores its own filter (Other Filters Changed).
+ * GroupBy / COUNT(DISTINCT) over the full scoped dataset, not the page.
  */
 export async function getDealFilterFacets(
   filters: DealListFilters = {},
@@ -504,35 +517,68 @@ export async function getDealFilterFacets(
     { ...filters, leadscore: "" },
     currentUserId,
   );
+  const industryWhere = buildDealListWhere(
+    { ...filters, industries: [] },
+    currentUserId,
+  );
+  const sectorWhere = buildDealListWhere(
+    { ...filters, sectors: [] },
+    currentUserId,
+  );
+  const applicationWhere = buildDealListWhere(
+    { ...filters, applications: [] },
+    currentUserId,
+  );
 
-  const [stageGroups, sourceGroups, ownerGroups, statusGroups, scoreGroups] =
-    await Promise.all([
-      prisma.deal.groupBy({
-        by: ["stageId"],
-        where: stageWhere,
-        _count: { _all: true },
+  const [
+    stageGroups,
+    sourceGroups,
+    ownerGroups,
+    statusGroups,
+    scoreGroups,
+    classification,
+  ] = await Promise.all([
+    prisma.deal.groupBy({
+      by: ["stageId"],
+      where: stageWhere,
+      _count: { _all: true },
+    }),
+    prisma.deal.groupBy({
+      by: ["sourceId"],
+      where: sourceWhere,
+      _count: { _all: true },
+    }),
+    prisma.deal.groupBy({
+      by: ["ownerUserId"],
+      where: ownerWhere,
+      _count: { _all: true },
+    }),
+    prisma.deal.groupBy({
+      by: ["status"],
+      where: statusWhere,
+      _count: { _all: true },
+    }),
+    prisma.deal.groupBy({
+      by: ["leadScore", "leadScoreAssessed", "leadScoreNoMatch"],
+      where: scoreWhere,
+      _count: { _all: true },
+    }),
+    dealClassificationFacetCounts({
+      industryWhere,
+      sectorWhere,
+      applicationWhere,
+    }).then(
+      (counts) => ({ counts, stale: false }),
+      () => ({
+        counts: {
+          industry: new Map<string, number>(),
+          sector: new Map<string, number>(),
+          application: new Map<string, number>(),
+        },
+        stale: true,
       }),
-      prisma.deal.groupBy({
-        by: ["sourceId"],
-        where: sourceWhere,
-        _count: { _all: true },
-      }),
-      prisma.deal.groupBy({
-        by: ["ownerUserId"],
-        where: ownerWhere,
-        _count: { _all: true },
-      }),
-      prisma.deal.groupBy({
-        by: ["status"],
-        where: statusWhere,
-        _count: { _all: true },
-      }),
-      prisma.deal.groupBy({
-        by: ["leadScore", "leadScoreAssessed", "leadScoreNoMatch"],
-        where: scoreWhere,
-        _count: { _all: true },
-      }),
-    ]);
+    ),
+  ]);
 
   const byStatus: Partial<Record<DealStatus, number>> = {};
   for (const group of statusGroups) {
@@ -541,8 +587,7 @@ export async function getDealFilterFacets(
 
   const unassignedSource =
     sourceGroups.find((group) => group.sourceId == null)?._count._all ?? 0;
-  const unassignedOwner =
-    ownerGroups.find((group) => group.ownerUserId == null)?._count._all ?? 0;
+  const owner = ownerFacetsFromGroups(ownerGroups, currentUserId);
 
   return {
     stageTotal: sumGroupCounts(stageGroups),
@@ -557,21 +602,25 @@ export async function getDealFilterFacets(
         ? [{ sourceId: group.sourceId, count: group._count._all }]
         : [],
     ),
-    ownerTotal: sumGroupCounts(ownerGroups),
-    unassignedOwner,
-    assignedToMe: currentUserId
-      ? (ownerGroups.find((group) => group.ownerUserId === currentUserId)
-          ?._count._all ?? 0)
-      : 0,
-    byOwner: ownerGroups.flatMap((group) =>
-      group.ownerUserId
-        ? [{ userId: group.ownerUserId, count: group._count._all }]
-        : [],
-    ),
+    ownerTotal: owner.ownerTotal,
+    unassignedOwner: owner.unassignedOwner,
+    assignedToMe: owner.assignedToMe,
+    byOwner: owner.byOwner,
     statusTotal: sumGroupCounts(statusGroups),
     byStatus,
     scoreTotal: sumGroupCounts(scoreGroups),
     byScore: scoreFacetsFromGroups(scoreGroups),
+    byIndustry: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.industry),
+    bySector: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.sector),
+    byApplication: classification.stale
+      ? []
+      : rowsFromCountMap(classification.counts.application),
+    stale: classification.stale,
+    classificationStale: classification.stale,
   };
 }
 
@@ -601,10 +650,6 @@ function scoreFacetsFromGroups(
   }
 
   return counts;
-}
-
-function sumGroupCounts(groups: Array<{ _count: { _all: number } }>): number {
-  return groups.reduce((sum, group) => sum + group._count._all, 0);
 }
 
 function csvCell(value: string): string {

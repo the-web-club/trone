@@ -7,8 +7,10 @@ import {
 } from "@/components/list/list-filter-toolbar";
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import { formatDate } from "@/lib/format";
 import { buildQuotesHref, type QuotesFilterValues } from "@/lib/quotes-query";
+import type { QuoteFilterFacets } from "@/lib/quote-service";
 import { quoteStatusLabels, quoteStatuses } from "@/lib/quote-validation";
 
 const ALL = "__alle__";
@@ -22,9 +24,11 @@ function formatDateLabel(value: string): string {
 export function QuotesFilters({
   values,
   companies,
+  facets,
 }: {
   values: QuotesFilterValues;
   companies: Array<{ id: string; name: string }>;
+  facets: QuoteFilterFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
@@ -46,17 +50,24 @@ export function QuotesFilters({
     navigate({ zoeken }),
   );
 
-  const statusOptions: SelectOption[] = [
-    { value: ALL, label: "Alle statussen" },
-    ...quoteStatuses.map((status) => ({
+  const statusOptions: SelectOption[] = facetSelectOptions({
+    catalog: quoteStatuses.map((status) => ({
       value: status,
       label: quoteStatusLabels[status],
     })),
-  ];
-  const companyOptions: SelectOption[] = [
-    { value: ALL, label: "Alle klanten" },
-    ...companies.map((company) => ({ value: company.id, label: company.name })),
-  ];
+    counts: facets.byStatus,
+    selected: values.status,
+    all: { value: ALL, label: "Alle statussen", count: facets.statusTotal },
+  });
+  const companyOptions: SelectOption[] = facetSelectOptions({
+    catalog: companies.map((company) => ({
+      value: company.id,
+      label: company.name,
+    })),
+    counts: facets.byCompany,
+    selected: values.klant,
+    all: { value: ALL, label: "Alle klanten", count: facets.companyTotal },
+  });
 
   const hasDate = Boolean(values.van || values.tot);
   const chips = [

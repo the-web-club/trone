@@ -482,7 +482,10 @@ export function parseSectorFilterValues(values: string[]): string[] {
 }
 
 export function parseApplicationFilterValues(values: string[]): string[] {
-  return values.filter((value) => isApplicationCode(value));
+  return values.filter(
+    (value) =>
+      isApplicationCode(value) || value === CLASSIFICATION_FILTER_UNKNOWN,
+  );
 }
 
 export function industryFilterLabel(code: string): string {
@@ -497,6 +500,7 @@ export function sectorFilterLabel(code: string): string {
 }
 
 export function applicationFilterLabel(code: string): string {
+  if (code === CLASSIFICATION_FILTER_UNKNOWN) return "Toepassing onbekend";
   return getApplicationLabel(code) ?? code;
 }
 

@@ -194,7 +194,7 @@ export function ComboboxMenu<Value extends string = string>({
                   disabled={option.disabled}
                   className={cn(
                     popupItem,
-                    "relative pr-2 pl-7 data-[selected]:font-medium",
+                    "relative pr-2 pl-7 data-[selected]:font-medium data-[disabled]:opacity-60",
                     wrap && "items-start",
                   )}
                 >
@@ -217,7 +217,7 @@ export function ComboboxMenu<Value extends string = string>({
                     {option.label}
                   </span>
                   {option.hint ? (
-                    <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
+                    <span className="ml-auto min-w-[2.25rem] shrink-0 text-right text-xs tabular-nums text-fg-subtle">
                       {option.hint}
                     </span>
                   ) : null}

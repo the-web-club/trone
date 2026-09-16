@@ -7,7 +7,9 @@ import {
 } from "@/components/list/list-filter-toolbar";
 import { useListHrefReplace, useListNavigation } from "@/components/list/list-browser";
 import { SelectMenu, type SelectOption } from "@/components/ui/select";
+import { facetSelectOptions } from "@/components/filters/facet-select";
 import { formatDate } from "@/lib/format";
+import type { OrderFilterFacets } from "@/lib/order-service";
 import {
   buildOrdersHref,
   orderStatusLabels,
@@ -26,9 +28,11 @@ function formatDateLabel(value: string): string {
 export function OrdersFilters({
   values,
   companies,
+  facets,
 }: {
   values: OrdersFilterValues;
   companies: Array<{ id: string; name: string }>;
+  facets: OrderFilterFacets;
 }) {
   const replace = useListHrefReplace();
   const { isPending } = useListNavigation();
@@ -50,17 +54,24 @@ export function OrdersFilters({
     navigate({ zoeken }),
   );
 
-  const statusOptions: SelectOption[] = [
-    { value: ALL, label: "Alle statussen" },
-    ...orderStatuses.map((status) => ({
+  const statusOptions: SelectOption[] = facetSelectOptions({
+    catalog: orderStatuses.map((status) => ({
       value: status,
       label: orderStatusLabels[status],
     })),
-  ];
-  const companyOptions: SelectOption[] = [
-    { value: ALL, label: "Alle klanten" },
-    ...companies.map((company) => ({ value: company.id, label: company.name })),
-  ];
+    counts: facets.byStatus,
+    selected: values.status,
+    all: { value: ALL, label: "Alle statussen", count: facets.statusTotal },
+  });
+  const companyOptions: SelectOption[] = facetSelectOptions({
+    catalog: companies.map((company) => ({
+      value: company.id,
+      label: company.name,
+    })),
+    counts: facets.byCompany,
+    selected: values.klant,
+    all: { value: ALL, label: "Alle klanten", count: facets.companyTotal },
+  });
 
   const hasDate = Boolean(values.van || values.tot);
   const chips = [

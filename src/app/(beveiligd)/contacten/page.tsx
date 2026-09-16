@@ -7,7 +7,7 @@ import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
-import { getContactOwnerFacets, listContactRows } from "@/lib/contact-service";
+import { getContactFilterFacets, listContactRows } from "@/lib/contact-service";
 import {
   buildContactsHref,
   parseContactsSearchParams,
@@ -47,7 +47,7 @@ export default async function ContactenPage({
     listContactRows(listFilters, currentUserId),
     listCompaniesForSelect(),
     listDealTeamMembers(),
-    getContactOwnerFacets(listFilters, currentUserId),
+    getContactFilterFacets(listFilters, currentUserId),
   ]);
 
   const ownerNames = new Map(

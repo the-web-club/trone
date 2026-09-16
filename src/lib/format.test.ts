@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatEuro, formatEuroExact, formatPersonName } from "@/lib/format";
+import { formatCount, formatEuro, formatEuroExact, formatPersonName } from "@/lib/format";
+
+describe("formatCount", () => {
+  it("gebruikt Nederlandse duizendtallen", () => {
+    expect(formatCount(0)).toBe("0");
+    expect(formatCount(18)).toBe("18");
+    expect(formatCount(1292)).toBe("1.292");
+  });
+});
 
 describe("formatEuro", () => {
   it("geeft null bij ontbrekende waarden", () => {

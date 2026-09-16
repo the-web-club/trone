@@ -32,24 +32,10 @@ export type OrderListFilters = {
   pageSize?: number;
 };
 
-export async function listOrders(
-  filters: OrderListFilters = {},
-): Promise<
-  PagedList<{
-    id: string;
-    orderNumber: string;
-    status: OrderStatus;
-    createdAt: Date;
-    company: { id: string; slug: string; name: string };
-  }>
-> {
-  const prisma = getPrismaClient();
+export function buildOrderListWhere(
+  filters: OrderListFilters,
+): Prisma.OrderWhereInput {
   const query = filters.query?.trim();
-  const { page, pageSize, skip, take } = paginateArgs(
-    filters.page,
-    filters.pageSize,
-  );
-
   const and: Prisma.OrderWhereInput[] = [];
   if (filters.status) and.push({ status: filters.status });
   if (filters.companyId) and.push({ companyId: filters.companyId });
@@ -69,8 +55,26 @@ export async function listOrders(
     if (tot) createdAt.lt = endExclusiveOfCalendarDate(tot);
     and.push({ createdAt });
   }
+  return and.length ? { AND: and } : {};
+}
 
-  const where = and.length ? { AND: and } : {};
+export async function listOrders(
+  filters: OrderListFilters = {},
+): Promise<
+  PagedList<{
+    id: string;
+    orderNumber: string;
+    status: OrderStatus;
+    createdAt: Date;
+    company: { id: string; slug: string; name: string };
+  }>
+> {
+  const prisma = getPrismaClient();
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+  const where = buildOrderListWhere(filters);
   const [total, items] = await Promise.all([
     prisma.order.count({ where }),
     prisma.order.findMany({
@@ -89,6 +93,48 @@ export async function listOrders(
   ]);
 
   return { items, total, page, pageSize };
+}
+
+export type OrderFilterFacets = {
+  statusTotal: number;
+  byStatus: Array<{ value: string; count: number }>;
+  companyTotal: number;
+  byCompany: Array<{ value: string; count: number }>;
+};
+
+export async function getOrderFilterFacets(
+  filters: OrderListFilters = {},
+): Promise<OrderFilterFacets> {
+  const prisma = getPrismaClient();
+  const statusWhere = buildOrderListWhere({ ...filters, status: undefined });
+  const companyWhere = buildOrderListWhere({ ...filters, companyId: undefined });
+  const [statusGroups, companyGroups] = await Promise.all([
+    prisma.order.groupBy({
+      by: ["status"],
+      where: statusWhere,
+      _count: { _all: true },
+    }),
+    prisma.order.groupBy({
+      by: ["companyId"],
+      where: companyWhere,
+      _count: { _all: true },
+    }),
+  ]);
+  return {
+    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
+    byStatus: statusGroups.map((group) => ({
+      value: group.status,
+      count: group._count._all,
+    })),
+    companyTotal: companyGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    ),
+    byCompany: companyGroups.map((group) => ({
+      value: group.companyId,
+      count: group._count._all,
+    })),
+  };
 }
 
 const orderDetailInclude = {

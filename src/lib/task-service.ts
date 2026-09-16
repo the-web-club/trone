@@ -172,7 +172,17 @@ export type TaskFilterFacets = {
   byAssignee: Array<{ userId: string; count: number }>;
   statusTotal: number;
   byStatus: Partial<Record<TaskStatus, number>>;
+  whenTotal: number;
+  byWhen: Partial<Record<Exclude<TaskWhenFilter, "alle">, number>>;
 };
+
+const TASK_WHEN_PRESETS: Array<Exclude<TaskWhenFilter, "alle">> = [
+  "achterstallig",
+  "vandaag",
+  "deze-week",
+  "later",
+  "zonder-datum",
+];
 
 export async function getTaskFilterFacets(
   filters: TaskListFilters,
@@ -187,24 +197,39 @@ export async function getTaskFilterFacets(
     { ...filters, ignoreStatus: true },
     currentUserId,
   );
+  const whenBaseWhere = buildTaskListWhere(
+    { ...filters, wanneer: "alle" },
+    currentUserId,
+  );
 
-  const [assigneeGroups, statusGroups] = await Promise.all([
-    prisma.task.groupBy({
-      by: ["assigneeUserId"],
-      where: assigneeWhere,
-      _count: { _all: true },
-    }),
-    prisma.task.groupBy({
-      by: ["status"],
-      where: statusWhere,
-      _count: { _all: true },
-    }),
-  ]);
+  const [assigneeGroups, statusGroups, whenTotal, ...whenCounts] =
+    await Promise.all([
+      prisma.task.groupBy({
+        by: ["assigneeUserId"],
+        where: assigneeWhere,
+        _count: { _all: true },
+      }),
+      prisma.task.groupBy({
+        by: ["status"],
+        where: statusWhere,
+        _count: { _all: true },
+      }),
+      prisma.task.count({ where: whenBaseWhere }),
+      ...TASK_WHEN_PRESETS.map((wanneer) =>
+        prisma.task.count({
+          where: buildTaskListWhere({ ...filters, wanneer }, currentUserId),
+        }),
+      ),
+    ]);
 
   const byStatus: Partial<Record<TaskStatus, number>> = {};
   for (const group of statusGroups) {
     byStatus[group.status] = group._count._all;
   }
+  const byWhen: TaskFilterFacets["byWhen"] = {};
+  TASK_WHEN_PRESETS.forEach((key, index) => {
+    byWhen[key] = whenCounts[index] ?? 0;
+  });
 
   return {
     assigneeTotal: assigneeGroups.reduce(
@@ -220,6 +245,8 @@ export async function getTaskFilterFacets(
     })),
     statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
     byStatus,
+    whenTotal,
+    byWhen,
   };
 }
 

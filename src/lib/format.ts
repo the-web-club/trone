@@ -16,6 +16,10 @@ export function initialsFromName(name: string): string {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
 
+export function formatCount(value: number): string {
+  return new Intl.NumberFormat("nl-NL").format(value);
+}
+
 export function formatEuro(value: number | null | undefined): string | null {
   if (value == null || Number.isNaN(value)) return null;
   return new Intl.NumberFormat("nl-NL", {

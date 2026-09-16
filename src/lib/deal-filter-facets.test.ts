@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDealCount, mockDealGroupBy } = vi.hoisted(() => ({
+const {
+  mockDealCount,
+  mockDealGroupBy,
+  mockDealApplicationGroupBy,
+  mockCompanyFindMany,
+} = vi.hoisted(() => ({
   mockDealCount: vi.fn(),
   mockDealGroupBy: vi.fn(),
+  mockDealApplicationGroupBy: vi.fn(),
+  mockCompanyFindMany: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +20,12 @@ vi.mock("@/lib/db", () => ({
       count: mockDealCount,
       groupBy: mockDealGroupBy,
     },
+    dealApplication: {
+      groupBy: mockDealApplicationGroupBy,
+    },
+    company: {
+      findMany: mockCompanyFindMany,
+    },
   }),
 }));
 
@@ -21,8 +34,10 @@ import { getDealFilterFacets } from "@/lib/deal-service";
 describe("getDealFilterFacets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDealCount.mockResolvedValue(10);
+    mockDealCount.mockResolvedValue(0);
     mockDealGroupBy.mockResolvedValue([]);
+    mockDealApplicationGroupBy.mockResolvedValue([]);
+    mockCompanyFindMany.mockResolvedValue([]);
   });
 
   it("negeert de eigen dimensie: stage-facet houdt zoek/bron/eigenaar, niet de fase", async () => {
@@ -88,7 +103,22 @@ describe("getDealFilterFacets", () => {
     expect(where).not.toContain("user-me");
   });
 
-  it("leidt totalen af uit vijf groupBy-queries, zonder losse counts", async () => {
+  it("negeert de eigen dimensie: branche houdt status, niet de branche zelf", async () => {
+    await getDealFilterFacets({
+      industries: ["industrie_productie"],
+      status: "open",
+    });
+
+    const industryCall = mockDealGroupBy.mock.calls.find(
+      (call) => call[0]?.by?.[0] === "companyId",
+    );
+    expect(industryCall).toBeTruthy();
+    const where = JSON.stringify(industryCall?.[0]?.where);
+    expect(where).toContain("OPEN");
+    expect(where).not.toContain("industrie_productie");
+  });
+
+  it("leidt scalar totalen af uit groupBy, zonder count-per-optie", async () => {
     mockDealGroupBy.mockImplementation(async (args: { by: string[] }) => {
       if (args.by[0] === "stageId") {
         return [
@@ -119,16 +149,30 @@ describe("getDealFilterFacets", () => {
           },
         ];
       }
+      if (args.by[0] === "companyId") {
+        return [
+          { companyId: null, _count: { _all: 2 } },
+          { companyId: "co-1", _count: { _all: 8 } },
+        ];
+      }
       return [
         { status: "OPEN", _count: { _all: 8 } },
         { status: "WON", _count: { _all: 2 } },
       ];
     });
+    mockCompanyFindMany.mockResolvedValue([
+      { id: "co-1", industryCode: "industrie_productie", sectorCode: "chemie" },
+    ]);
+    mockDealApplicationGroupBy.mockResolvedValue([
+      { code: "kraan", _count: { _all: 4 } },
+    ]);
+    mockDealCount.mockResolvedValue(3);
 
     const facets = await getDealFilterFacets({}, "user-me");
 
-    expect(mockDealCount).not.toHaveBeenCalled();
-    expect(mockDealGroupBy).toHaveBeenCalledTimes(5);
+    expect(mockDealGroupBy.mock.calls.some((call) => call[0]?.by?.[0] === "stageId")).toBe(
+      true,
+    );
     expect(facets.stageTotal).toBe(10);
     expect(facets.sourceTotal).toBe(10);
     expect(facets.unassignedSource).toBe(3);
@@ -141,6 +185,20 @@ describe("getDealFilterFacets", () => {
     expect(facets.scoreTotal).toBe(10);
     expect(facets.byScore["niet-beoordeeld"]).toBe(10);
     expect(facets.byScore.hoog).toBe(0);
+    expect(facets.byIndustry).toEqual(
+      expect.arrayContaining([
+        { value: "geen-bedrijf", count: 2 },
+        { value: "industrie_productie", count: 8 },
+        { value: "onbekend", count: 0 },
+      ]),
+    );
+    expect(facets.byApplication).toEqual(
+      expect.arrayContaining([
+        { value: "kraan", count: 4 },
+        { value: "onbekend", count: 3 },
+      ]),
+    );
+    expect(facets.classificationStale).toBe(false);
   });
 
   it("negeert de eigen dimensie: score-facet houdt fase, niet de leadscore", async () => {
@@ -164,5 +222,12 @@ describe("getDealFilterFacets", () => {
     );
     const stageWhere = JSON.stringify(stageGroupCall?.[0]?.where);
     expect(stageWhere).toContain("75");
+  });
+
+  it("zet classificationStale bij een fout in de classificatie-query", async () => {
+    mockDealApplicationGroupBy.mockRejectedValue(new Error("db down"));
+    const facets = await getDealFilterFacets({}, "user-me");
+    expect(facets.classificationStale).toBe(true);
+    expect(facets.byIndustry).toEqual([]);
   });
 });

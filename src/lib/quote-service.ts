@@ -200,14 +200,10 @@ export type QuoteListFilters = {
   pageSize?: number;
 };
 
-export async function listQuoteRows(filters: QuoteListFilters = {}) {
-  const prisma = getPrismaClient();
+export function buildQuoteListWhere(
+  filters: QuoteListFilters,
+): Prisma.QuoteWhereInput {
   const query = filters.query?.trim();
-  const { page, pageSize, skip, take } = paginateArgs(
-    filters.page,
-    filters.pageSize,
-  );
-
   const and: Prisma.QuoteWhereInput[] = [];
   if (filters.status) and.push({ status: filters.status });
   if (filters.companyId) and.push({ companyId: filters.companyId });
@@ -227,8 +223,16 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
     if (tot) createdAt.lt = endExclusiveOfCalendarDate(tot);
     and.push({ createdAt });
   }
+  return and.length ? { AND: and } : {};
+}
 
-  const where = and.length ? { AND: and } : {};
+export async function listQuoteRows(filters: QuoteListFilters = {}) {
+  const prisma = getPrismaClient();
+  const { page, pageSize, skip, take } = paginateArgs(
+    filters.page,
+    filters.pageSize,
+  );
+  const where = buildQuoteListWhere(filters);
   const select = {
     id: true,
     quoteNumber: true,
@@ -252,6 +256,48 @@ export async function listQuoteRows(filters: QuoteListFilters = {}) {
   ]);
 
   return { items, total, page, pageSize };
+}
+
+export type QuoteFilterFacets = {
+  statusTotal: number;
+  byStatus: Array<{ value: string; count: number }>;
+  companyTotal: number;
+  byCompany: Array<{ value: string; count: number }>;
+};
+
+export async function getQuoteFilterFacets(
+  filters: QuoteListFilters = {},
+): Promise<QuoteFilterFacets> {
+  const prisma = getPrismaClient();
+  const statusWhere = buildQuoteListWhere({ ...filters, status: undefined });
+  const companyWhere = buildQuoteListWhere({ ...filters, companyId: undefined });
+  const [statusGroups, companyGroups] = await Promise.all([
+    prisma.quote.groupBy({
+      by: ["status"],
+      where: statusWhere,
+      _count: { _all: true },
+    }),
+    prisma.quote.groupBy({
+      by: ["companyId"],
+      where: companyWhere,
+      _count: { _all: true },
+    }),
+  ]);
+  return {
+    statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
+    byStatus: statusGroups.map((group) => ({
+      value: group.status,
+      count: group._count._all,
+    })),
+    companyTotal: companyGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    ),
+    byCompany: companyGroups.map((group) => ({
+      value: group.companyId,
+      count: group._count._all,
+    })),
+  };
 }
 
 const quoteHeaderInclude = {

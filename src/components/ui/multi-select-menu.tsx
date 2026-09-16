@@ -154,9 +154,19 @@ export function MultiSelectMenu<Value extends string = string>({
                 <li key={item.value}>
                   <button
                     type="button"
+                    role="option"
                     disabled={item.disabled}
-                    onClick={() => toggle(item.value)}
-                    className={cn(popupItem, "w-full text-left")}
+                    aria-selected={checked}
+                    aria-disabled={item.disabled || undefined}
+                    onClick={() => {
+                      if (item.disabled) return;
+                      toggle(item.value);
+                    }}
+                    className={cn(
+                      popupItem,
+                      "w-full text-left data-[disabled]:opacity-60",
+                      item.disabled && "text-fg-muted",
+                    )}
                   >
                     <Check
                       className={cn(
@@ -167,7 +177,9 @@ export function MultiSelectMenu<Value extends string = string>({
                     />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {item.hint ? (
-                      <span className="text-xs text-fg-subtle">{item.hint}</span>
+                      <span className="ml-auto min-w-[2.25rem] shrink-0 text-right text-xs tabular-nums text-fg-subtle">
+                        {item.hint}
+                      </span>
                     ) : null}
                   </button>
                 </li>

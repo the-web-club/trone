@@ -529,7 +529,7 @@ function LeadDetailFields({
           searchPlaceholder="Zoek een contact…"
           createLabel="Nieuw contact"
           disabled={relation.contactsLoading}
-          href={contact?.slug ? contactPath(contact) : null}
+          href={contact?.slug ? contactPath({ slug: contact.slug }) : null}
           onCreate={(query) => {
             setContactQuery(query);
             setContactDialogOpen(true);

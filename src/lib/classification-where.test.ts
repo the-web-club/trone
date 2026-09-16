@@ -56,6 +56,21 @@ describe("dealClassificationWhere", () => {
       ],
     });
   });
+
+  it("combineert ontbrekende toepassingen met OR binnen het facet", () => {
+    expect(
+      dealClassificationWhere({
+        industries: [],
+        sectors: [],
+        applications: ["kraan", "onbekend"],
+      }),
+    ).toEqual({
+      OR: [
+        { applications: { some: { code: { in: ["kraan"] } } } },
+        { applications: { none: {} } },
+      ],
+    });
+  });
 });
 
 describe("companyClassificationWhere", () => {
@@ -118,5 +133,15 @@ describe("contactClassificationWhere", () => {
     ).toEqual({
       deals: { some: { applications: { some: { code: { in: ["kraan"] } } } } },
     });
+  });
+
+  it("filtert contacten zonder bedrijf", () => {
+    expect(
+      contactClassificationWhere({
+        industries: ["geen-bedrijf"],
+        sectors: [],
+        applications: [],
+      }),
+    ).toEqual({ companyId: null });
   });
 });

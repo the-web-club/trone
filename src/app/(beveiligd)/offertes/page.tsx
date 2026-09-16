@@ -11,7 +11,7 @@ import {
 } from "@/components/shell/page-header";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listSummary } from "@/lib/list-copy";
-import { listQuoteRows } from "@/lib/quote-service";
+import { getQuoteFilterFacets, listQuoteRows } from "@/lib/quote-service";
 import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
 
 export const metadata: Metadata = { title: "Offertes" };
@@ -26,7 +26,7 @@ export default async function OffertesPage({
     parsed.zoeken || parsed.status || parsed.klant || parsed.van || parsed.tot,
   );
 
-  const [result, companies] = await Promise.all([
+  const [result, companies, facets] = await Promise.all([
     listQuoteRows({
       query: parsed.zoeken || undefined,
       status: (parsed.status || undefined) as QuoteStatus | undefined,
@@ -36,6 +36,13 @@ export default async function OffertesPage({
       page: parsed.pagina,
     }),
     listCompaniesForSelect(),
+    getQuoteFilterFacets({
+      query: parsed.zoeken || undefined,
+      status: (parsed.status || undefined) as QuoteStatus | undefined,
+      companyId: parsed.klant || undefined,
+      van: parsed.van || undefined,
+      tot: parsed.tot || undefined,
+    }),
   ]);
 
   const totalPages = Math.max(Math.ceil(result.total / result.pageSize), 1);
@@ -65,6 +72,7 @@ export default async function OffertesPage({
           id: company.id,
           name: company.name,
         }))}
+        facets={facets}
       />
       <ListBody>
         <QuotesList

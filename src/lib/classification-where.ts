@@ -64,13 +64,26 @@ export function companyIndustrySectorWhere(
   ]);
 }
 
+function splitApplicationFilter(values: string[]) {
+  return {
+    codes: values.filter((value) => value !== CLASSIFICATION_FILTER_UNKNOWN),
+    unknown: values.includes(CLASSIFICATION_FILTER_UNKNOWN),
+  };
+}
+
 export function dealApplicationWhere(
   applications: string[],
 ): Prisma.DealWhereInput | undefined {
   if (applications.length === 0) return undefined;
-  return {
-    applications: { some: { code: { in: applications } } },
-  };
+  const { codes, unknown } = splitApplicationFilter(applications);
+  const parts: Prisma.DealWhereInput[] = [];
+  if (codes.length > 0) {
+    parts.push({ applications: { some: { code: { in: codes } } } });
+  }
+  if (unknown) {
+    parts.push({ applications: { none: {} } });
+  }
+  return orWhere(parts);
 }
 
 export function dealClassificationWhere(
@@ -113,16 +126,83 @@ export function dealClassificationWhere(
   ]);
 }
 
+function companyApplicationWhere(
+  applications: string[],
+): Prisma.CompanyWhereInput | undefined {
+  if (applications.length === 0) return undefined;
+  const { codes, unknown } = splitApplicationFilter(applications);
+  const parts: Prisma.CompanyWhereInput[] = [];
+  if (codes.length > 0) {
+    parts.push({
+      deals: { some: { applications: { some: { code: { in: codes } } } } },
+    });
+  }
+  if (unknown) {
+    parts.push({ deals: { none: { applications: { some: {} } } } });
+  }
+  return orWhere(parts);
+}
+
 export function companyClassificationWhere(
   filter: ClassificationListFilter,
 ): Prisma.CompanyWhereInput | undefined {
   if (!hasClassificationListFilter(filter)) return undefined;
   return andWhere<Prisma.CompanyWhereInput>([
     companyIndustrySectorWhere(filter),
-    filter.applications.length
-      ? { deals: { some: dealApplicationWhere(filter.applications) } }
-      : undefined,
+    companyApplicationWhere(filter.applications),
   ]);
+}
+
+function contactIndustrySectorWhere(
+  filter: Pick<ClassificationListFilter, "industries" | "sectors">,
+): Prisma.ContactWhereInput | undefined {
+  const industries = splitIndustryFilter(filter.industries);
+  const sectors = splitSectorFilter(filter.sectors);
+  const industryParts: Prisma.ContactWhereInput[] = [];
+  if (industries.noCompany) {
+    industryParts.push({ companyId: null });
+  }
+  if (industries.unknown) {
+    industryParts.push({
+      companyId: { not: null },
+      company: { industryCode: null },
+    });
+  }
+  if (industries.codes.length > 0) {
+    industryParts.push({
+      company: { industryCode: { in: industries.codes } },
+    });
+  }
+  const sectorParts: Prisma.ContactWhereInput[] = [];
+  if (sectors.codes.length > 0) {
+    sectorParts.push({ company: { sectorCode: { in: sectors.codes } } });
+  }
+  if (sectors.unknown) {
+    sectorParts.push({
+      company: { industryCode: { not: null }, sectorCode: null },
+    });
+  }
+  return andWhere<Prisma.ContactWhereInput>([
+    orWhere(industryParts),
+    orWhere(sectorParts),
+  ]);
+}
+
+function contactApplicationWhere(
+  applications: string[],
+): Prisma.ContactWhereInput | undefined {
+  if (applications.length === 0) return undefined;
+  const { codes, unknown } = splitApplicationFilter(applications);
+  const parts: Prisma.ContactWhereInput[] = [];
+  if (codes.length > 0) {
+    parts.push({
+      deals: { some: { applications: { some: { code: { in: codes } } } } },
+    });
+  }
+  if (unknown) {
+    parts.push({ deals: { none: { applications: { some: {} } } } });
+  }
+  return orWhere(parts);
 }
 
 /**
@@ -135,13 +215,15 @@ export function contactClassificationWhere(
 ): Prisma.ContactWhereInput | undefined {
   if (!hasClassificationListFilter(filter)) return undefined;
 
-  const companyWhere = companyIndustrySectorWhere(filter);
+  const industrySectorWhere = contactIndustrySectorWhere(filter);
   const applicationWhere = dealApplicationWhere(filter.applications);
+  const contactApps = contactApplicationWhere(filter.applications);
+  const companyWhere = companyIndustrySectorWhere(filter);
 
-  if (companyWhere && applicationWhere) {
+  if (industrySectorWhere && applicationWhere && companyWhere) {
     return {
       AND: [
-        { company: companyWhere },
+        industrySectorWhere,
         {
           deals: {
             some: {
@@ -152,7 +234,8 @@ export function contactClassificationWhere(
       ],
     };
   }
-  if (companyWhere) return { company: companyWhere };
-  if (applicationWhere) return { deals: { some: applicationWhere } };
-  return undefined;
+  return andWhere<Prisma.ContactWhereInput>([
+    industrySectorWhere,
+    contactApps,
+  ]);
 }
