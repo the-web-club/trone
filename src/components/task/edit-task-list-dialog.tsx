@@ -2,11 +2,16 @@
 
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateFollowUpTaskAction } from "@/app/(beveiligd)/actions/task-actions";
+import {
+  deleteTaskAction,
+  updateFollowUpTaskAction,
+} from "@/app/(beveiligd)/actions/task-actions";
+import { DeleteEntityButton } from "@/components/detail/delete-entity-button";
 import { FormStatus } from "@/components/form/form-status";
 import { useFormSubmission } from "@/components/form/use-form-submission";
 import { type CreateTaskDealOption } from "@/components/task/create-task-list-dialog";
 import { FollowUpFields } from "@/components/task/follow-up-fields";
+import { Button } from "@/components/ui/button";
 import { ComboboxMenu } from "@/components/ui/combobox";
 import {
   DialogBody,
@@ -46,6 +51,7 @@ export function EditTaskListDialog({
   const defaults = followUpDefaultsFromTask(task);
   const [dateOnly, setDateOnly] = useState(defaults.dateOnly);
   const [dealId, setDealId] = useState(task.dealId ?? "");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function setOpen(next: boolean) {
     form.handleOpenChange(next, (value) => {
@@ -146,12 +152,34 @@ export function EditTaskListDialog({
             <FormStatus error={form.error} statusMessage={form.statusMessage} />
           </DialogBody>
           <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-danger hover:text-danger md:mr-auto"
+              disabled={form.status === "submitting"}
+              onClick={() => setDeleteOpen(true)}
+            >
+              Verwijderen
+            </Button>
             <SubmitStatusButton
               readyLabel="Opslaan"
               status={form.status}
             />
           </DialogFooter>
         </form>
+        <DeleteEntityButton
+          id={task.id}
+          action={deleteTaskAction}
+          title="Taak verwijderen"
+          description={`Weet je zeker dat je ${task.title} wilt verwijderen? Dit kun je niet ongedaan maken.`}
+          presentation="hidden"
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={() => {
+            setOpen(false);
+            refreshAfterSuccess(() => router.refresh());
+          }}
+        />
       </DialogContent>
     </DialogRoot>
   );

@@ -7,6 +7,7 @@ import { parseSubmissionId } from "@/lib/form-submission";
 import {
   completeTask,
   createFollowUpTask,
+  deleteTask,
   reopenTask,
   updateFollowUpTask,
 } from "@/lib/task-service";
@@ -56,6 +57,21 @@ export async function updateFollowUpTaskAction(
     await updateFollowUpTask(input.id, input);
     revalidateTaskPaths();
     return { savedAt: Date.now() };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function deleteTaskAction(
+  _prev: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  try {
+    await requireWritableSession();
+    const id = parseTaskId(formData);
+    await deleteTask(id);
+    revalidateTaskPaths();
+    return {};
   } catch (error) {
     return toActionError(error);
   }

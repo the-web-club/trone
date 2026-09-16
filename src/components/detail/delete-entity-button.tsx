@@ -25,6 +25,7 @@ export function DeleteEntityButton({
   presentation = "button",
   open: openProp,
   onOpenChange,
+  onDeleted,
 }: {
   id: string;
   action: (
@@ -37,6 +38,7 @@ export function DeleteEntityButton({
   presentation?: "button" | "menu" | "hidden";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onDeleted?: () => void;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const form = useFormSubmission({
@@ -58,7 +60,10 @@ export function DeleteEntityButton({
         if (saved.error) return { error: saved.error };
         return { result: true };
       },
-      onSuccess: () => form.handleOpenChange(false, setOpen),
+      onSuccess: () => {
+        form.handleOpenChange(false, setOpen);
+        onDeleted?.();
+      },
     });
   }
 

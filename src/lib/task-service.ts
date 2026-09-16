@@ -422,6 +422,13 @@ export async function completeTask(id: string, userId: string) {
   return updated;
 }
 
+export async function deleteTask(id: string) {
+  const task = await getTask(id);
+  const prisma = getPrismaClient();
+  await prisma.task.delete({ where: { id: task.id } });
+  return task;
+}
+
 export async function reopenTask(id: string) {
   const task = await getTask(id);
   if (task.status === "OPEN") return task;
