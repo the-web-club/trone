@@ -27,9 +27,11 @@ import {
   DetailColumns,
   DetailFieldGrid,
   DetailHeader,
+  DetailMetaRow,
   DetailPage,
   DetailValueField,
 } from "@/components/detail/detail-layout";
+import { CompanyLink, ContactLink } from "@/components/entity-links";
 import { LeadFieldsSkeleton } from "@/components/detail/detail-skeletons";
 import {
   INLINE_SELECT_EMPTY,
@@ -43,7 +45,7 @@ import { contactBelongsToCompany } from "@/lib/contact-company";
 import type { DealPatch } from "@/lib/deal-validation";
 import type { LeadScoreAnswers } from "@/lib/lead-score";
 import { formatPersonName } from "@/lib/format";
-import { dealPath, newQuotePath } from "@/lib/paths";
+import { companyPath, contactPath, dealPath, newQuotePath } from "@/lib/paths";
 import type { SelectOption } from "@/components/ui/select";
 
 export type LeadDetailRecord = {
@@ -220,6 +222,18 @@ export function LeadDetail({
             )}
             searchPlaceholder="Zoek een fase…"
             onSave={(stageId) => save({ stageId })}
+          />
+        }
+        meta={
+          <DetailMetaRow
+            items={[
+              deal.company ? (
+                <CompanyLink key="company" company={deal.company} />
+              ) : null,
+              deal.contact ? (
+                <ContactLink key="contact" contact={deal.contact} />
+              ) : null,
+            ]}
           />
         }
         actions={
@@ -422,6 +436,7 @@ function LeadDetailFields({
           layout="row"
           searchPlaceholder="Zoek een bedrijf…"
           createLabel="Nieuw bedrijf"
+          href={company?.slug ? companyPath(company) : null}
           onCreate={(query) => {
             setCompanyQuery(query);
             setCompanyDialogOpen(true);
@@ -472,6 +487,7 @@ function LeadDetailFields({
           searchPlaceholder="Zoek een contact…"
           createLabel="Nieuw contact"
           disabled={relation.contactsLoading}
+          href={contact?.slug ? contactPath(contact) : null}
           onCreate={(query) => {
             setContactQuery(query);
             setContactDialogOpen(true);

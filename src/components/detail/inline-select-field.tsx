@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { SavedIndicator } from "@/components/detail/saved-indicator";
 import { useSavedFlash } from "@/components/detail/use-saved-flash";
 import { ComboboxMenu } from "@/components/ui/combobox";
@@ -31,6 +32,7 @@ export function InlineSelectField({
   onCreate,
   createLabel,
   createDisabled,
+  href,
 }: {
   label: string;
   value: string;
@@ -48,6 +50,7 @@ export function InlineSelectField({
   onCreate?: (query: string) => void;
   createLabel?: string;
   createDisabled?: boolean;
+  href?: string | null;
 }) {
   const id = useId();
   const [current, setCurrent] = useState(value);
@@ -110,9 +113,20 @@ export function InlineSelectField({
           {label}
         </label>
       ) : (
-        <label htmlFor={id} className={inlineFieldLabel}>
-          {label}
-        </label>
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <label htmlFor={id} className={inlineFieldLabel}>
+            {label}
+          </label>
+          {href ? (
+            <Link
+              href={href}
+              aria-label={`${label} openen`}
+              className="shrink-0 text-xs text-fg-muted hover:text-fg hover:underline"
+            >
+              Openen
+            </Link>
+          ) : null}
+        </div>
       )}
       <div className="min-w-0">
         <ComboboxMenu
