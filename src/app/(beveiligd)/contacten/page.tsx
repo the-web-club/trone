@@ -6,7 +6,7 @@ import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
 import { requireSession } from "@/lib/auth-session";
-import { listCompaniesForSelect } from "@/lib/company-service";
+import { searchCompaniesForSelect } from "@/lib/company-service";
 import { getContactFilterFacets, listContactRows } from "@/lib/contact-service";
 import {
   buildContactsHref,
@@ -43,12 +43,21 @@ export default async function ContactenPage({
       (parsed.toepassing ?? []).length > 0,
   );
 
+  // Bedrijfsopties voor de dialogen zijn begrensd; de combobox zoekt
+  // server-side verder. `parsed.bedrijf` blijft erbij zodat het actieve
+  // filter zijn naam houdt.
   const [result, companies, members, facets] = await Promise.all([
     listContactRows(listFilters, currentUserId),
-    listCompaniesForSelect(),
+    searchCompaniesForSelect({
+      includeIds: parsed.bedrijf ? [parsed.bedrijf] : undefined,
+    }),
     listDealTeamMembers(),
     getContactFilterFacets(listFilters, currentUserId),
   ]);
+
+  const selectedCompanyName = parsed.bedrijf
+    ? (companies.find((company) => company.id === parsed.bedrijf)?.name ?? null)
+    : null;
 
   const ownerNames = new Map(
     members.map((member) => [member.id, member.name || member.email]),
@@ -91,7 +100,7 @@ export default async function ContactenPage({
       />
       <ContactsFilters
         values={parsed}
-        companies={companies}
+        selectedCompanyName={selectedCompanyName}
         members={members}
         facets={facets}
       />

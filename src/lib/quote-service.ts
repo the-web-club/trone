@@ -8,6 +8,7 @@ import {
 } from "@/lib/date-input";
 import { AppError } from "@/lib/errors";
 import { createId, isUuid, whereIdOrQuoteNumber } from "@/lib/id";
+import { companyNamesByIds } from "@/lib/company-service";
 import { getPrismaClient } from "@/lib/db";
 import { paginateArgs } from "@/lib/list-query";
 import { loadPricingContext } from "@/lib/pricing-context";
@@ -262,7 +263,8 @@ export type QuoteFilterFacets = {
   statusTotal: number;
   byStatus: Array<{ value: string; count: number }>;
   companyTotal: number;
-  byCompany: Array<{ value: string; count: number }>;
+  /** Alleen klanten met offertes; label hoort bij de rij. */
+  byCompany: Array<{ value: string; label: string; count: number }>;
 };
 
 export async function getQuoteFilterFacets(
@@ -285,6 +287,9 @@ export async function getQuoteFilterFacets(
   ]);
   return {
     statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
+  const names = await companyNamesByIds(
+    companyGroups.map((group) => group.companyId),
+  );
     byStatus: statusGroups.map((group) => ({
       value: group.status,
       count: group._count._all,
@@ -297,6 +302,7 @@ export async function getQuoteFilterFacets(
       value: group.companyId,
       count: group._count._all,
     })),
+      label: names.get(group.companyId) ?? group.companyId,
   };
 }
 

@@ -41,6 +41,12 @@ export type ComboboxMenuProps<Value extends string = string> = {
   createLabel?: string;
   createDisabled?: boolean;
   wrap?: boolean;
+  /** Meegeluisterd door AsyncComboboxMenu om server-side te zoeken. */
+  onInputValueChange?: (query: string) => void;
+  /** `null` schakelt client-side filteren uit; de bron filtert dan zelf. */
+  filter?:
+    | ((item: ComboboxOption<Value>, search: string) => boolean)
+    | null;
 };
 
 export function ComboboxMenu<Value extends string = string>({
@@ -63,6 +69,8 @@ export function ComboboxMenu<Value extends string = string>({
   createLabel = "Nieuw…",
   createDisabled,
   wrap = false,
+  onInputValueChange,
+  filter,
   ...aria
 }: ComboboxMenuProps<Value>) {
   const [uncontrolled, setUncontrolled] = React.useState<Value>(
@@ -91,18 +99,27 @@ export function ComboboxMenu<Value extends string = string>({
       onOpenChange={(next) => {
         setOpen(next);
         setQuery("");
+        onInputValueChange?.("");
       }}
       inputValue={query}
-      onInputValueChange={(next) => setQuery(next)}
-      filter={(item, search) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        const haystack = [item.label, item.value, item.hint]
-          .filter((part): part is string => Boolean(part))
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(q);
+      onInputValueChange={(next) => {
+        setQuery(next);
+        onInputValueChange?.(next);
       }}
+      filter={
+        filter === null
+          ? null
+          : (filter ??
+            ((item, search) => {
+              const q = search.trim().toLowerCase();
+              if (!q) return true;
+              const haystack = [item.label, item.value, item.hint]
+                .filter((part): part is string => Boolean(part))
+                .join(" ")
+                .toLowerCase();
+              return haystack.includes(q);
+            }))
+      }
       autoHighlight
       locale="nl"
       itemToStringLabel={(item) => item.label}

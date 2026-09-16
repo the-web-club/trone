@@ -9,7 +9,6 @@ import {
   PageHeader,
   pageActionPrimaryClassName,
 } from "@/components/shell/page-header";
-import { listCompaniesForSelect } from "@/lib/company-service";
 import { listSummary } from "@/lib/list-copy";
 import { getQuoteFilterFacets, listQuoteRows } from "@/lib/quote-service";
 import { buildQuotesHref, parseQuotesSearchParams } from "@/lib/quotes-query";
@@ -26,7 +25,8 @@ export default async function OffertesPage({
     parsed.zoeken || parsed.status || parsed.klant || parsed.van || parsed.tot,
   );
 
-  const [result, companies, facets] = await Promise.all([
+  // Klantopties komen uit het facet zelf, dus geen aparte bedrijfslijst meer.
+  const [result, facets] = await Promise.all([
     listQuoteRows({
       query: parsed.zoeken || undefined,
       status: (parsed.status || undefined) as QuoteStatus | undefined,
@@ -35,7 +35,6 @@ export default async function OffertesPage({
       tot: parsed.tot || undefined,
       page: parsed.pagina,
     }),
-    listCompaniesForSelect(),
     getQuoteFilterFacets({
       query: parsed.zoeken || undefined,
       status: (parsed.status || undefined) as QuoteStatus | undefined,
@@ -66,14 +65,7 @@ export default async function OffertesPage({
           </Link>
         }
       />
-      <QuotesFilters
-        values={parsed}
-        companies={companies.map((company) => ({
-          id: company.id,
-          name: company.name,
-        }))}
-        facets={facets}
-      />
+      <QuotesFilters values={parsed} facets={facets} />
       <ListBody>
         <QuotesList
           items={result.items}

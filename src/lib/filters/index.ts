@@ -39,14 +39,21 @@ export {
   type FacetCatalogItem,
 } from "@/lib/filters/options";
 export {
-  aggregateLinkedCompanyFacets,
-  distinctCodesByEntity,
-  mapGroupCounts,
   ownerCountMap,
   ownerFacetsFromGroups,
   rowsFromCountMap,
-  sumGroupCounts,
 } from "@/lib/filters/aggregate";
+export {
+  andSql,
+  companyLeadBucketSql,
+  companyWhereSql,
+  contactWhereSql,
+  dealWhereSql,
+  likeContains,
+  type CompanySqlFilters,
+  type ContactSqlFilters,
+  type DealSqlFilters,
+} from "@/lib/filters/sql-where";
 export {
   LIVE_FILTER_INDEX_VERSION,
   indexedListResult,

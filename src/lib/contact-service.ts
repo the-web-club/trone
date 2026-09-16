@@ -6,7 +6,8 @@ import { nextContactSlug } from "@/lib/entity-slug";
 import { AppError } from "@/lib/errors";
 import { createId, whereIdOrSlug } from "@/lib/id";
 import { getPrismaClient } from "@/lib/db";
-import { getCompany } from "@/lib/company-service";
+import { formatPersonName } from "@/lib/format";
+import { getCompany, SELECT_OPTION_LIMIT } from "@/lib/company-service";
 import {
   getContactCompanyId,
   normalizeCompanyId,
@@ -16,9 +17,10 @@ import { createWithSubmissionId } from "@/lib/idempotent-create";
 import { contactClassificationWhere } from "@/lib/classification-where";
 import { CLASSIFICATION_FILTER_NO_COMPANY } from "@/lib/classification";
 import type { ContactOwnerFacets } from "@/lib/contacts-query";
-import { effectiveSearchQuery, paginateArgs } from "@/lib/list-query";
+import { effectiveSearchQuery, escapeLikeTerm, paginateArgs } from "@/lib/list-query";
 import { ownerFacetsFromGroups, rowsFromCountMap } from "@/lib/filters/aggregate";
-import { contactClassificationFacetCounts } from "@/lib/filters/classification-counts";
+import { contactFacetCountsSql } from "@/lib/filters/facet-sql";
+import { contactWhereSql } from "@/lib/filters/sql-where";
 
 export type ContactSelectOption = {
   id: string;
@@ -28,7 +30,22 @@ export type ContactSelectOption = {
   companyId: string | null;
 };
 
-/** Contacten van één bedrijf. Inverse van getContactCompanyId; zie docs/DATA-MODEL.md. */
+const contactSelectOptionFields = {
+  id: true,
+  slug: true,
+  firstName: true,
+  lastName: true,
+  companyId: true,
+} satisfies Prisma.ContactSelect;
+
+/**
+ * Contacten van één bedrijf. Inverse van getContactCompanyId; zie
+ * docs/DATA-MODEL.md.
+ *
+ * Met `companyId` is dit van nature begrensd (contacten van één bedrijf).
+ * Zonder `companyId` is er een harde `take`, want dit ging eerder als
+ * volledige tabel de RSC-payload in.
+ */
 export const listContactsForSelect = cache(async function listContactsForSelect(
   companyId?: string | null,
 ): Promise<ContactSelectOption[]> {
@@ -37,18 +54,71 @@ export const listContactsForSelect = cache(async function listContactsForSelect(
   return prisma.contact.findMany({
     where: trimmed ? { companyId: trimmed } : {},
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-    select: {
-      id: true,
-      slug: true,
-      firstName: true,
-      lastName: true,
-      companyId: true,
-    },
+    select: contactSelectOptionFields,
+    take: trimmed ? CONTACTS_PER_COMPANY_LIMIT : SELECT_OPTION_LIMIT,
   });
 });
 
 export async function listContacts() {
   const prisma = getPrismaClient();
+const CONTACTS_PER_COMPANY_LIMIT = 200;
+const CONTACT_SELECT_MAX = 100;
+
+/** Zie `searchCompaniesForSelect`; zelfde contract voor contacten. */
+export async function searchContactsForSelect(options?: {
+  query?: string;
+  companyId?: string | null;
+  take?: number;
+  includeIds?: readonly string[];
+}): Promise<ContactSelectOption[]> {
+  const prisma = getPrismaClient();
+  const take = Math.min(
+    Math.max(options?.take ?? SELECT_OPTION_LIMIT, 1),
+    CONTACT_SELECT_MAX,
+  );
+  const query = options?.query?.trim();
+  const companyId = options?.companyId?.trim();
+  const includeIds = [...new Set(options?.includeIds?.filter(Boolean) ?? [])];
+
+  const and: Prisma.ContactWhereInput[] = [];
+  if (companyId) and.push({ companyId });
+  if (query) {
+    const term = escapeLikeTerm(query);
+    and.push({
+      OR: [
+        { firstName: { contains: term } },
+        { lastName: { contains: term } },
+        { email: { contains: term } },
+      ],
+    });
+  }
+
+  const [matches, pinned] = await Promise.all([
+    prisma.contact.findMany({
+      where: and.length ? { AND: and } : {},
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: contactSelectOptionFields,
+      take,
+    }),
+    includeIds.length > 0
+      ? prisma.contact.findMany({
+          where: { id: { in: includeIds.slice(0, CONTACT_SELECT_MAX) } },
+          select: contactSelectOptionFields,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const byId = new Map<string, ContactSelectOption>();
+  for (const row of pinned) byId.set(row.id, row);
+  for (const row of matches) byId.set(row.id, row);
+  return [...byId.values()].sort((a, b) =>
+    `${a.firstName} ${a.lastName ?? ""}`.localeCompare(
+      `${b.firstName} ${b.lastName ?? ""}`,
+      "nl",
+    ),
+  );
+}
+
   return prisma.contact.findMany({
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     include: { company: { select: { id: true, slug: true, name: true } } },
@@ -77,9 +147,10 @@ export function buildContactListWhere(
   if (query) {
     and.push({
       OR: [
-        { firstName: { contains: query } },
-        { lastName: { contains: query } },
-        { email: { contains: query } },
+    const term = escapeLikeTerm(query);
+        { firstName: { contains: term } },
+        { lastName: { contains: term } },
+        { email: { contains: term } },
       ],
     });
   }
@@ -154,20 +225,25 @@ export async function getContactOwnerFacets(
   currentUserId?: string,
 ): Promise<ContactOwnerFacets> {
   const prisma = getPrismaClient();
-  const ownerWhere = buildContactListWhere(
-    { ...filters, eigenaar: "alle" },
+  const rows = await prisma.$queryRaw<
+    Array<{ value: string | null; n: bigint | number }>
+  >(
+    Prisma.sql`SELECT ct.ownerUserId AS value, COUNT(*) AS n FROM contact ct
+                WHERE ${contactWhereSql({ ...filters, eigenaar: "alle" }, currentUserId)}
+                GROUP BY ct.ownerUserId`,
+  );
+  return ownerFacetsFromGroups(
+    rows.map((row) => ({
+      ownerUserId: row.value,
+      _count: { _all: Number(row.n) },
+    })),
     currentUserId,
   );
-  const ownerGroups = await prisma.contact.groupBy({
-    by: ["ownerUserId"],
-    where: ownerWhere,
-    _count: { _all: true },
-  });
-  return ownerFacetsFromGroups(ownerGroups, currentUserId);
 }
 
 export type ContactFilterFacets = ContactOwnerFacets & {
-  byCompany: Array<{ value: string; count: number }>;
+  /** Alleen bedrijven met contacten; label komt mee uit de facetquery. */
+  byCompany: Array<{ value: string; label: string; count: number }>;
   unassignedCompany: number;
   companyTotal: number;
   byIndustry: Array<{ value: string; count: number }>;
@@ -178,71 +254,55 @@ export type ContactFilterFacets = ContactOwnerFacets & {
 
 export async function getContactFilterFacets(
   filters: ContactListFilters = {},
+/**
+ * Alle contactfacetten in één gebundelde set aggregatiequery's.
+ *
+ * Eerder haalde de toepassing-facet elk contact met al zijn leads en
+ * toepassingen op om in JS unieke contacten te tellen. Op 14.000 contacten
+ * was dat de duurste query van de hele app. Nu telt de database met
+ * COUNT(DISTINCT) en komen er alleen groepsrijen terug.
+ */
   currentUserId?: string,
 ): Promise<ContactFilterFacets> {
-  const prisma = getPrismaClient();
-  const companyWhere = buildContactListWhere(
-    { ...filters, companyId: undefined },
-    currentUserId,
-  );
-  const [owner, companyGroups, classification] = await Promise.all([
-    getContactOwnerFacets(filters, currentUserId),
-    prisma.contact.groupBy({
-      by: ["companyId"],
-      where: companyWhere,
-      _count: { _all: true },
-    }),
-    contactClassificationFacetCounts({
-      industryWhere: buildContactListWhere(
-        { ...filters, industries: [] },
-        currentUserId,
-      ),
-      sectorWhere: buildContactListWhere(
-        { ...filters, sectors: [] },
-        currentUserId,
-      ),
-      applicationWhere: buildContactListWhere(
-        { ...filters, applications: [] },
-        currentUserId,
-      ),
-    }).then(
-      (counts) => ({ counts, stale: false }),
-      () => ({
-        counts: {
-          industry: new Map<string, number>(),
-          sector: new Map<string, number>(),
-          application: new Map<string, number>(),
-        },
-        stale: true,
-      }),
+  const facets = await contactFacetCountsSql({
+    company: contactWhereSql({ ...filters, companyId: undefined }, currentUserId),
+    owner: contactWhereSql({ ...filters, eigenaar: "alle" }, currentUserId),
+    industry: contactWhereSql({ ...filters, industries: [] }, currentUserId),
+    sector: contactWhereSql({ ...filters, sectors: [] }, currentUserId),
+    application: contactWhereSql(
+      { ...filters, applications: [] },
+      currentUserId,
     ),
-  ]);
+  }).catch(() => null);
 
-  const unassignedCompany =
-    companyGroups.find((group) => group.companyId == null)?._count._all ?? 0;
+  if (!facets) {
+    return {
+      ownerTotal: 0,
+      unassignedOwner: 0,
+      assignedToMe: 0,
+      byOwner: [],
+      byCompany: [],
+      unassignedCompany: 0,
+      companyTotal: 0,
+      byIndustry: [],
+      bySector: [],
+      byApplication: [],
+      classificationStale: true,
+    };
+  }
 
   return {
-    ...owner,
-    companyTotal: companyGroups.reduce(
-      (sum, group) => sum + group._count._all,
-      0,
-    ),
-    unassignedCompany,
-    byCompany: companyGroups.flatMap((group) =>
-      group.companyId
-        ? [{ value: group.companyId, count: group._count._all }]
-        : [],
-    ),
-    byIndustry: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.industry),
-    bySector: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.sector),
-    byApplication: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.application),
-    classificationStale: classification.stale,
+    ownerTotal: facets.ownerTotal,
+    unassignedOwner: facets.unassignedOwner,
+    assignedToMe: currentUserId ? (facets.owner.get(currentUserId) ?? 0) : 0,
+    byOwner: [...facets.owner].map(([userId, count]) => ({ userId, count })),
+    companyTotal: facets.companyTotal,
+    unassignedCompany: facets.unassignedCompany,
+    byCompany: facets.company,
+    byIndustry: rowsFromCountMap(facets.industry),
+    bySector: rowsFromCountMap(facets.sector),
+    byApplication: rowsFromCountMap(facets.application),
+    classificationStale: false,
   };
 }
 
@@ -333,7 +393,7 @@ export async function createContact(
         input.firstName,
         input.lastName,
       );
-      return prisma.contact.create({
+      const contact = await prisma.contact.create({
         data: {
           id: createId(),
           slug,
@@ -363,7 +423,7 @@ export async function setContactOwner(id: string, ownerUserId: string | null) {
     }
   }
 
-  return prisma.contact.update({
+  const updated = await prisma.contact.update({
     where: { id: contact.id },
     data: { ownerUserId: nextOwnerId },
   });
@@ -391,7 +451,7 @@ export async function updateContact(
     input.lastName,
     contact.id,
   );
-  return prisma.contact.update({
+  const updated = await prisma.contact.update({
     where: { id: contact.id },
     data: {
       ...toContactData(input, expectedCompanyId),
@@ -443,7 +503,7 @@ export async function setContactCompany(
     await clearOtherPrimaries(nextCompanyId, contact.id);
   }
 
-  return prisma.contact.update({
+  const updated = await prisma.contact.update({
     where: { id: contact.id },
     data: {
       companyId: nextCompanyId,

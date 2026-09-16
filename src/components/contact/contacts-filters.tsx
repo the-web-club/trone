@@ -31,12 +31,13 @@ const ALL = "__alle__";
 
 export function ContactsFilters({
   values,
-  companies,
+  selectedCompanyName,
   members,
   facets,
 }: {
   values: ContactsFilterValues;
-  companies: Array<{ id: string; name: string }>;
+  /** Naam van het actieve bedrijffilter als dat buiten de facetlijst valt. */
+  selectedCompanyName?: string | null;
   members: DealTeamMember[];
   facets: ContactFilterFacets;
 }) {
@@ -81,17 +82,31 @@ export function ContactsFilters({
         application: facets.byApplication,
       };
 
+  // Opties komen uit de facetquery: alleen bedrijven die contacten hebben,
+  // met naam en telling uit dezelfde query. Een bedrijf zonder contacten
+  // leverde altijd een leeg resultaat op en stond er eerder wel bij.
   const companyOptions: SelectOption[] = facetSelectOptions({
     catalog: [
       { value: CLASSIFICATION_FILTER_NO_COMPANY, label: "Geen bedrijf" },
-      ...companies.map((company) => ({ value: company.id, label: company.name })),
+      ...facets.byCompany.map((row) => ({
+        value: row.value,
+        label: row.label,
+      })),
+      ...(values.bedrijf &&
+      values.bedrijf !== CLASSIFICATION_FILTER_NO_COMPANY &&
+      !facets.byCompany.some((row) => row.value === values.bedrijf)
+        ? [{ value: values.bedrijf, label: selectedCompanyName ?? values.bedrijf }]
+        : []),
     ],
     counts: [
       {
         value: CLASSIFICATION_FILTER_NO_COMPANY,
         count: facets.unassignedCompany,
       },
-      ...facets.byCompany,
+      ...facets.byCompany.map((row) => ({
+        value: row.value,
+        count: row.count,
+      })),
     ],
     selected: values.bedrijf,
     all: { value: ALL, label: "Alle bedrijven", count: facets.companyTotal },
@@ -135,8 +150,10 @@ export function ContactsFilters({
           value:
             values.bedrijf === CLASSIFICATION_FILTER_NO_COMPANY
               ? "Geen bedrijf"
-              : (companies.find((company) => company.id === values.bedrijf)
-                  ?.name ?? values.bedrijf),
+              : (facets.byCompany.find((row) => row.value === values.bedrijf)
+                  ?.label ??
+                selectedCompanyName ??
+                values.bedrijf),
           onRemove: () => navigate({ bedrijf: "" }),
         }
       : null,

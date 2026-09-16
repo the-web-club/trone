@@ -18,6 +18,7 @@ import {
   createCompany,
   deleteCompany,
   getCompany,
+  searchCompaniesForSelect,
   setCompanyOwner,
   updateCompany,
   validateCompanyVat,
@@ -32,6 +33,21 @@ export type CreatedCompanyOption = {
   slug: string;
   name: string;
 };
+
+/**
+ * Server-side zoeken voor de bedrijf-combobox en het bedrijf-filter.
+ * Begrensd resultaat, zodat de client nooit de hele bedrijfstabel binnenhaalt.
+ */
+export async function searchCompaniesForSelectAction(options: {
+  query?: string;
+  includeIds?: string[];
+}) {
+  await requireSession();
+  return searchCompaniesForSelect({
+    query: options.query,
+    includeIds: options.includeIds,
+  });
+}
 
 /** Compact aanmaken zonder redirect, voor selects op lead en offerte. */
 export async function createCompanyInlineAction(

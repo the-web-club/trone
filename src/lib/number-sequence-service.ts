@@ -1,5 +1,5 @@
 import "server-only";
-import type { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 
 // =====================================================================
 // Genereert oplopende order-/offertenummers binnen een transactie.
@@ -16,21 +16,19 @@ export async function nextNumber(
 ): Promise<string> {
   return prisma.$transaction(async (tx) => {
     // Lock de rij. Raw omdat Prisma geen SELECT ... FOR UPDATE kent.
-    const rows = await tx.$queryRawUnsafe<
+    // Geparameteriseerd via Prisma.sql, niet via de Unsafe-varianten.
+    const rows = await tx.$queryRaw<
       { id: string; prefix: string; lastNumber: number; padding: number }[]
     >(
-      "SELECT id, prefix, lastNumber, padding FROM number_sequence WHERE seqKey = ? FOR UPDATE",
-      seqKey
+      Prisma.sql`SELECT id, prefix, lastNumber, padding FROM number_sequence WHERE seqKey = ${seqKey} FOR UPDATE`,
     );
     if (rows.length === 0) {
       throw new Error(`Nummerreeks '${seqKey}' bestaat niet.`);
     }
     const row = rows[0];
     const next = row.lastNumber + 1;
-    await tx.$executeRawUnsafe(
-      "UPDATE number_sequence SET lastNumber = ? WHERE id = ?",
-      next,
-      row.id
+    await tx.$executeRaw(
+      Prisma.sql`UPDATE number_sequence SET lastNumber = ${next} WHERE id = ${row.id}`,
     );
     const padded = String(next).padStart(row.padding, "0");
     return `${row.prefix}${padded}`;

@@ -23,6 +23,16 @@ export function effectiveSearchQuery(
   return trimmed;
 }
 
+/**
+ * Maakt een zoekterm veilig voor LIKE. Zonder dit is `50%` een wildcard en
+ * matcht die alles wat met "50" begint; dat geldt zowel voor Prisma's
+ * `contains` als voor de SQL-facetqueries, die daardoor uiteen liepen.
+ * Backslash eerst, anders escape je je eigen escapes.
+ */
+export function escapeLikeTerm(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 export function firstSearchParam(
   params: Record<string, string | string[] | undefined>,
   key: string,

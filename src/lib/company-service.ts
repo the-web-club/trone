@@ -15,14 +15,18 @@ import {
 import {
   parseCompanyLeadsFilter,
   type CompanyLeadFacets,
-  type CompanyLeadsFilter,
   type CompanyOwnerFacets,
 } from "@/lib/companies-query";
-import { paginateArgs, type PagedList } from "@/lib/list-query";
+import { escapeLikeTerm, paginateArgs, type PagedList } from "@/lib/list-query";
 import { checkViesVatNumber } from "@/lib/vies-service";
 import { resolveVatTreatment } from "@/lib/vat";
 import { ownerFacetsFromGroups, rowsFromCountMap } from "@/lib/filters/aggregate";
-import { companyClassificationFacetCounts } from "@/lib/filters/classification-counts";
+import { companyFacetCountsSql } from "@/lib/filters/facet-sql";
+import {
+  andSql,
+  companyLeadBucketSql,
+  companyWhereSql,
+} from "@/lib/filters/sql-where";
 
 export async function listCompanies(query?: string) {
   const prisma = getPrismaClient();
@@ -37,28 +41,88 @@ export async function listCompanies(query?: string) {
   });
 }
 
-export async function listCompaniesForSelect(): Promise<
-  Array<{
-    id: string;
-    slug: string;
-    name: string;
-    industryCode: string | null;
-    sectorCode: string | null;
-  }>
-> {
+export type CompanySelectOption = {
+  id: string;
+  slug: string;
+  name: string;
+  industryCode: string | null;
+  sectorCode: string | null;
+};
+
+const companySelectOptionFields = {
+  id: true,
+  slug: true,
+  name: true,
+  industryCode: true,
+  sectorCode: true,
+} satisfies Prisma.CompanySelect;
+
+/** Bovengrens voor keuzelijsten; de UI zoekt server-side verder. */
+export const SELECT_OPTION_LIMIT = 50;
+const SELECT_OPTION_MAX = 100;
+/** `includeIds` komt uit facetrijen en is daarmee al begrensd. */
+const PINNED_ID_MAX = 500;
+
+/**
+ * Bedrijfsopties voor combobox'en en filterdropdowns.
+ *
+ * Nooit de hele tabel: die ging via props de RSC-payload in en was op 5.000
+ * bedrijven al hondertallen KB's per filteractie. `includeIds` houdt de
+ * huidige selectie in de lijst, zodat het label blijft kloppen zonder dat de
+ * client alles nodig heeft.
+ */
+export async function searchCompaniesForSelect(options?: {
+  query?: string;
+  take?: number;
+  includeIds?: readonly string[];
+}): Promise<CompanySelectOption[]> {
   const prisma = getPrismaClient();
-  return prisma.company.findMany({
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      industryCode: true,
-      sectorCode: true,
-    },
+  const take = Math.min(
+    Math.max(options?.take ?? SELECT_OPTION_LIMIT, 1),
+    SELECT_OPTION_MAX,
+  );
+  const query = options?.query?.trim();
+  const includeIds = [...new Set(options?.includeIds?.filter(Boolean) ?? [])];
+
+  const [matches, pinned] = await Promise.all([
+    prisma.company.findMany({
+      where: query ? { name: { contains: escapeLikeTerm(query) } } : {},
+      orderBy: { name: "asc" },
+      select: companySelectOptionFields,
+      take,
+    }),
+    includeIds.length > 0
+      ? prisma.company.findMany({
+          where: { id: { in: includeIds.slice(0, PINNED_ID_MAX) } },
+          select: companySelectOptionFields,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const byId = new Map<string, CompanySelectOption>();
+  for (const row of pinned) byId.set(row.id, row);
+  for (const row of matches) byId.set(row.id, row);
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "nl"));
+}
+
+/**
+ * Namen voor een bekende, begrensde set id's (doorgaans facetrijen).
+ * Zo hoeft een filterdropdown niet de hele bedrijfstabel te ontvangen om
+ * labels te kunnen tonen.
+ */
+export async function companyNamesByIds(
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))].slice(0, PINNED_ID_MAX);
+  if (unique.length === 0) return new Map();
+  const prisma = getPrismaClient();
+  const rows = await prisma.company.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, name: true },
   });
 }
 
+  return new Map(rows.map((row) => [row.id, row.name]));
 export type CompanyListFilters = {
   query?: string;
   city?: string;
@@ -90,7 +154,7 @@ export function buildCompanyListWhere(
   }
 
   const query = filters.query?.trim();
-  if (query) and.push({ name: { contains: query } });
+  if (query) and.push({ name: { contains: escapeLikeTerm(query) } });
   const city = filters.city?.trim();
   if (city === CLASSIFICATION_FILTER_UNKNOWN) {
     and.push({ city: null });
@@ -107,51 +171,71 @@ export function buildCompanyListWhere(
   return and.length ? { AND: and } : {};
 }
 
-function matchesLeadCount(
-  count: number,
-  leads: Exclude<CompanyLeadsFilter, "alle" | "geen">,
-): boolean {
-  if (leads === "5plus") return count >= 5;
-  return count === Number(leads);
-}
-
-async function companyIdsWithLeadCount(
-  companyWhere: Prisma.CompanyWhereInput,
-  leads: Exclude<CompanyLeadsFilter, "alle" | "geen">,
-): Promise<string[]> {
+/**
+ * Lead-aantal is een aggregaat en past niet in een Prisma `where`. Eerder
+ * haalde dit alle matchende company-id's op en zette die in één
+ * `IN (…)`-lijst, die met de dataset meegroeide. Nu bepaalt de database de
+ * pagina met een subquery-predicaat en komen alleen de id's van één pagina
+ * terug.
+ */
+async function companyIdPageWithLeadFilter(
+  filters: CompanyListFilters,
+  currentUserId: string | undefined,
+  skip: number,
+  take: number,
+): Promise<{ ids: string[]; total: number }> {
   const prisma = getPrismaClient();
-  const groups = await prisma.deal.groupBy({
-    by: ["companyId"],
-    where: { companyId: { not: null }, company: companyWhere },
-    _count: { _all: true },
-  });
+  const where = andSql([
+    companyWhereSql(filters, currentUserId),
+    companyLeadBucketSql(filters.leads),
+  ]);
 
-  return groups.flatMap((group) =>
-    group.companyId && matchesLeadCount(group._count._all, leads)
-      ? [group.companyId]
-      : [],
-  );
+  const [rows, totals] = await Promise.all([
+    prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT co.id FROM company co WHERE ${where} ORDER BY co.name ASC, co.id ASC LIMIT ${take} OFFSET ${skip}`,
+    ),
+    prisma.$queryRaw<Array<{ n: bigint | number }>>(
+      Prisma.sql`SELECT COUNT(*) AS n FROM company co WHERE ${where}`,
+    ),
+  ]);
+
+  return {
+    ids: rows.map((row) => row.id),
+    total: Number(totals[0]?.n ?? 0),
+  };
 }
 
-export async function resolveCompanyListWhere(
+/**
+ * Prisma-where voor de lijst. De `leads`-bucket zit hier niet in: die loopt
+ * via `companyIdPageWithLeadFilter`, omdat een aggregaat niet in een Prisma
+ * `where` past. `geen` kan wel, want dat is puur relationeel.
+ */
+export function resolveCompanyListWhere(
   filters: CompanyListFilters,
   currentUserId?: string,
-): Promise<Prisma.CompanyWhereInput> {
+): Prisma.CompanyWhereInput {
   const where = buildCompanyListWhere(filters, currentUserId);
   const leads = parseCompanyLeadsFilter(filters.leads);
-  if (leads === "alle") return where;
   if (leads === "geen") {
     return { AND: [where, { deals: { none: {} } }] };
   }
-
-  const ids = await companyIdsWithLeadCount(where, leads);
-  return {
-    AND: [where, { id: { in: ids.length ? ids : [NO_MATCH_ID] } }],
-  };
+  return where;
 }
 
 export async function listCompanyRows(
   filters: CompanyListFilters = {},
+const companyRowSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  city: true,
+  country: true,
+  ownerUserId: true,
+  industryCode: true,
+  sectorCode: true,
+  _count: { select: { contacts: true, deals: true } },
+} satisfies Prisma.CompanySelect;
+
   currentUserId?: string,
 ): Promise<
   PagedList<{
@@ -167,28 +251,41 @@ export async function listCompanyRows(
   }>
 > {
   const prisma = getPrismaClient();
-  const where = await resolveCompanyListWhere(filters, currentUserId);
   const { page, pageSize, skip, take } = paginateArgs(
     filters.page,
     filters.pageSize,
   );
 
   const [total, items] = await Promise.all([
+  const leads = parseCompanyLeadsFilter(filters.leads);
+
+  // Exacte of 5+-bucket: de database bepaalt de pagina, wij halen die rijen op.
+  if (leads !== "alle" && leads !== "geen") {
+    const { ids, total } = await companyIdPageWithLeadFilter(
+      filters,
+      currentUserId,
+      skip,
+      take,
+    );
+    if (ids.length === 0) return { items: [], total, page, pageSize };
     prisma.company.count({ where }),
+    const rows = await prisma.company.findMany({
+      where: { id: { in: ids } },
+      select: companyRowSelect,
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const items = ids.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [row] : [];
+    });
+    return { items, total, page, pageSize };
+  }
+
+  const where = resolveCompanyListWhere(filters, currentUserId);
     prisma.company.findMany({
       where,
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        city: true,
-        country: true,
-        ownerUserId: true,
-        industryCode: true,
-        sectorCode: true,
-        _count: { select: { contacts: true, deals: true } },
-      },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: companyRowSelect,
       skip,
       take,
     }),
@@ -202,58 +299,22 @@ export async function getCompanyOwnerFacets(
   currentUserId?: string,
 ): Promise<CompanyOwnerFacets> {
   const prisma = getPrismaClient();
-  const ownerWhere = await resolveCompanyListWhere(
-    { ...filters, eigenaar: "alle" },
-    currentUserId,
-  );
-  const ownerGroups = await prisma.company.groupBy({
-    by: ["ownerUserId"],
-    where: ownerWhere,
-    _count: { _all: true },
-  });
-  return ownerFacetsFromGroups(ownerGroups, currentUserId);
-}
-
-export async function getCompanyLeadFacets(
-  filters: CompanyListFilters = {},
-  currentUserId?: string,
-): Promise<CompanyLeadFacets> {
-  const prisma = getPrismaClient();
-  const where = buildCompanyListWhere(
-    { ...filters, leads: "alle" },
-    currentUserId,
-  );
-
-  const [total, none, groups] = await Promise.all([
-    prisma.company.count({ where }),
-    prisma.company.count({
-      where: { AND: [where, { deals: { none: {} } }] },
-    }),
-    prisma.deal.groupBy({
-      by: ["companyId"],
-      where: { companyId: { not: null }, company: where },
-      _count: { _all: true },
-    }),
+  const where = andSql([
+    companyWhereSql({ ...filters, eigenaar: "alle" }, currentUserId),
+    companyLeadBucketSql(filters.leads),
   ]);
-
-  const byCount: CompanyLeadFacets["byCount"] = {
-    "1": 0,
-    "2": 0,
-    "3": 0,
-    "4": 0,
-    "5plus": 0,
-  };
-  for (const group of groups) {
-    if (!group.companyId) continue;
-    const n = group._count._all;
-    if (n === 1) byCount["1"] += 1;
-    else if (n === 2) byCount["2"] += 1;
-    else if (n === 3) byCount["3"] += 1;
-    else if (n === 4) byCount["4"] += 1;
-    else if (n >= 5) byCount["5plus"] += 1;
-  }
-
-  return { total, none, byCount };
+  const rows = await prisma.$queryRaw<
+    Array<{ value: string | null; n: bigint | number }>
+  >(
+    Prisma.sql`SELECT co.ownerUserId AS value, COUNT(*) AS n FROM company co WHERE ${where} GROUP BY co.ownerUserId`,
+  );
+  return ownerFacetsFromGroups(
+    rows.map((row) => ({
+      ownerUserId: row.value,
+      _count: { _all: Number(row.n) },
+    })),
+    currentUserId,
+  );
 }
 
 export type CompanyFilterFacets = CompanyOwnerFacets & {
@@ -271,84 +332,69 @@ export type CompanyFilterFacets = CompanyOwnerFacets & {
 
 export async function getCompanyFilterFacets(
   filters: CompanyListFilters = {},
+/**
+ * Alle bedrijfsfacetten in één gebundelde set aggregatiequery's. Elke
+ * dimensie negeert zijn eigen filter; de `leads`-bucket blijft wel staan
+ * behalve in zijn eigen facet.
+ */
   currentUserId?: string,
 ): Promise<CompanyFilterFacets> {
-  const prisma = getPrismaClient();
-  const [
-    owner,
-    leads,
-    cityWhere,
-    countryWhere,
-    industryWhere,
-    sectorWhere,
-    applicationWhere,
-  ] = await Promise.all([
-    getCompanyOwnerFacets(filters, currentUserId),
-    getCompanyLeadFacets(filters, currentUserId),
-    resolveCompanyListWhere({ ...filters, city: undefined }, currentUserId),
-    resolveCompanyListWhere({ ...filters, country: undefined }, currentUserId),
-    resolveCompanyListWhere({ ...filters, industries: [] }, currentUserId),
-    resolveCompanyListWhere({ ...filters, sectors: [] }, currentUserId),
-    resolveCompanyListWhere({ ...filters, applications: [] }, currentUserId),
-  ]);
+  const bucket = companyLeadBucketSql(filters.leads);
+  const withBucket = (overrides: Partial<CompanyListFilters>) =>
+    andSql([
+      companyWhereSql({ ...filters, ...overrides }, currentUserId),
+      bucket,
+    ]);
 
-  const [cityGroups, countryGroups, classification] = await Promise.all([
-    prisma.company.groupBy({
-      by: ["city"],
-      where: cityWhere,
-      _count: { _all: true },
-    }),
-    prisma.company.groupBy({
-      by: ["country"],
-      where: countryWhere,
-      _count: { _all: true },
-    }),
-    companyClassificationFacetCounts({
-      industryWhere,
-      sectorWhere,
-      applicationWhere,
-    }).then(
-      (counts) => ({ counts, stale: false }),
-      () => ({
-        counts: {
-          industry: new Map<string, number>(),
-          sector: new Map<string, number>(),
-          application: new Map<string, number>(),
-        },
-        stale: true,
-      }),
-    ),
-  ]);
+  const facets = await companyFacetCountsSql({
+    city: withBucket({ city: undefined }),
+    country: withBucket({ country: undefined }),
+    owner: withBucket({ eigenaar: "alle" }),
+    // Eigen dimensie: bucket bewust weggelaten.
+    leads: companyWhereSql({ ...filters, leads: "alle" }, currentUserId),
+    industry: withBucket({ industries: [] }),
+    sector: withBucket({ sectors: [] }),
+    application: withBucket({ applications: [] }),
+  }).catch(() => null);
 
-  const unassignedCity =
-    cityGroups.find((group) => group.city == null)?._count._all ?? 0;
+  if (!facets) {
+    return {
+      ownerTotal: 0,
+      unassignedOwner: 0,
+      assignedToMe: 0,
+      byOwner: [],
+      leads: { total: 0, none: 0, byCount: { "1": 0, "2": 0, "3": 0, "4": 0, "5plus": 0 } },
+      byCity: [],
+      unassignedCity: 0,
+      cityTotal: 0,
+      byCountry: [],
+      countryTotal: 0,
+      byIndustry: [],
+      bySector: [],
+      byApplication: [],
+      classificationStale: true,
+    };
+  }
 
   return {
-    ...owner,
-    leads,
-    cityTotal: cityGroups.reduce((sum, group) => sum + group._count._all, 0),
-    unassignedCity,
-    byCity: cityGroups.flatMap((group) =>
-      group.city ? [{ value: group.city, count: group._count._all }] : [],
-    ),
-    countryTotal: countryGroups.reduce(
-      (sum, group) => sum + group._count._all,
-      0,
-    ),
-    byCountry: countryGroups.map((group) => ({
-      value: group.country,
-      count: group._count._all,
-    })),
-    byIndustry: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.industry),
-    bySector: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.sector),
-    byApplication: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.application),
-    classificationStale: classification.stale,
+    ownerTotal: facets.ownerTotal,
+    unassignedOwner: facets.unassignedOwner,
+    assignedToMe: currentUserId ? (facets.owner.get(currentUserId) ?? 0) : 0,
+    byOwner: [...facets.owner].map(([userId, count]) => ({ userId, count })),
+    leads: {
+      total: facets.leadsTotal,
+      none: facets.leadsNone,
+      byCount: facets.leadsByBucket,
+    },
+    cityTotal: facets.cityTotal,
+    unassignedCity: facets.unassignedCity,
+    byCity: [...facets.city].map(([value, count]) => ({ value, count })),
+    countryTotal: facets.countryTotal,
+    byCountry: [...facets.country].map(([value, count]) => ({ value, count })),
+    byIndustry: rowsFromCountMap(facets.industry),
+    bySector: rowsFromCountMap(facets.sector),
+    byApplication: rowsFromCountMap(facets.application),
+    classificationStale: false,
   };
 }
 
@@ -553,7 +599,7 @@ export async function setCompanyOwner(id: string, ownerUserId: string | null) {
     }
   }
 
-  return prisma.company.update({
+  const updated = await prisma.company.update({
     where: { id: company.id },
     data: { ownerUserId: nextOwnerId },
   });
@@ -645,3 +691,29 @@ export async function deleteCompany(id: string) {
   await prisma.company.delete({ where: { id: current.id } });
   return current;
 }
+/** Namen van de gewijzigde velden; bewust zonder de waarden zelf. */
+function changedCompanyFields(
+  before: { [key: string]: unknown },
+  after: { [key: string]: unknown },
+): string[] {
+  const tracked = [
+    "name",
+    "email",
+    "phone",
+    "website",
+    "vatNumber",
+    "cocNumber",
+    "addressLine",
+    "postalCode",
+    "city",
+    "country",
+    "vatRate",
+    "industryCode",
+    "sectorCode",
+    "notes",
+  ];
+  return tracked.filter(
+    (field) => String(before[field] ?? "") !== String(after[field] ?? ""),
+  );
+}
+

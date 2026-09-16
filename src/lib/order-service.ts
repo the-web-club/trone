@@ -8,6 +8,7 @@ import {
 } from "@/lib/date-input";
 import { getPrismaClient } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { companyNamesByIds } from "@/lib/company-service";
 import { createId, whereIdOrOrderNumber } from "@/lib/id";
 import { paginateArgs, type PagedList } from "@/lib/list-query";
 import { nextNumber, SEQ_ORDER_2026 } from "@/lib/number-sequence-service";
@@ -99,7 +100,8 @@ export type OrderFilterFacets = {
   statusTotal: number;
   byStatus: Array<{ value: string; count: number }>;
   companyTotal: number;
-  byCompany: Array<{ value: string; count: number }>;
+  /** Alleen klanten met orders; label hoort bij de rij. */
+  byCompany: Array<{ value: string; label: string; count: number }>;
 };
 
 export async function getOrderFilterFacets(
@@ -122,6 +124,9 @@ export async function getOrderFilterFacets(
   ]);
   return {
     statusTotal: statusGroups.reduce((sum, group) => sum + group._count._all, 0),
+  const names = await companyNamesByIds(
+    companyGroups.map((group) => group.companyId),
+  );
     byStatus: statusGroups.map((group) => ({
       value: group.status,
       count: group._count._all,
@@ -134,6 +139,7 @@ export async function getOrderFilterFacets(
       value: group.companyId,
       count: group._count._all,
     })),
+      label: names.get(group.companyId) ?? group.companyId,
   };
 }
 

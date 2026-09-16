@@ -4,10 +4,6 @@ import {
   CLASSIFICATION_FILTER_UNKNOWN,
 } from "@/lib/classification";
 import {
-  aggregateLinkedCompanyFacets,
-  distinctCodesByEntity,
-} from "@/lib/filters/aggregate";
-import {
   applicationFacetCatalog,
   industryFacetCatalog,
   isRegisteredFacetKey,
@@ -77,44 +73,10 @@ describe("facetSelectOptions", () => {
   });
 });
 
-describe("Other Filters Changed / self-exclusion aggregatie", () => {
-  it("telt unieke leads via companyId-groepen, niet company-rijen", () => {
-    const result = aggregateLinkedCompanyFacets(
-      [
-        { companyId: null, count: 14 },
-        { companyId: "a", count: 418 },
-        { companyId: "b", count: 2 },
-        { companyId: "c", count: 18 },
-      ],
-      [
-        { id: "a", industryCode: "transport_logistiek", sectorCode: "wegtransport" },
-        { id: "b", industryCode: "transport_logistiek", sectorCode: null },
-        { id: "c", industryCode: null, sectorCode: null },
-      ],
-      { includeNoCompany: true },
-    );
-
-    expect(result.industry.get("geen-bedrijf")).toBe(14);
-    expect(result.industry.get("transport_logistiek")).toBe(420);
-    expect(result.industry.get("onbekend")).toBe(18);
-    expect(result.sector.get("wegtransport")).toBe(418);
-    expect(result.sector.get("onbekend")).toBe(2);
-    expect(result.total).toBe(452);
-  });
-
-  it("gebruikt COUNT DISTINCT bij dubbele toepassing-rijen", () => {
-    const result = distinctCodesByEntity([
-      { entityId: "lead-1", codes: ["kraan", "kraan", "vrachtwagen"] },
-      { entityId: "lead-1", codes: ["kraan"] },
-      { entityId: "lead-2", codes: [] },
-      { entityId: "lead-3", codes: ["kraan"] },
-    ]);
-    expect(result.byCode.get("kraan")).toBe(2);
-    expect(result.byCode.get("vrachtwagen")).toBe(1);
-    expect(result.unknown).toBe(1);
-    expect(result.total).toBe(3);
-  });
-});
+// De aggregatie zelf is naar SQL verhuisd. Zie
+// `filters/facet-exclusion.test.ts` voor self-exclusion en
+// `filters/facet-counts.db.test.ts` voor COUNT(DISTINCT), geen-bedrijf en
+// onbekend tegen een echte dataset.
 
 describe("filterdefinities", () => {
   it("registreert alleen bekende facetkeys", () => {

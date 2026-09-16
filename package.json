@@ -21,7 +21,8 @@
     "slugs:backfill": "tsx --env-file=.env.local --conditions react-server scripts/backfill-slugs.ts",
     "placeholders:generate": "tsx --env-file=.env.local --conditions react-server scripts/generate-placeholders.ts",
     "auth:create-admin": "tsx --env-file=.env.local --conditions react-server scripts/create-admin.ts",
-    "filters:rebuild": "tsx --env-file=.env.local --conditions react-server scripts/rebuild-filter-index.ts"
+    "filters:rebuild": "tsx --env-file=.env.local --conditions react-server scripts/rebuild-filter-index.ts",
+    "search:backfill": "tsx --env-file=.env.local --conditions react-server scripts/backfill-deal-search-index.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

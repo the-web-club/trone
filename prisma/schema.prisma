@@ -149,6 +149,8 @@ model Company {
   @@index([industryCode])
   @@index([sectorCode])
   @@index([industryCode, sectorCode])
+  @@index([name], map: "company_name_idx")
+  @@index([country, city], map: "company_country_city_idx")
   @@map("company")
 }
 
@@ -187,6 +189,7 @@ model Contact {
 
   @@index([companyId])
   @@index([ownerUserId])
+  @@index([firstName, lastName], map: "contact_name_idx")
   @@map("contact")
 }
 
@@ -243,6 +246,12 @@ model Deal {
   leadScoreAssessed  Int      @default(0)
   leadScoreNoMatch   Boolean  @default(false)
   leadScoreSort      Int      @default(-1)
+  /// Afgeleid zoekveld: lowercase titel + bedrijfsnaam + contact voor- en
+  /// achternaam. Exact dezelfde velden als het oude zoekpredicaat, zodat de
+  /// zoeksemantiek gelijk blijft. Wordt door databasetriggers bijgehouden
+  /// (zie de migratie), zodat geen enkel schrijfpad hem stale kan maken.
+  /// Nooit rechtstreeks schrijven.
+  searchIndex   String?    @db.Text
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -268,6 +277,10 @@ model Deal {
   @@index([leadScoreNoMatch, leadScore])
   @@index([leadScoreAssessed])
   @@index([leadScoreSort])
+  @@index([updatedAt], map: "deal_updatedAt_idx")
+  @@index([status, createdAt], map: "deal_status_createdAt_idx")
+  @@index([stageId, createdAt], map: "deal_stageId_createdAt_idx")
+  @@index([ownerUserId, createdAt], map: "deal_ownerUserId_createdAt_idx")
   @@map("deal")
 }
 

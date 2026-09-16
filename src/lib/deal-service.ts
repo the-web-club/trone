@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import type { DealStatus, Prisma } from "@/generated/prisma/client";
+import { Prisma, type DealStatus } from "@/generated/prisma/client";
 import {
   endExclusiveOfCalendarDate,
   normalizeDateOnlyInput,
@@ -36,7 +36,6 @@ import {
   leadScoreFilterWhereInput,
   leadScoreFractionLabel,
   leadScoreFromDeal,
-  leadScoreMatchesFilter,
   parseLeadScoreAnswer,
   LEAD_SCORE_FILTERS,
   type LeadScoreAnswers,
@@ -44,12 +43,12 @@ import {
   type LeadScoreResult,
 } from "@/lib/lead-score";
 import { logEvent } from "@/lib/timeline-service";
+import { rowsFromCountMap } from "@/lib/filters/aggregate";
 import {
-  ownerFacetsFromGroups,
-  rowsFromCountMap,
-  sumGroupCounts,
-} from "@/lib/filters/aggregate";
-import { dealClassificationFacetCounts } from "@/lib/filters/classification-counts";
+  dealFacetCountsSql,
+  type DealFacetWheres,
+} from "@/lib/filters/facet-sql";
+import { dealWhereSql } from "@/lib/filters/sql-where";
 import type {
   DealDateField,
   DealSort,
@@ -61,6 +60,7 @@ import {
   sumActiveQuoteTotals,
 } from "@/lib/deal-value";
 import { KANBAN_COLUMN_PAGE_SIZE } from "@/lib/kanban-deal";
+import { escapeLikeTerm } from "@/lib/list-query";
 
 export const listDealStages = cache(
   async function listDealStages() {
@@ -251,13 +251,11 @@ export function buildDealListWhere(
 
   const search = normalizeSearch(filters.zoeken);
   if (search) {
+    // searchIndex bevat title + bedrijfsnaam + contactnaam, lowercase, en
+    // wordt door triggers bijgehouden. Eén kolomvergelijking i.p.v. twee
+    // gecorreleerde subquery's per rij; zelfde substring-semantiek.
     and.push({
-      OR: [
-        { title: { contains: search } },
-        { company: { name: { contains: search } } },
-        { contact: { firstName: { contains: search } } },
-        { contact: { lastName: { contains: search } } },
-      ],
+      searchIndex: { contains: escapeLikeTerm(search.toLowerCase()) },
     });
   }
 
@@ -486,170 +484,85 @@ export type DealFilterFacets = {
   classificationStale: boolean;
 };
 
+const EMPTY_SCORE_FACETS = Object.fromEntries(
+  LEAD_SCORE_FILTERS.map((filter) => [filter, 0]),
+) as Record<LeadScoreFilter, number>;
+
 /**
  * Facet counts for the leads filter bar.
  * Each dimension ignores its own filter (Other Filters Changed).
- * GroupBy / COUNT(DISTINCT) over the full scoped dataset, not the page.
+ *
+ * Aggregatie gebeurt in de database: acht GROUP BY's die alleen groepsrijen
+ * teruggeven. Eerder liep dit via `groupBy(["companyId"])` plus een tweede
+ * query met `IN (…alle company-id's…)`, wat lineair meegroeide met de dataset.
  */
 export async function getDealFilterFacets(
   filters: DealListFilters = {},
   currentUserId?: string,
 ): Promise<DealFilterFacets> {
-  const prisma = getPrismaClient();
+  const wheres: DealFacetWheres = {
+    stage: dealWhereSql({ ...filters, stageId: undefined }, currentUserId),
+    source: dealWhereSql({ ...filters, sourceId: undefined }, currentUserId),
+    owner: dealWhereSql({ ...filters, eigenaar: "alle" }, currentUserId),
+    status: dealWhereSql({ ...filters, status: "alle" }, currentUserId),
+    score: dealWhereSql({ ...filters, leadscore: "" }, currentUserId),
+    industry: dealWhereSql({ ...filters, industries: [] }, currentUserId),
+    sector: dealWhereSql({ ...filters, sectors: [] }, currentUserId),
+    application: dealWhereSql({ ...filters, applications: [] }, currentUserId),
+  };
 
-  const stageWhere = buildDealListWhere(
-    { ...filters, stageId: undefined },
-    currentUserId,
-  );
-  const sourceWhere = buildDealListWhere(
-    { ...filters, sourceId: undefined },
-    currentUserId,
-  );
-  const ownerWhere = buildDealListWhere(
-    { ...filters, eigenaar: "alle" },
-    currentUserId,
-  );
-  const statusWhere = buildDealListWhere(
-    { ...filters, status: "alle" },
-    currentUserId,
-  );
-  const scoreWhere = buildDealListWhere(
-    { ...filters, leadscore: "" },
-    currentUserId,
-  );
-  const industryWhere = buildDealListWhere(
-    { ...filters, industries: [] },
-    currentUserId,
-  );
-  const sectorWhere = buildDealListWhere(
-    { ...filters, sectors: [] },
-    currentUserId,
-  );
-  const applicationWhere = buildDealListWhere(
-    { ...filters, applications: [] },
-    currentUserId,
-  );
+  const facets = await dealFacetCountsSql(wheres).catch(() => null);
 
-  const [
-    stageGroups,
-    sourceGroups,
-    ownerGroups,
-    statusGroups,
-    scoreGroups,
-    classification,
-  ] = await Promise.all([
-    prisma.deal.groupBy({
-      by: ["stageId"],
-      where: stageWhere,
-      _count: { _all: true },
-    }),
-    prisma.deal.groupBy({
-      by: ["sourceId"],
-      where: sourceWhere,
-      _count: { _all: true },
-    }),
-    prisma.deal.groupBy({
-      by: ["ownerUserId"],
-      where: ownerWhere,
-      _count: { _all: true },
-    }),
-    prisma.deal.groupBy({
-      by: ["status"],
-      where: statusWhere,
-      _count: { _all: true },
-    }),
-    prisma.deal.groupBy({
-      by: ["leadScore", "leadScoreAssessed", "leadScoreNoMatch"],
-      where: scoreWhere,
-      _count: { _all: true },
-    }),
-    dealClassificationFacetCounts({
-      industryWhere,
-      sectorWhere,
-      applicationWhere,
-    }).then(
-      (counts) => ({ counts, stale: false }),
-      () => ({
-        counts: {
-          industry: new Map<string, number>(),
-          sector: new Map<string, number>(),
-          application: new Map<string, number>(),
-        },
-        stale: true,
-      }),
-    ),
-  ]);
+  if (!facets) {
+    return {
+      stageTotal: 0,
+      byStage: [],
+      sourceTotal: 0,
+      unassignedSource: 0,
+      bySource: [],
+      ownerTotal: 0,
+      unassignedOwner: 0,
+      assignedToMe: 0,
+      byOwner: [],
+      statusTotal: 0,
+      byStatus: {},
+      scoreTotal: 0,
+      byScore: { ...EMPTY_SCORE_FACETS },
+      byIndustry: [],
+      bySector: [],
+      byApplication: [],
+      stale: true,
+      classificationStale: true,
+    };
+  }
 
   const byStatus: Partial<Record<DealStatus, number>> = {};
-  for (const group of statusGroups) {
-    byStatus[group.status] = group._count._all;
+  for (const [status, count] of facets.status) {
+    byStatus[status as DealStatus] = count;
   }
-
-  const unassignedSource =
-    sourceGroups.find((group) => group.sourceId == null)?._count._all ?? 0;
-  const owner = ownerFacetsFromGroups(ownerGroups, currentUserId);
 
   return {
-    stageTotal: sumGroupCounts(stageGroups),
-    byStage: stageGroups.map((group) => ({
-      stageId: group.stageId,
-      count: group._count._all,
-    })),
-    sourceTotal: sumGroupCounts(sourceGroups),
-    unassignedSource,
-    bySource: sourceGroups.flatMap((group) =>
-      group.sourceId
-        ? [{ sourceId: group.sourceId, count: group._count._all }]
-        : [],
-    ),
-    ownerTotal: owner.ownerTotal,
-    unassignedOwner: owner.unassignedOwner,
-    assignedToMe: owner.assignedToMe,
-    byOwner: owner.byOwner,
-    statusTotal: sumGroupCounts(statusGroups),
+    stageTotal: facets.stageTotal,
+    byStage: [...facets.stage].map(([stageId, count]) => ({ stageId, count })),
+    sourceTotal: facets.sourceTotal,
+    unassignedSource: facets.unassignedSource,
+    bySource: [...facets.source]
+      .filter(([sourceId]) => sourceId !== "geen")
+      .map(([sourceId, count]) => ({ sourceId, count })),
+    ownerTotal: facets.ownerTotal,
+    unassignedOwner: facets.unassignedOwner,
+    assignedToMe: currentUserId ? (facets.owner.get(currentUserId) ?? 0) : 0,
+    byOwner: [...facets.owner].map(([userId, count]) => ({ userId, count })),
+    statusTotal: facets.statusTotal,
     byStatus,
-    scoreTotal: sumGroupCounts(scoreGroups),
-    byScore: scoreFacetsFromGroups(scoreGroups),
-    byIndustry: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.industry),
-    bySector: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.sector),
-    byApplication: classification.stale
-      ? []
-      : rowsFromCountMap(classification.counts.application),
-    stale: classification.stale,
-    classificationStale: classification.stale,
+    scoreTotal: facets.scoreTotal,
+    byScore: facets.score,
+    byIndustry: rowsFromCountMap(facets.industry),
+    bySector: rowsFromCountMap(facets.sector),
+    byApplication: rowsFromCountMap(facets.application),
+    stale: false,
+    classificationStale: false,
   };
-}
-
-function scoreFacetsFromGroups(
-  groups: Array<{
-    leadScore: number | null;
-    leadScoreAssessed: number;
-    leadScoreNoMatch: boolean;
-    _count: { _all: number };
-  }>,
-): Record<LeadScoreFilter, number> {
-  const counts = Object.fromEntries(
-    LEAD_SCORE_FILTERS.map((filter) => [filter, 0]),
-  ) as Record<LeadScoreFilter, number>;
-
-  for (const group of groups) {
-    const snapshot = {
-      score: group.leadScore,
-      assessedCount: group.leadScoreAssessed,
-      isNoMatch: group.leadScoreNoMatch,
-    };
-    for (const filter of LEAD_SCORE_FILTERS) {
-      if (leadScoreMatchesFilter(snapshot, filter)) {
-        counts[filter] += group._count._all;
-      }
-    }
-  }
-
-  return counts;
 }
 
 function csvCell(value: string): string {
@@ -1046,9 +959,9 @@ export async function setDealQualificationAnswer(
   const prisma = getPrismaClient();
 
   const updated = await prisma.$transaction(async (tx) => {
-    await tx.$queryRawUnsafe(
-      "SELECT id FROM deal WHERE id = ? FOR UPDATE",
-      current.id,
+    // Geparameteriseerd via Prisma.sql; $queryRawUnsafe is hier niet nodig.
+    await tx.$queryRaw(
+      Prisma.sql`SELECT id FROM deal WHERE id = ${current.id} FOR UPDATE`,
     );
     const locked = await tx.deal.findUnique({
       where: { id: current.id },
@@ -1088,7 +1001,7 @@ export async function addDealActivity(
   userId?: string,
 ) {
   const deal = await getDeal(dealId);
-  return logEvent({
+  const event = await logEvent({
     type: input.type,
     body: input.body ?? null,
     userId: userId ?? null,

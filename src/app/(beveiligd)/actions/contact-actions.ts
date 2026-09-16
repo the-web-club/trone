@@ -14,6 +14,7 @@ import {
   deleteContact,
   getContact,
   listContactsForSelect,
+  searchContactsForSelect,
   setContactCompany,
   setContactOwner,
   updateContact,
@@ -155,6 +156,23 @@ export async function deleteContactAction(
 export async function listContactsForSelectAction(companyId?: string | null) {
   await requireSession();
   return listContactsForSelect(companyId);
+}
+
+/**
+ * Server-side zoeken voor de contact-combobox. Begrensd resultaat, zodat de
+ * client nooit de hele contactentabel binnenhaalt.
+ */
+export async function searchContactsForSelectAction(options: {
+  query?: string;
+  companyId?: string | null;
+  includeIds?: string[];
+}) {
+  await requireSession();
+  return searchContactsForSelect({
+    query: options.query,
+    companyId: options.companyId,
+    includeIds: options.includeIds,
+  });
 }
 
 function isNextRedirect(error: unknown): boolean {

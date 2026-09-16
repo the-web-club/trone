@@ -5,7 +5,6 @@ import { ListPagination } from "@/components/list/list-pagination";
 import { OrdersFilters } from "@/components/order/orders-filters";
 import { OrdersList } from "@/components/order/orders-list";
 import { PageHeader } from "@/components/shell/page-header";
-import { listCompaniesForSelect } from "@/lib/company-service";
 import { listSummary } from "@/lib/list-copy";
 import { getOrderFilterFacets, listOrders } from "@/lib/order-service";
 import { buildOrdersHref, parseOrdersSearchParams } from "@/lib/orders-query";
@@ -22,7 +21,8 @@ export default async function OrdersPage({
     parsed.zoeken || parsed.status || parsed.klant || parsed.van || parsed.tot,
   );
 
-  const [result, companies, facets] = await Promise.all([
+  // Klantopties komen uit het facet zelf, dus geen aparte bedrijfslijst meer.
+  const [result, facets] = await Promise.all([
     listOrders({
       query: parsed.zoeken || undefined,
       status: (parsed.status || undefined) as OrderStatus | undefined,
@@ -31,7 +31,6 @@ export default async function OrdersPage({
       tot: parsed.tot || undefined,
       page: parsed.pagina,
     }),
-    listCompaniesForSelect(),
     getOrderFilterFacets({
       query: parsed.zoeken || undefined,
       status: (parsed.status || undefined) as OrderStatus | undefined,
@@ -57,14 +56,7 @@ export default async function OrdersPage({
             : listSummary(result.total, "order", "orders"),
         ]}
       />
-      <OrdersFilters
-        values={parsed}
-        companies={companies.map((company) => ({
-          id: company.id,
-          name: company.name,
-        }))}
-        facets={facets}
-      />
+      <OrdersFilters values={parsed} facets={facets} />
       <ListBody>
         <OrdersList items={result.items} emptyMessage={emptyMessage} />
         <ListPagination

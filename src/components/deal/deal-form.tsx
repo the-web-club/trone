@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { searchCompaniesForSelectAction } from "@/app/(beveiligd)/actions/company-actions";
+import { searchContactsForSelectAction } from "@/app/(beveiligd)/actions/contact-actions";
 import { useCompanyContactFields } from "@/components/contact/use-company-contact-fields";
 import { CreateCompanyDialog } from "@/components/company/create-company-dialog";
 import { LeadSubmitButton } from "@/components/deal/lead-submit-button";
 import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dialog";
-import { ComboboxMenu } from "@/components/ui/combobox";
+import { AsyncComboboxMenu } from "@/components/ui/async-combobox";
 import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { FormField, FormFieldGrid } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -143,6 +145,26 @@ export function DealForm({
     ],
     [companyList],
   );
+  // Opties komen server-side; de lijst in props is alleen de startset.
+  const searchCompanyItems = useCallback(async (query: string) => {
+    const rows = await searchCompaniesForSelectAction({ query });
+    return rows.map((company) => ({ value: company.id, label: company.name }));
+  }, []);
+
+  const searchContactItems = useCallback(
+    async (query: string) => {
+      const rows = await searchContactsForSelectAction({
+        query,
+        companyId: companyId || null,
+      });
+      return rows.map((contact) => ({
+        value: contact.id,
+        label: formatPersonName(contact.firstName, contact.lastName),
+      }));
+    },
+    [companyId],
+  );
+
   const contactItems = useMemo(
     () => [
       { value: "", label: "Geen contactpersoon" },
@@ -272,13 +294,14 @@ export function DealForm({
           </FormField>
 
           <FormField id={`${id}-companyId`} label="Bedrijf" error={shownErrors.companyId}>
-            <ComboboxMenu
+            <AsyncComboboxMenu
               value={companyId}
               onValueChange={(next) => {
                 onCompanyChange(next);
                 markTouched("companyId");
               }}
               items={companyItems}
+              search={searchCompanyItems}
               placeholder="Geen bedrijf gekoppeld"
               searchPlaceholder="Zoek een bedrijf…"
               createLabel="Nieuw bedrijf"
@@ -306,7 +329,7 @@ export function DealForm({
               })()
             : null}
           <FormField id={`${id}-contactId`} label="Contact" error={shownErrors.contactId}>
-            <ComboboxMenu
+            <AsyncComboboxMenu
               value={contactId}
               disabled={contactsLoading}
               onValueChange={(next) => {
@@ -314,6 +337,7 @@ export function DealForm({
                 markTouched("contactId");
               }}
               items={contactItems}
+              search={searchContactItems}
               placeholder="Geen contactpersoon"
               searchPlaceholder="Zoek een contact…"
               createLabel="Nieuw contact"

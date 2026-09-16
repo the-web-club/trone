@@ -23,11 +23,9 @@ function formatDateLabel(value: string): string {
 
 export function QuotesFilters({
   values,
-  companies,
   facets,
 }: {
   values: QuotesFilterValues;
-  companies: Array<{ id: string; name: string }>;
   facets: QuoteFilterFacets;
 }) {
   const replace = useListHrefReplace();
@@ -59,10 +57,11 @@ export function QuotesFilters({
     selected: values.status,
     all: { value: ALL, label: "Alle statussen", count: facets.statusTotal },
   });
+  // Alleen klanten met offertes; naam en telling komen uit het facet.
   const companyOptions: SelectOption[] = facetSelectOptions({
-    catalog: companies.map((company) => ({
-      value: company.id,
-      label: company.name,
+    catalog: facets.byCompany.map((row) => ({
+      value: row.value,
+      label: row.label,
     })),
     counts: facets.byCompany,
     selected: values.klant,
@@ -84,7 +83,7 @@ export function QuotesFilters({
           key: "klant",
           label: "Klant",
           value:
-            companies.find((company) => company.id === values.klant)?.name ??
+            facets.byCompany.find((row) => row.value === values.klant)?.label ??
             values.klant,
           onRemove: () => navigate({ klant: "" }),
         }

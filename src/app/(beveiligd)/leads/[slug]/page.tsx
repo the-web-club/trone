@@ -10,7 +10,7 @@ import {
   isViewerSession,
   requireSession,
 } from "@/lib/auth-session";
-import { listCompaniesForSelect } from "@/lib/company-service";
+import { searchCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import {
   getDeal,
@@ -44,7 +44,7 @@ export default async function LeadDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const companiesPromise = listCompaniesForSelect();
+  const companiesPromise = searchCompaniesForSelect();
   const sourcesPromise = listLeadSources();
   const [session, deal, stages, members] = await Promise.all([
     requireSession(),

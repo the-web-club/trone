@@ -6,7 +6,7 @@ import { LeadsKanban } from "@/components/deal/leads-kanban";
 import { LeadsListTable } from "@/components/deal/leads-list-table";
 import { ListPagination } from "@/components/list/list-pagination";
 import { requireSession } from "@/lib/auth-session";
-import { listCompaniesForSelect } from "@/lib/company-service";
+import { searchCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
 import {
   DEAL_LIST_PAGE_SIZE,
@@ -69,7 +69,7 @@ export default async function LeadsPage({
             { ...listFilters, page: parsed.pagina, pageSize: DEAL_LIST_PAGE_SIZE },
             currentUserId,
           ),
-      listCompaniesForSelect(),
+      searchCompaniesForSelect(),
       listContactsForSelect(),
     ]);
 

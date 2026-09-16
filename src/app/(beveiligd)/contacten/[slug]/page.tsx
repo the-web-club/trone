@@ -6,7 +6,7 @@ import { ContactLeadsTable } from "@/components/contact/contact-leads-table";
 import { ContactTimeline } from "@/components/detail/entity-activity";
 import { DetailTimelineSkeleton } from "@/components/detail/detail-skeletons";
 import { isAdminSession, requireSession } from "@/lib/auth-session";
-import { listCompaniesForSelect } from "@/lib/company-service";
+import { searchCompaniesForSelect } from "@/lib/company-service";
 import { getContact } from "@/lib/contact-service";
 import { getContactCompanyId } from "@/lib/contact-company";
 import { listDealTeamMembers } from "@/lib/deal-service";
@@ -40,7 +40,7 @@ export default async function ContactDetailPage({
       if (isAppError(error) && error.status === 404) notFound();
       throw error;
     }),
-    listCompaniesForSelect(),
+    searchCompaniesForSelect(),
     listDealTeamMembers(),
   ]);
   if (slug !== contact.slug) redirect(contactPath(contact));
