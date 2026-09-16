@@ -43,14 +43,21 @@ function toCreateData(row: AuditEventRow): Prisma.AuditEventCreateManyInput {
 /**
  * Vult de velden aan die uit het request komen wanneer de aanroeper ze niet
  * meegeeft: actor uit de sessie, route en request-id uit de headers.
+ *
+ * Een meegegeven `sessionId` telt als antwoord, ook wanneer het `null` is. Dat
+ * is niet alleen zuiniger, het is noodzakelijk voor het pad dat juist een
+ * mislukte sessielezing logt: dat zou anders `getSession()` aanroepen terwijl
+ * die aanroep nog open staat, en `cache()` geeft dan dezelfde onafgeronde
+ * promise terug. Hetzelfde geldt voor een meegegeven actor.
  */
 async function withRequestContext(
   input: AuditEventInput,
 ): Promise<AuditEventRow> {
+  const sessionKnown = "sessionId" in input;
   const [actor, context, session] = await Promise.all([
     input.actor ? Promise.resolve(input.actor) : resolveAuditActor(),
     resolveAuditRequestContext(),
-    input.sessionId ? Promise.resolve(null) : getSession().catch(() => null),
+    sessionKnown ? Promise.resolve(null) : getSession().catch(() => null),
   ]);
 
   return buildAuditEventRow(

@@ -325,6 +325,7 @@ export const AUDIT_ACTIONS = {
   passwordResetRequest: "auth.password_reset_request",
   passwordResetComplete: "auth.password_reset_complete",
   permissionDenied: "auth.permission_denied",
+  sessionReadFailed: "auth.session_read_failed",
 
   // Leads
   leadCreate: "lead.create",

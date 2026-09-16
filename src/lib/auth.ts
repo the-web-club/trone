@@ -3,6 +3,7 @@ import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
+import { authLogger } from "@/lib/auth-error-capture";
 import { getPrismaClient } from "@/lib/db";
 import { nextUserSlug } from "@/lib/entity-slug";
 import { passwordResetMail, sendMail } from "@/lib/mail";
@@ -59,6 +60,9 @@ function createAuth() {
     appName: "TRÔNE Seating",
     baseURL: requireEnv("BETTER_AUTH_URL"),
     secret: requireEnv("BETTER_AUTH_SECRET"),
+    // Vervangt de standaardlogger, zodat een fout die Better Auth intern
+    // wegmoffelt alsnog te achterhalen is. Zie auth-error-capture.ts.
+    logger: authLogger,
     database: prismaAdapter(getPrismaClient(), {
       provider: "mysql",
     }),

@@ -4,7 +4,13 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth, type Auth } from "@/lib/auth";
-import { AppError } from "@/lib/errors";
+import {
+  createAuthErrorSlot,
+  runWithAuthErrorSlot,
+} from "@/lib/auth-error-capture";
+import { AUDIT_ACTIONS } from "@/lib/audit/registry";
+import { AUDIT_SYSTEM_ACTOR } from "@/lib/audit/types";
+import { AppError, describeError } from "@/lib/errors";
 
 export type AppSession = NonNullable<
   Awaited<ReturnType<Auth["api"]["getSession"]>>
@@ -12,12 +18,76 @@ export type AppSession = NonNullable<
 
 export const getSession = cache(
   async function getSession(): Promise<AppSession | null> {
-    const session = await getAuth().api.getSession({
-      headers: await headers(),
-    });
-    return session;
+    const requestHeaders = await headers();
+    const slot = createAuthErrorSlot();
+    try {
+      return await runWithAuthErrorSlot(slot, () =>
+        getAuth().api.getSession({ headers: requestHeaders }),
+      );
+    } catch (error) {
+      await reportSessionReadFailure(error, slot.error);
+      throw error;
+    }
   },
 );
+
+/**
+ * Legt vast dat het lezen van de sessie is mislukt, mét de onderliggende fout.
+ *
+ * Dit gebeurt hier en niet in `instrumentation.ts` omdat dit de laatste plek is
+ * waar de echte fout nog bestaat. Wat er daarna nog van over is, is de
+ * vervangende `APIError: Failed to get session` van Better Auth — een melding
+ * die voor elke denkbare oorzaak hetzelfde luidt.
+ *
+ * De console-regel staat los van het audit-event, met opzet: gaat de database
+ * onderuit, dan mislukt de audit-insert net zo hard als de sessielezing, en dan
+ * is de serverlog de enige plek waar de oorzaak nog terechtkomt.
+ *
+ * Actor en sessie gaan bewust leeg mee. Niet alleen omdat we ze op dit moment
+ * niet kennen: zonder die twee velden haalt `logAuditEvent` zelf `getSession()`
+ * op, en die aanroep staat hier nog open. `cache()` geeft dan dezelfde nog niet
+ * afgeronde promise terug en het request loopt vast. Wie het was, is terug te
+ * vinden via de `server.error`-regel met hetzelfde request-id.
+ */
+async function reportSessionReadFailure(
+  error: unknown,
+  captured: unknown,
+): Promise<void> {
+  const thrown = describeError(error);
+  const underlying =
+    captured ?? (error instanceof Error ? error.cause : null) ?? null;
+  const cause = underlying === null ? null : describeError(underlying);
+
+  console.error(
+    `Sessie lezen mislukt (${thrown.soort}: ${thrown.melding}). Oorzaak:`,
+    underlying ?? "onbekend",
+  );
+
+  try {
+    const { logAuditEvent } = await import("@/lib/audit/log");
+    await logAuditEvent({
+      eventType: "SERVER_ERROR",
+      category: "AUTH",
+      action: AUDIT_ACTIONS.sessionReadFailed,
+      source: "API",
+      result: "FAILURE",
+      severity: "ERROR",
+      entityType: "session",
+      actor: AUDIT_SYSTEM_ACTOR,
+      sessionId: null,
+      metadata: {
+        melding: thrown.melding,
+        soort: thrown.soort,
+        oorzaak: cause?.melding ?? null,
+        oorzaaksoort: cause?.soort ?? null,
+        oorzaakcode: cause?.code ?? null,
+        herkomst: captured != null ? "logger" : cause ? "cause" : null,
+      },
+    });
+  } catch {
+    // De console-regel hierboven is het vangnet.
+  }
+}
 
 export async function requireSession(): Promise<AppSession> {
   const session = await getSession();
@@ -53,10 +123,7 @@ async function logPermissionDenied(
   reason: string,
 ): Promise<void> {
   try {
-    const [{ logAuditEvent }, { AUDIT_ACTIONS }] = await Promise.all([
-      import("@/lib/audit/log"),
-      import("@/lib/audit/registry"),
-    ]);
+    const { logAuditEvent } = await import("@/lib/audit/log");
     await logAuditEvent({
       eventType: "PERMISSION_DENIED",
       category: "SECURITY",
