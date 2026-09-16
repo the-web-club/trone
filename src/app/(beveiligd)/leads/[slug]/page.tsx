@@ -12,7 +12,12 @@ import {
 } from "@/lib/auth-session";
 import { listCompaniesForSelect } from "@/lib/company-service";
 import { listContactsForSelect } from "@/lib/contact-service";
-import { getDeal, listDealStages, listLeadSources } from "@/lib/deal-service";
+import {
+  getDeal,
+  listDealStages,
+  listDealTeamMembers,
+  listLeadSources,
+} from "@/lib/deal-service";
 import { isAppError } from "@/lib/errors";
 import { effectiveDealValue, sumActiveQuoteTotals } from "@/lib/deal-value";
 import { formatEuro } from "@/lib/format";
@@ -41,13 +46,14 @@ export default async function LeadDetailPage({
   const { slug } = await params;
   const companiesPromise = listCompaniesForSelect();
   const sourcesPromise = listLeadSources();
-  const [session, deal, stages] = await Promise.all([
+  const [session, deal, stages, members] = await Promise.all([
     requireSession(),
     getDeal(slug).catch((error) => {
       if (isAppError(error) && error.status === 404) notFound();
       throw error;
     }),
     listDealStages(),
+    listDealTeamMembers(),
   ]);
   if (slug !== deal.slug) redirect(dealPath(deal));
 
@@ -72,6 +78,7 @@ export default async function LeadDetailPage({
         contactId: deal.contactId,
         stageId: deal.stageId,
         sourceId: deal.sourceId,
+        ownerUserId: deal.ownerUserId,
         valueEstimate:
           deal.valueEstimate == null ? null : Number(deal.valueEstimate),
         quotedTotal: sumActiveQuoteTotals(deal.quotes),
@@ -99,6 +106,7 @@ export default async function LeadDetailPage({
         isLost: stage.isLost,
       }))}
       relationOptions={relationOptions}
+      members={members}
       isAdmin={isAdminSession(session)}
       canEdit={!isViewerSession(session)}
       quotes={

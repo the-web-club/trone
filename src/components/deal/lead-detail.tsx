@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   deleteDealAction,
   patchDealAction,
+  setDealOwnerAction,
 } from "@/app/(beveiligd)/actions/deal-actions";
 import { patchCompanyAction } from "@/app/(beveiligd)/actions/company-actions";
 import {
@@ -42,6 +43,7 @@ import { CreateQuoteContactDialog } from "@/components/quote/create-contact-dial
 import { pageActionPrimaryClassName } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
 import { contactBelongsToCompany } from "@/lib/contact-company";
+import type { DealTeamMember } from "@/lib/deal-service";
 import type { DealPatch } from "@/lib/deal-validation";
 import type { LeadScoreAnswers } from "@/lib/lead-score";
 import { formatPersonName } from "@/lib/format";
@@ -57,6 +59,7 @@ export type LeadDetailRecord = {
   contactId: string | null;
   stageId: string;
   sourceId: string | null;
+  ownerUserId: string | null;
   valueEstimate: number | null;
   valueEstimateLabel: string;
   quotedTotal: number | null;
@@ -112,6 +115,7 @@ export function LeadDetail({
   deal,
   stages,
   relationOptions,
+  members,
   quotes,
   activity,
   isAdmin = false,
@@ -120,6 +124,7 @@ export function LeadDetail({
   deal: LeadDetailRecord;
   stages: LeadDetailStage[];
   relationOptions: Promise<LeadRelationOptions>;
+  members: DealTeamMember[];
   quotes: ReactNode;
   activity: ReactNode;
   isAdmin?: boolean;
@@ -251,6 +256,7 @@ export function LeadDetail({
               <LeadDetailFields
                 deal={deal}
                 relationOptions={relationOptions}
+                members={members}
                 save={save}
                 canEdit={canEdit}
               />
@@ -272,11 +278,13 @@ export function LeadDetail({
 function LeadDetailFields({
   deal,
   relationOptions,
+  members,
   save,
   canEdit,
 }: {
   deal: LeadDetailRecord;
   relationOptions: Promise<LeadRelationOptions>;
+  members: DealTeamMember[];
   save: (patch: DealPatch) => Promise<string | null>;
   canEdit: boolean;
 }) {
@@ -345,6 +353,27 @@ function LeadDetailFields({
     ],
     [sources],
   );
+
+  const ownerItems = useMemo<SelectOption[]>(() => {
+    const items: SelectOption[] = [
+      { value: INLINE_SELECT_EMPTY, label: "Niet toegewezen" },
+      ...members.map((member) => ({
+        value: member.id,
+        label: member.name || member.email,
+        image: member.image,
+      })),
+    ];
+    if (
+      deal.ownerUserId &&
+      !items.some((item) => item.value === deal.ownerUserId)
+    ) {
+      items.splice(1, 0, {
+        value: deal.ownerUserId,
+        label: deal.ownerUserId,
+      });
+    }
+    return items;
+  }, [deal.ownerUserId, members]);
 
   async function saveCompany(nextId: string): Promise<string | false | null> {
     const selected = relation.contacts.find(
@@ -429,6 +458,19 @@ function LeadDetailFields({
   return (
     <>
       <DetailFieldGrid>
+        <InlineSelectField
+          label="Eigenaar"
+          value={deal.ownerUserId ?? ""}
+          items={ownerItems}
+          layout="row"
+          searchPlaceholder="Zoek een eigenaar…"
+          onSave={async (next) => {
+            const result = await setDealOwnerAction(deal.id, next || null);
+            if (result.error) return result.error;
+            router.refresh();
+            return null;
+          }}
+        />
         <InlineSelectField
           label="Bedrijf"
           value={relation.companyId}

@@ -111,7 +111,7 @@ export function DetailTimelineSkeleton({
 export function LeadFieldsSkeleton() {
   return (
     <div className="detail-field-grid" aria-hidden>
-      {Array.from({ length: 4 }, (_, index) => (
+      {Array.from({ length: 5 }, (_, index) => (
         <div key={index} className="inline-field">
           <SkeletonPulse className="h-3 w-16" />
           <SkeletonPulse className="h-9 w-full rounded-sm border border-inline-field-border bg-inline-field" />
