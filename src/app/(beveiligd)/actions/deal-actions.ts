@@ -83,7 +83,9 @@ export async function updateDealAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   try {
-    const session = await requireSession();
+    const session = formData.has("applications")
+      ? await requireWritableSession()
+      : await requireSession();
     const id = String(formData.get("id") ?? "");
     const input = parseDealForm(formData);
     const deal = await updateDeal(id, input, session.user.id);

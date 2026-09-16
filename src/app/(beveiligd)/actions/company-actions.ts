@@ -94,7 +94,15 @@ export async function updateCompanyAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   try {
-    await requireSession();
+    if (
+      formData.has("industryCode") ||
+      formData.has("sectorCode") ||
+      formData.has("relationTypes")
+    ) {
+      await requireWritableSession();
+    } else {
+      await requireSession();
+    }
     const id = String(formData.get("id") ?? "");
     const input = parseCompanyForm(formData);
     const company = await updateCompany(id, input);
