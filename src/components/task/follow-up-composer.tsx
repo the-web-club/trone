@@ -5,6 +5,7 @@ import { createFollowUpTaskAction } from "@/app/(beveiligd)/actions/task-actions
 import { FollowUpFields } from "@/components/task/follow-up-fields";
 import { Button } from "@/components/ui/button";
 import { FormFooter } from "@/components/ui/form-footer";
+import { createSubmissionId } from "@/lib/form-submission";
 
 export function FollowUpComposer({
   dealId,
@@ -25,11 +26,13 @@ export function FollowUpComposer({
   );
   const notifiedAt = useRef<number | null>(null);
   const [dateOnly, setDateOnly] = useState(false);
+  const [submissionId, setSubmissionId] = useState(createSubmissionId);
 
   useEffect(() => {
     if (!state?.createdAt || notifiedAt.current === state.createdAt) return;
     notifiedAt.current = state.createdAt;
     setDateOnly(false);
+    setSubmissionId(createSubmissionId());
     onSuccess?.();
   }, [state?.createdAt, onSuccess]);
 
@@ -43,6 +46,7 @@ export function FollowUpComposer({
           : "flex flex-col gap-3 rounded-md border border-border bg-surface p-3"
       }
     >
+      <input type="hidden" name="submissionId" value={submissionId} />
       {dealId ? <input type="hidden" name="dealId" value={dealId} /> : null}
       {contactId ? (
         <input type="hidden" name="contactId" value={contactId} />
