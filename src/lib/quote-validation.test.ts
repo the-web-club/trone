@@ -28,9 +28,28 @@ describe("parseQuoteForm custom lines", () => {
         kind: "custom",
         title: "Montage",
         description: "Op locatie",
+        quantity: 1,
         unitPrice: null,
       },
     ]);
+  });
+
+  it("neemt het aantal over van een handmatige regel", () => {
+    const parsed = parseQuoteForm(
+      formData({
+        companyId: "c1",
+        items: [
+          {
+            kind: "custom",
+            title: "Montage",
+            description: "",
+            quantity: 3,
+            unitPrice: 100,
+          },
+        ],
+      }),
+    );
+    expect(parsed.items[0]).toMatchObject({ quantity: 3, unitPrice: 100 });
   });
 
   it("leest een Nederlandse prijs", () => {
@@ -73,6 +92,7 @@ describe("toQuoteItemInput", () => {
       kind: "custom",
       title: "Montage",
       description: "Op locatie",
+      quantity: 1,
       unitPrice: 250,
     });
   });
@@ -94,7 +114,24 @@ describe("toQuoteItemInput", () => {
       kind: "custom",
       title: "Toelichting",
       description: "Zes weken",
+      quantity: 1,
       unitPrice: null,
     });
+  });
+
+  it("neemt het opgeslagen aantal mee terug naar het formulier", () => {
+    expect(
+      toQuoteItemInput({
+        productId: "",
+        quantity: 4,
+        unitPrice: 75,
+        configSnapshot: {
+          kind: "custom",
+          title: "Montage",
+          description: "",
+          hasPrice: true,
+        },
+      }),
+    ).toMatchObject({ kind: "custom", quantity: 4, unitPrice: 75 });
   });
 });

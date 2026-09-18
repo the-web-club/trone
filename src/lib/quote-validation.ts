@@ -12,10 +12,15 @@ export const quoteSelectionSchema = z.object({
   optionValueId: z.string().trim().min(1, "Optiewaarde ontbreekt"),
 });
 
+const quantitySchema = z.coerce
+  .number()
+  .int()
+  .min(1, "Aantal moet 1 of hoger zijn");
+
 export const productQuoteItemSchema = z.object({
   kind: z.literal("product"),
   productId: z.string().trim().min(1, "Product is verplicht"),
-  quantity: z.coerce.number().int().min(1, "Aantal moet 1 of hoger zijn"),
+  quantity: quantitySchema,
   selections: z.array(quoteSelectionSchema),
 });
 
@@ -49,6 +54,8 @@ export const customQuoteItemSchema = z.object({
     if (typeof value !== "string") return "";
     return value;
   }, z.string().max(5000, "Omschrijving is te lang")),
+  // Bestaande offertes zijn opgeslagen zonder aantal op handmatige regels.
+  quantity: quantitySchema.default(1),
   unitPrice: optionalUnitPriceSchema,
 });
 

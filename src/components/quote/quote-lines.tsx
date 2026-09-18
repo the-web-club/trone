@@ -55,9 +55,9 @@ export function QuoteLines({
                   {index + 1}. {presentation.title}
                 </h3>
                 <p className="text-sm text-fg-muted">
-                  {presentation.isCustom
-                    ? formatEuroExact(linePrice)
-                    : `${item.quantity} × ${formatEuroExact(linePrice)}`}
+                  {presentation.hasPrice
+                    ? `${item.quantity} × ${formatEuroExact(linePrice)}`
+                    : formatEuroExact(null)}
                 </p>
               </div>
               {presentation.body ? (

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { QuantityStepper } from "@/components/configurator/quantity-stepper";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,10 @@ export function QuoteCustomLineEditor({
             placeholder="Leeg laten indien geen prijs"
           />
         </FormField>
+        <QuantityStepper
+          value={item.quantity}
+          onChange={(quantity) => onChange({ ...item, quantity })}
+        />
         <FormField id={`custom-description-${index}`} label="Omschrijving">
           <Textarea
             value={item.description}

@@ -58,6 +58,7 @@ export function toQuoteItemInput(item: {
       kind: "custom",
       title: item.configSnapshot.title,
       description: item.configSnapshot.description,
+      quantity: item.quantity,
       unitPrice: item.configSnapshot.hasPrice
         ? Number(item.unitPrice ?? 0)
         : null,

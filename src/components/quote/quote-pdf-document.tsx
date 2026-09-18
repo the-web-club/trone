@@ -341,7 +341,7 @@ export function QuotePdfDocument({ view }: { view: QuotePdfView }) {
               <View style={styles.itemRow}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.qty}>
-                  {item.isCustom ? "" : item.quantity}
+                  {item.hasPrice ? item.quantity : ""}
                 </Text>
                 <Text style={styles.amt}>
                   {item.hasPrice ? formatEuroExact(item.lineTotal) : ""}

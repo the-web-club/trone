@@ -80,6 +80,7 @@ function emptyCustomLine(): CustomQuoteItemInput {
     kind: "custom",
     title: "",
     description: "",
+    quantity: 1,
     unitPrice: null,
   };
 }
@@ -183,7 +184,11 @@ export function QuoteForm({
       return {
         kind: "custom" as const,
         price: null,
-        displayTotal: item.unitPrice,
+        displayTotal:
+          item.unitPrice == null
+            ? null
+            : Math.round((item.unitPrice * item.quantity + Number.EPSILON) * 100) /
+              100,
         errors: titleMissing ? ["Titel is verplicht"] : [],
       };
     }

@@ -19,6 +19,7 @@ import {
 } from "@/components/configurator/option-groups";
 import { meerprijsLabel } from "@/components/configurator/price-copy";
 import { ProductStage } from "@/components/configurator/product-stage";
+import { QuantityStepper } from "@/components/configurator/quantity-stepper";
 import { SwatchDots } from "@/components/configurator/swatch-dots";
 import { Button } from "@/components/ui/button";
 import { calculatePrice, validateConfiguration } from "@/lib/pricing";
@@ -149,36 +150,8 @@ export function QuoteLineEditor({
               />
             ))}
           </ChoiceTileGroup>
-          <div className="mt-2 flex items-center justify-between gap-3 px-1">
-            <p className="text-sm text-fg-muted">Aantal</p>
-            <div
-              role="group"
-              aria-label="Aantal"
-              className="flex items-center gap-2"
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                aria-label="Aantal verlagen"
-                disabled={item.quantity <= 1}
-                onClick={() => setQuantity(item.quantity - 1)}
-              >
-                −
-              </Button>
-              <span className="min-w-8 text-center text-sm font-medium text-fg" aria-live="polite">
-                {item.quantity}
-              </span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                aria-label="Aantal verhogen"
-                onClick={() => setQuantity(item.quantity + 1)}
-              >
-                +
-              </Button>
-            </div>
+          <div className="mt-2">
+            <QuantityStepper value={item.quantity} onChange={setQuantity} />
           </div>
         </OptionSection>
 

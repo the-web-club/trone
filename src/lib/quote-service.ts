@@ -539,6 +539,8 @@ async function persistQuoteItems(
   for (const [index, item] of items.entries()) {
     if (isCustomQuoteItem(item)) {
       const unitPrice = item.unitPrice == null ? 0 : round2(item.unitPrice);
+      const quantity = item.quantity;
+      const lineTotal = round2(unitPrice * quantity);
       const snapshot: CustomQuoteSnapshot = {
         kind: "custom",
         title: item.title.trim(),
@@ -553,17 +555,17 @@ async function persistQuoteItems(
           productId: "",
           configurationId: null,
           description: snapshot.title,
-          quantity: 1,
+          quantity,
           unitPrice,
           lineDiscountPct: 0,
-          lineTotal: unitPrice,
+          lineTotal,
           configSnapshot: snapshot as unknown as Prisma.InputJsonValue,
           sortOrder: index + 1,
         },
       });
 
-      subtotal = round2(subtotal + unitPrice);
-      total = round2(total + unitPrice);
+      subtotal = round2(subtotal + lineTotal);
+      total = round2(total + lineTotal);
       continue;
     }
 

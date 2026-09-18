@@ -124,11 +124,9 @@ export function CreateOrderDialog({
                         {presentation.title}
                       </span>
                       <span className="text-sm text-fg-muted">
-                        {presentation.isCustom
-                          ? formatEuroExact(
-                              presentation.hasPrice ? item.unitPrice : null,
-                            )
-                          : `${item.quantity} × ${formatEuroExact(item.unitPrice)}`}
+                        {presentation.hasPrice
+                          ? `${item.quantity} × ${formatEuroExact(item.unitPrice)}`
+                          : formatEuroExact(null)}
                       </span>
                     </span>
                     {presentation.body ? (
