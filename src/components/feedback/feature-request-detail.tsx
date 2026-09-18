@@ -29,6 +29,7 @@ import type {
   FeatureRequestType,
 } from "@/lib/feature-request-validation";
 import {
+  ASSIGNABLE_FEATURE_REQUEST_STATUSES,
   featureRequestStatusLabels,
   featureRequestStatusTones,
   featureRequestTypeLabels,
@@ -36,8 +37,6 @@ import {
 } from "@/lib/feature-request-validation";
 import { formatDateTime } from "@/lib/format";
 import { featureRequestPath } from "@/lib/paths";
-
-const editableStatuses = ["OPEN", "PLANNED", "IN_PROGRESS", "DONE"] as const;
 
 export type FeatureRequestDetailViewModel = {
   id: string;
@@ -136,7 +135,7 @@ export function FeatureRequestDetailView({
               value={request.status}
               hideLabel
               compact
-              items={editableStatuses.map((status) => ({
+              items={ASSIGNABLE_FEATURE_REQUEST_STATUSES.map((status) => ({
                 value: status,
                 label: featureRequestStatusLabels[status],
               }))}

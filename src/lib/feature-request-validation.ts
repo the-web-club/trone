@@ -26,6 +26,14 @@ export const ACTIVE_FEATURE_REQUEST_STATUSES: FeatureRequestStatus[] = [
   "IN_PROGRESS",
 ];
 
+/** Statussen die een beheerder zelf zet; MERGED loopt alleen via samenvoegen. */
+export const ASSIGNABLE_FEATURE_REQUEST_STATUSES: FeatureRequestStatus[] = [
+  "OPEN",
+  "PLANNED",
+  "IN_PROGRESS",
+  "DONE",
+];
+
 export const featureRequestTypeLabels: Record<FeatureRequestType, string> = {
   BUG: "Bug",
   FEATURE: "Feature",

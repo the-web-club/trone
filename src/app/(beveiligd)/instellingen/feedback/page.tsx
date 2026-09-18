@@ -6,7 +6,11 @@ import { FeatureRequestList } from "@/components/feedback/feature-request-list";
 import { ListBody, ListBrowser } from "@/components/list/list-browser";
 import { ListPagination } from "@/components/list/list-pagination";
 import { PageHeader, PageHeaderNavLink } from "@/components/shell/page-header";
-import { isViewerSession, requireSession } from "@/lib/auth-session";
+import {
+  isAdminSession,
+  isViewerSession,
+  requireSession,
+} from "@/lib/auth-session";
 import {
   buildFeatureRequestHref,
   parseFeatureRequestSearchParams,
@@ -24,6 +28,7 @@ export default async function FeedbackPage({
   const session = await requireSession();
   const parsed = parseFeatureRequestSearchParams(await searchParams);
   const canWrite = !isViewerSession(session);
+  const canManage = isAdminSession(session);
 
   const hasFilters = Boolean(
     parsed.zoeken ||
@@ -82,6 +87,7 @@ export default async function FeedbackPage({
             ) : undefined
           }
           canVote={canWrite}
+          canManage={canManage}
         />
         <ListPagination
           page={parsed.pagina}

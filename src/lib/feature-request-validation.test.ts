@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/errors";
 import {
+  ASSIGNABLE_FEATURE_REQUEST_STATUSES,
   parseCreateFeatureRequestForm,
   parseFeatureRequestCommentForm,
   parseFeatureRequestStatusValue,
@@ -62,6 +63,13 @@ describe("feature request validation", () => {
 
   it("rejects setting status to merged via the status field", () => {
     expect(() => parseFeatureRequestStatusValue("MERGED")).toThrow(/samenvoegen/);
+  });
+
+  it("accepts every status the beheerder can pick", () => {
+    expect(ASSIGNABLE_FEATURE_REQUEST_STATUSES).not.toContain("MERGED");
+    for (const status of ASSIGNABLE_FEATURE_REQUEST_STATUSES) {
+      expect(parseFeatureRequestStatusValue(status)).toBe(status);
+    }
   });
 
   it("requires comment text", () => {

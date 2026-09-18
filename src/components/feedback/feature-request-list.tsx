@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
+import { FeatureRequestStatusSelect } from "@/components/feedback/feature-request-status-select";
 import { FeatureRequestVoteButton } from "@/components/feedback/feature-request-vote-button";
 import { Badge } from "@/components/ui/badge";
 import { UserName } from "@/components/user/user-name";
@@ -18,11 +19,13 @@ export function FeatureRequestList({
   emptyMessage,
   emptyAction,
   canVote,
+  canManage,
 }: {
   items: FeatureRequestListItem[];
   emptyMessage: React.ReactNode;
   emptyAction?: React.ReactNode;
   canVote: boolean;
+  canManage: boolean;
 }) {
   if (items.length === 0) {
     return (
@@ -37,7 +40,11 @@ export function FeatureRequestList({
     <ul className="min-w-0 divide-y divide-border overflow-hidden">
       {items.map((item) => (
         <li key={item.id} className="min-w-0">
-          <FeatureRequestRow item={item} canVote={canVote} />
+          <FeatureRequestRow
+            item={item}
+            canVote={canVote}
+            canManage={canManage}
+          />
         </li>
       ))}
     </ul>
@@ -47,9 +54,11 @@ export function FeatureRequestList({
 function FeatureRequestRow({
   item,
   canVote,
+  canManage,
 }: {
   item: FeatureRequestListItem;
   canVote: boolean;
+  canManage: boolean;
 }) {
   const href = featureRequestPath(item);
   const merged = item.status === "MERGED";
@@ -87,12 +96,19 @@ function FeatureRequestRow({
               </p>
             ) : null}
           </div>
-          <Badge
-            tone={featureRequestStatusTones[item.status]}
-            className="shrink-0"
-          >
-            {featureRequestStatusLabels[item.status]}
-          </Badge>
+          {canManage && !merged ? (
+            <FeatureRequestStatusSelect
+              requestId={item.id}
+              status={item.status}
+            />
+          ) : (
+            <Badge
+              tone={featureRequestStatusTones[item.status]}
+              className="shrink-0"
+            >
+              {featureRequestStatusLabels[item.status]}
+            </Badge>
+          )}
         </div>
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-fg-muted sm:flex sm:flex-wrap sm:items-center sm:gap-x-2">
           <UserName
