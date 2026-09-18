@@ -27,3 +27,16 @@ export function leadCardFacts<TQuote extends string>(
 export function hasLeadCardFacts(facts: LeadCardFacts): boolean {
   return Boolean(facts.value || facts.quoteStatus || facts.sourceName);
 }
+
+/** Nummer om te bellen: dat van de contactpersoon, anders dat van het bedrijf. */
+export function leadCardPhone(input: {
+  contact: { phone: string | null } | null;
+  company: { phone: string | null } | null;
+}): string | null {
+  return input.contact?.phone?.trim() || input.company?.phone?.trim() || null;
+}
+
+/** Scheidingstekens uit een ingevoerd nummer halen; `tel:` accepteert die niet. */
+export function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^+\d]/g, "")}`;
+}

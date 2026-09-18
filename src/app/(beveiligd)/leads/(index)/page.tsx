@@ -180,13 +180,18 @@ export default async function LeadsPage({
               slug: deal.slug,
               title: deal.title,
               company: deal.company
-                ? { slug: deal.company.slug, name: deal.company.name }
+                ? {
+                    slug: deal.company.slug,
+                    name: deal.company.name,
+                    phone: deal.company.phone,
+                  }
                 : null,
               contact: deal.contact
                 ? {
                     slug: deal.contact.slug,
                     firstName: deal.contact.firstName,
                     lastName: deal.contact.lastName,
+                    phone: deal.contact.phone,
                   }
                 : null,
               stageId: deal.stageId,

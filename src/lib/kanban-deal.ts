@@ -1,4 +1,5 @@
 import { effectiveDealValue } from "@/lib/deal-value";
+import { leadCardPhone } from "@/lib/lead-card";
 import type { LeadScoreAnswerFields } from "@/lib/lead-score";
 import type { QuoteStatusInput } from "@/lib/quote-validation";
 
@@ -10,6 +11,7 @@ export type KanbanDeal = {
   title: string;
   stageId: string;
   company: { slug: string; name: string } | null;
+  phone: string | null;
   quoteStatus: QuoteStatusInput | null;
   valueEstimate: number | null;
   isHot: boolean;
@@ -22,7 +24,8 @@ export type KanbanDealSource = {
   slug: string;
   title: string;
   stageId: string;
-  company: { slug: string; name: string } | null;
+  company: { slug: string; name: string; phone: string | null } | null;
+  contact: { phone: string | null } | null;
   quotes: Array<{
     status: string;
     total: { toString(): string } | number | string;
@@ -50,6 +53,7 @@ export function toKanbanDeal(
     company: deal.company
       ? { slug: deal.company.slug, name: deal.company.name }
       : null,
+    phone: leadCardPhone(deal),
     quoteStatus: (deal.quotes[0]?.status as QuoteStatusInput | undefined) ?? null,
     valueEstimate: effectiveDealValue(
       deal.valueEstimate == null ? null : Number(deal.valueEstimate),

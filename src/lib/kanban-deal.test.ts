@@ -9,7 +9,8 @@ describe("toKanbanDeal", () => {
         slug: "acme",
         title: "Acme stoelen",
         stageId: "stage-lead",
-        company: { slug: "acme-bv", name: "Acme BV" },
+        company: { slug: "acme-bv", name: "Acme BV", phone: "020 1234567" },
+        contact: { phone: null },
         quotes: [{ status: "SENT", total: 1200 }],
         valueEstimate: 900,
         isHot: true,
@@ -28,5 +29,6 @@ describe("toKanbanDeal", () => {
     expect(deal.ownerImage).toBe("/anna.png");
     expect(deal.quoteStatus).toBe("SENT");
     expect(deal.company?.name).toBe("Acme BV");
+    expect(deal.phone).toBe("020 1234567");
   });
 });

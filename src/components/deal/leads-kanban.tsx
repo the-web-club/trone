@@ -33,6 +33,7 @@ import {
   type KanbanDeal,
 } from "@/lib/kanban-deal";
 import type { DealsFilterValues } from "@/lib/deals-query";
+import { telHref } from "@/lib/lead-card";
 import { dealPath } from "@/lib/paths";
 import { leadScoreFromDeal } from "@/lib/lead-score";
 import { cn } from "@/lib/cn";
@@ -98,6 +99,17 @@ function DealCard({
           onClick={(event) => event.stopPropagation()}
         >
           <CompanyLink company={deal.company} />
+        </p>
+      ) : null}
+      {deal.phone ? (
+        <p
+          className="mt-0.5 min-w-0 text-sm text-fg-muted"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <a href={telHref(deal.phone)} className="hover:underline">
+            {deal.phone}
+          </a>
         </p>
       ) : null}
       <div

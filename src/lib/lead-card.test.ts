@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasLeadCardFacts, leadCardFacts } from "@/lib/lead-card";
+import { hasLeadCardFacts, leadCardFacts, leadCardPhone } from "@/lib/lead-card";
 
 describe("leadCardFacts", () => {
   it("verbergt lege offerte, waarde en bron", () => {
@@ -45,5 +45,35 @@ describe("leadCardFacts", () => {
     expect(facts.quoteStatus).toBe("SENT");
     expect(facts.sourceName).toBe("Website");
     expect(hasLeadCardFacts(facts)).toBe(true);
+  });
+});
+
+describe("leadCardPhone", () => {
+  it("geeft het nummer van de contactpersoon voorrang", () => {
+    expect(
+      leadCardPhone({
+        contact: { phone: "06 12345678" },
+        company: { phone: "020 1234567" },
+      }),
+    ).toBe("06 12345678");
+  });
+
+  it("valt terug op het bedrijfsnummer", () => {
+    expect(
+      leadCardPhone({
+        contact: { phone: "  " },
+        company: { phone: "020 1234567" },
+      }),
+    ).toBe("020 1234567");
+    expect(
+      leadCardPhone({ contact: null, company: { phone: "020 1234567" } }),
+    ).toBe("020 1234567");
+  });
+
+  it("geeft null zonder nummer", () => {
+    expect(leadCardPhone({ contact: null, company: null })).toBeNull();
+    expect(
+      leadCardPhone({ contact: { phone: null }, company: { phone: "" } }),
+    ).toBeNull();
   });
 });

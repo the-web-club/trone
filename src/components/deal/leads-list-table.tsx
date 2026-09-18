@@ -30,8 +30,14 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/cn";
 import { formatDate, formatEuro, formatPersonName } from "@/lib/format";
-import { hasLeadCardFacts, leadCardFacts } from "@/lib/lead-card";
+import {
+  hasLeadCardFacts,
+  leadCardFacts,
+  leadCardPhone,
+  telHref,
+} from "@/lib/lead-card";
 import { joinMeta } from "@/lib/list-copy";
 import type { DealTeamMember } from "@/lib/deal-service";
 import { dealPath } from "@/lib/paths";
@@ -49,11 +55,12 @@ export type LeadsListRow = {
   id: string;
   slug: string;
   title: string;
-  company: { slug: string; name: string } | null;
+  company: { slug: string; name: string; phone: string | null } | null;
   contact: {
     slug: string;
     firstName: string;
     lastName: string | null;
+    phone: string | null;
   } | null;
   stageId: string;
   stageName: string;
@@ -66,6 +73,24 @@ export type LeadsListRow = {
   ownerImage: string | null;
   createdAt: string;
 } & LeadScoreAnswerFields;
+
+function LeadPhoneLink({
+  row,
+  className,
+  fallback = null,
+}: {
+  row: LeadsListRow;
+  className?: string;
+  fallback?: React.ReactNode;
+}) {
+  const phone = leadCardPhone(row);
+  if (!phone) return fallback;
+  return (
+    <a href={telHref(phone)} className={cn("hover:underline", className)}>
+      {phone}
+    </a>
+  );
+}
 
 function LeadsListCards({
   rows,
@@ -103,6 +128,7 @@ function LeadsListCards({
           quoteStatus: row.quoteStatus,
           sourceName: row.sourceName,
         });
+        const phone = leadCardPhone(row);
 
         return (
           <ListCard key={row.id} interactive>
@@ -113,6 +139,11 @@ function LeadsListCards({
               </span>
             </ListCardTitle>
             {context ? <ListCardContext>{context}</ListCardContext> : null}
+            {phone ? (
+              <ListCardControl>
+                <LeadPhoneLink row={row} className="text-sm text-fg-muted" />
+              </ListCardControl>
+            ) : null}
             <ListCardSignals>
               <ListCardControl>
                 <LeadStageSelect
@@ -183,6 +214,7 @@ export function LeadsListTable({
           <TableRow>
             <TableHeaderCell>Titel</TableHeaderCell>
             <TableHeaderCell>Bedrijf</TableHeaderCell>
+            <TableHeaderCell>Telefoon</TableHeaderCell>
             <TableHeaderCell>Fase</TableHeaderCell>
             <TableHeaderCell>Leadscore</TableHeaderCell>
             <TableHeaderCell>Offerte</TableHeaderCell>
@@ -194,7 +226,7 @@ export function LeadsListTable({
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
-            <TableEmptyRow colSpan={9}>
+            <TableEmptyRow colSpan={10}>
               {emptyMessage}
               {emptyAction}
             </TableEmptyRow>
@@ -219,6 +251,9 @@ export function LeadsListTable({
                 </TableCell>
                 <TableCell className="text-fg-muted">
                   <CompanyLink company={row.company} />
+                </TableCell>
+                <TableCell className="text-fg-muted whitespace-nowrap">
+                  <LeadPhoneLink row={row} fallback="—" />
                 </TableCell>
                 <TableCell>
                   <LeadStageSelect
